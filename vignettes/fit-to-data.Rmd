@@ -113,9 +113,9 @@ data_list <- list(
   m = 0.1
 )
 
-m1 <- mmmfit(data = data_list)
-rstan::plot(m1$samples)
-s1 <- shinystan::as.shinystan(m1$samples)
-shinystan::launch_shinystan(s1)
+# m1 <- mmmfit(data = data_list)
+# rstan::plot(m1$samples)
+# s1 <- shinystan::as.shinystan(m1$samples)
+# shinystan::launch_shinystan(s1)
 
 ```
