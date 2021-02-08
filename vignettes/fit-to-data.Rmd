@@ -16,9 +16,7 @@ knitr::opts_chunk$set(
 
 ```{r setup, include = FALSE, echo = FALSE}
 library(mmmstan)
-library(dplyr)
-library(magrittr)
-library(lubridate)
+
 ```
 
 # Load Data
@@ -31,69 +29,39 @@ load("~/github/sablefishData/data/sable_recovered.rda")
 
 # Prepare Data
 ```{r prepare-data}
-# Release tibble
-rel <- sable_released %>%
-  mutate(Release_Year = year(Release_Date)) %>%
-  mutate(Group = 1) %>%
-  group_by(Release_Year, Release_Region) %>%
-  mutate(n = n()) %>%
-  ungroup() %>%
-  select(Release_Year, Release_Region, Group, n) %>%
-  arrange(Release_Region, Release_Year) %>%
-  distinct() %>%
-  filter(Release_Year <= 2015)
-# Recovery tibble
-rec <- sable_recovered %>%
-  mutate(Release_Year = year(Release_Date)) %>%
-  mutate(Recovery_Year = year(Recovery_Date)) %>%
-  mutate(Group = 1) %>%
-  filter(Days_Liberty <= 3 * 365) %>%
-  group_by(Release_Year, Release_Region, Recovery_Year, Recovery_Region) %>%
-  mutate(n = n()) %>%
-  ungroup() %>%
-  select(
-    Release_Year, 
-    Release_Region, 
-    Group, 
-    Recovery_Year,
-    Recovery_Region,
-    n) %>%
-  arrange(Release_Region, Release_Year, Recovery_Region, Recovery_Year) %>%
-  distinct() %>%
-  filter(Release_Year <= 2015, Recovery_Year <= 2018)
-# Release array
-x <- array(0, dim = c(37, 3, 1))
-for (i in seq_len(nrow(rel))) {
-  x[rel$Release_Year[i] - 1978, 
-    rel$Release_Region[i], 
-    rel$Group[i]] <- rel$n[i]
-}
-# Recovery array
-y <- array(0, dim = c(37, 3, 1, 4, 3))
-for (i in seq_len(nrow(rec))) {
-  y[rec$Release_Year[i] - 1978,
-    rec$Release_Region[i],
-    rec$Group[i],
-    rec$Recovery_Year[i] - rec$Release_Year[i] + 1,
-    rec$Recovery_Region[i]] <- rec$n[i]
-}
-# Check data
-for (mt in seq_len(37)) {
-  for (ma in seq_len(3)) {
-    for (mg in seq_len(1)) {
-      n_rel <- x[mt, ma, mg]
-      n_rec <- 0
-      for (cl in seq_len(4)) {
-        for (ca in seq_len(3)) {
-          n_rec <- n_rec + y[mt, ma, mg, cl, ca]
-        }
-      }
-      if (n_rec > 0.5 * n_rel) {
-        cat("warning: [", mt, ",", ma, ",", mg, ",", cl, ",", ca, "] \n")
-      }
-    }
-  }
-}
+# Yearly
+tag_array_year <- create_tag_array(
+  x = sable_released,
+  y = sable_recovered,
+  time_step = "year",
+  max_steps_liberty = 3,
+  release_date_colname = "Release_Date",
+  release_area_colname = "Release_Region",
+  group_colname = "Release_Size",
+  recovery_date_colname = "Recovery_Date",
+  recovery_area_colname = "Recovery_Region",
+  id_colname = "Tag_ID",
+  area_list = list(ak = 1, bc = 2, wc = 3),
+  group_list = list(pooled = 400:799),
+  release_date_start = "1979-01-01",
+  release_date_end = "2016-12-31")
+
+# Monthly
+tag_array_month <- create_tag_array(
+  x = sable_released,
+  y = sable_recovered,
+  time_step = "month",
+  max_steps_liberty = 36,
+  release_date_colname = "Release_Date",
+  release_area_colname = "Release_Region",
+  group_colname = "Release_Size",
+  recovery_date_colname = "Recovery_Date",
+  recovery_area_colname = "Recovery_Region",
+  id_colname = "Tag_ID",
+  area_list = list(ak = 1, bc = 2, wc = 3),
+  group_list = list(pooled = 400:799),
+  release_date_start = "1979-01-01",
+  release_date_end = "2016-12-31")
 
 ```
 
@@ -103,14 +71,35 @@ for (mt in seq_len(37)) {
 data_list <- list(
   A = 3,
   G = 1,
-  L = 4,
-  T = 37,
-  x = x,
-  y = y,
+  L = 3,
+  T = 38,
+  x = tag_array_year,
   d = 0.9,
   f = 0.05,
   h = 0.02,
   m = 0.1
+)
+
+# m1 <- mmmfit(data = data_list)
+# rstan::plot(m1$samples, pars = "p")
+# s1 <- shinystan::as.shinystan(m1$samples)
+# shinystan::launch_shinystan(s1)
+
+```
+
+# Monthly fit
+```{r monthly-fit}
+# Define data
+data_list <- list(
+  A = 3,
+  G = 1,
+  L = 36,
+  T = 455,
+  x = tag_array_month,
+  d = 0.9,
+  f = 0.05 / 12,
+  h = 0.02 / 12,
+  m = 0.1 / 12
 )
 
 # m1 <- mmmfit(data = data_list)
