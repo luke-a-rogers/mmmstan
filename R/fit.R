@@ -5,7 +5,7 @@
 #' @return [mmmfit()]
 #' @export
 #'
-mmmfit <- function (data, iter = 750, chains = 1, warmup = 250) {
+mmmfit <- function (data, iter = 750, chains = 1, warmup = 250, ...) {
 
   # Fit the model --------------------------------------------------------------
 
@@ -15,7 +15,8 @@ mmmfit <- function (data, iter = 750, chains = 1, warmup = 250) {
     iter = iter,
     chains = chains,
     warmup = warmup,
-    cores = parallel::detectCores()
+    cores = parallel::detectCores(),
+    ...
   )
 
   # Return mmmfit object -------------------------------------------------------
