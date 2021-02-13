@@ -30,34 +30,53 @@ transformed data {
   }
 }
 
-// parameters {
-// 	// real<lower=0> f; // Fishing mortality rate
-// 	// Movement parameters
-// 	simplex[2] p1;
-// 	simplex[3] p2;
-// 	simplex[2] p3;
-// }
-
 parameters {
 	// real<lower=0> f; // Fishing mortality rate
-	// Movement parameters
-	simplex[3] p1;
-	simplex[3] p2;
-	simplex[3] p3;
+	// Length class 1
+	simplex[2] p11;
+	simplex[3] p12;
+	simplex[2] p13;
+	// Length class 2
+	simplex[2] p21;
+	simplex[3] p22;
+	simplex[2] p23;
+	// Length class 3
+	simplex[2] p31;
+	simplex[3] p32;
+	simplex[2] p33;
 }
 
 transformed parameters {
-  real p[A, A]; // [ca, pa]
-  for (ca in 1:A) {
-    p[ca, 1] = p1[ca];
-    p[ca, 2] = p2[ca];
-    p[ca, 3] = p3[ca];
-  }
+  real p[G, A, A]; // [mg, ca, pa] Movement rates
+	p = rep_array(1e-12, G, A, A);
+  // Length class 1
+	p[1, 1, 1] = p11[1];
+	p[1, 2, 1] = p11[2];
+	p[1, 1, 2] = p12[1];
+	p[1, 2, 2] = p12[2];
+	p[1, 3, 2] = p12[3];
+	p[1, 2, 3] = p13[1];
+	p[1, 3, 3] = p13[2];
+	// Length class 1
+	p[2, 1, 1] = p21[1];
+	p[2, 2, 1] = p21[2];
+	p[2, 1, 2] = p22[1];
+	p[2, 2, 2] = p22[2];
+	p[2, 3, 2] = p22[3];
+	p[2, 2, 3] = p23[1];
+	p[2, 3, 3] = p23[2];
+	// Length class 1
+	p[3, 1, 1] = p31[1];
+	p[3, 2, 1] = p31[2];
+	p[3, 1, 2] = p32[1];
+	p[3, 2, 2] = p32[2];
+	p[3, 3, 2] = p32[3];
+	p[3, 2, 3] = p33[1];
+	p[3, 3, 3] = p33[2];
 }
 
 model {
 	// Initialize values
-	// real p[A, A]; // [ca, pa] Movement rates
 	real n[T, A, G, L, A]; // Predicted abundance
 	real s[G, ST, A]; // Survival rate
 	int y_vec[Y]; // Recoveries
@@ -69,16 +88,6 @@ model {
 	y_vec = rep_array(0, Y);
 	y_hat = rep_array(0, Y);
 	y_ind = 1;
-
-	// Populate movement rates
-	// p = rep_array(0, A, A);
-	// p[1, 1] = p1[1];
-	// p[2, 1] = p1[2];
-	// p[1, 2] = p2[1];
-	// p[2, 2] = p2[2];
-	// p[3, 2] = p2[3];
-	// p[2, 3] = p3[1];
-	// p[3, 3] = p3[2];
 
 	// Compute survival
 	for (mg in 1:G) {
@@ -107,7 +116,7 @@ model {
 	  				for (ca in 1:A) {
 		  				for (pa in 1:A) {
 			  				n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
-		  					* s[mg, mt + cl - 2, pa] * p[ca, pa];
+		  					* s[mg, mt + cl - 2, pa] * p[mg, ca, pa];
 	  					} // End for pa
   					} // End for ca
   				} // End for cl
