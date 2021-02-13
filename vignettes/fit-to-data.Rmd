@@ -63,6 +63,23 @@ tag_array_month <- create_tag_array(
   release_date_start = "1979-01-01",
   release_date_end = "2016-12-31")
 
+# Monthly by length class
+tag_array_month_and_length <- create_tag_array(
+  x = sable_released,
+  y = sable_recovered,
+  time_step = "month",
+  max_steps_liberty = 36,
+  release_date_colname = "Release_Date",
+  release_area_colname = "Release_Region",
+  group_colname = "Release_Size",
+  recovery_date_colname = "Recovery_Date",
+  recovery_area_colname = "Recovery_Region",
+  id_colname = "Tag_ID",
+  area_list = list(ak = 1, bc = 2, wc = 3),
+  group_list = list(small = 400:549, medium = 550:649, large = 650:799),
+  release_date_start = "1979-01-01",
+  release_date_end = "2016-12-31")
+
 ```
 
 # Yearly fit
@@ -103,6 +120,30 @@ data_list <- list(
 )
 
 # m1 <- mmmfit(data = data_list)
+
+# rstan::plot(m1$samples, pars = "p")
+# s1 <- shinystan::as.shinystan(m1$samples)
+# shinystan::launch_shinystan(s1)
+
+```
+
+# Monthly fit by Length Class
+```{r monthly-fit-length-class}
+# Define data
+data_list <- list(
+  A = 3,
+  G = 3,
+  L = 36,
+  T = 455,
+  x = tag_array_month_and_length,
+  d = 0.9,
+  f = 0.05 / 12,
+  h = 0.02 / 12,
+  m = 0.1 / 12
+)
+
+# m1 <- mmmfit(data = data_list)
+
 # rstan::plot(m1$samples, pars = "p")
 # s1 <- shinystan::as.shinystan(m1$samples)
 # shinystan::launch_shinystan(s1)
