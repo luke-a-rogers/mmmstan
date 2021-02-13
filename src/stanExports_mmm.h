@@ -33,7 +33,7 @@ static int current_statement_begin__;
 stan::io::program_reader prog_reader__() {
     stan::io::program_reader reader;
     reader.add_event(0, 0, "start", "model_mmm");
-    reader.add_event(130, 128, "end", "model_mmm");
+    reader.add_event(139, 137, "end", "model_mmm");
     return reader;
 }
 #include <stan_meta_header.hpp>
@@ -183,15 +183,33 @@ public:
             // validate, set parameter ranges
             num_params_r__ = 0U;
             param_ranges_i__.clear();
-            current_statement_begin__ = 44;
-            validate_non_negative_index("p1", "3", 3);
+            current_statement_begin__ = 36;
+            validate_non_negative_index("p11", "2", 2);
+            num_params_r__ += (2 - 1);
+            current_statement_begin__ = 37;
+            validate_non_negative_index("p12", "3", 3);
             num_params_r__ += (3 - 1);
+            current_statement_begin__ = 38;
+            validate_non_negative_index("p13", "2", 2);
+            num_params_r__ += (2 - 1);
+            current_statement_begin__ = 40;
+            validate_non_negative_index("p21", "2", 2);
+            num_params_r__ += (2 - 1);
+            current_statement_begin__ = 41;
+            validate_non_negative_index("p22", "3", 3);
+            num_params_r__ += (3 - 1);
+            current_statement_begin__ = 42;
+            validate_non_negative_index("p23", "2", 2);
+            num_params_r__ += (2 - 1);
+            current_statement_begin__ = 44;
+            validate_non_negative_index("p31", "2", 2);
+            num_params_r__ += (2 - 1);
             current_statement_begin__ = 45;
-            validate_non_negative_index("p2", "3", 3);
+            validate_non_negative_index("p32", "3", 3);
             num_params_r__ += (3 - 1);
             current_statement_begin__ = 46;
-            validate_non_negative_index("p3", "3", 3);
-            num_params_r__ += (3 - 1);
+            validate_non_negative_index("p33", "2", 2);
+            num_params_r__ += (2 - 1);
         } catch (const std::exception& e) {
             stan::lang::rethrow_located(e, current_statement_begin__, prog_reader__());
             // Next line prevents compiler griping about no return
@@ -209,56 +227,158 @@ public:
         (void) pos__; // dummy call to supress warning
         std::vector<double> vals_r__;
         std::vector<int> vals_i__;
-        current_statement_begin__ = 44;
-        if (!(context__.contains_r("p1")))
-            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p1 missing")), current_statement_begin__, prog_reader__());
-        vals_r__ = context__.vals_r("p1");
+        current_statement_begin__ = 36;
+        if (!(context__.contains_r("p11")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p11 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p11");
         pos__ = 0U;
-        validate_non_negative_index("p1", "3", 3);
-        context__.validate_dims("parameter initialization", "p1", "vector_d", context__.to_vec(3));
-        Eigen::Matrix<double, Eigen::Dynamic, 1> p1(3);
-        size_t p1_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p1_j_1_max__; ++j_1__) {
-            p1(j_1__) = vals_r__[pos__++];
+        validate_non_negative_index("p11", "2", 2);
+        context__.validate_dims("parameter initialization", "p11", "vector_d", context__.to_vec(2));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p11(2);
+        size_t p11_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p11_j_1_max__; ++j_1__) {
+            p11(j_1__) = vals_r__[pos__++];
         }
         try {
-            writer__.simplex_unconstrain(p1);
+            writer__.simplex_unconstrain(p11);
         } catch (const std::exception& e) {
-            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p1: ") + e.what()), current_statement_begin__, prog_reader__());
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p11: ") + e.what()), current_statement_begin__, prog_reader__());
+        }
+        current_statement_begin__ = 37;
+        if (!(context__.contains_r("p12")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p12 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p12");
+        pos__ = 0U;
+        validate_non_negative_index("p12", "3", 3);
+        context__.validate_dims("parameter initialization", "p12", "vector_d", context__.to_vec(3));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p12(3);
+        size_t p12_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p12_j_1_max__; ++j_1__) {
+            p12(j_1__) = vals_r__[pos__++];
+        }
+        try {
+            writer__.simplex_unconstrain(p12);
+        } catch (const std::exception& e) {
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p12: ") + e.what()), current_statement_begin__, prog_reader__());
+        }
+        current_statement_begin__ = 38;
+        if (!(context__.contains_r("p13")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p13 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p13");
+        pos__ = 0U;
+        validate_non_negative_index("p13", "2", 2);
+        context__.validate_dims("parameter initialization", "p13", "vector_d", context__.to_vec(2));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p13(2);
+        size_t p13_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p13_j_1_max__; ++j_1__) {
+            p13(j_1__) = vals_r__[pos__++];
+        }
+        try {
+            writer__.simplex_unconstrain(p13);
+        } catch (const std::exception& e) {
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p13: ") + e.what()), current_statement_begin__, prog_reader__());
+        }
+        current_statement_begin__ = 40;
+        if (!(context__.contains_r("p21")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p21 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p21");
+        pos__ = 0U;
+        validate_non_negative_index("p21", "2", 2);
+        context__.validate_dims("parameter initialization", "p21", "vector_d", context__.to_vec(2));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p21(2);
+        size_t p21_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p21_j_1_max__; ++j_1__) {
+            p21(j_1__) = vals_r__[pos__++];
+        }
+        try {
+            writer__.simplex_unconstrain(p21);
+        } catch (const std::exception& e) {
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p21: ") + e.what()), current_statement_begin__, prog_reader__());
+        }
+        current_statement_begin__ = 41;
+        if (!(context__.contains_r("p22")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p22 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p22");
+        pos__ = 0U;
+        validate_non_negative_index("p22", "3", 3);
+        context__.validate_dims("parameter initialization", "p22", "vector_d", context__.to_vec(3));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p22(3);
+        size_t p22_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p22_j_1_max__; ++j_1__) {
+            p22(j_1__) = vals_r__[pos__++];
+        }
+        try {
+            writer__.simplex_unconstrain(p22);
+        } catch (const std::exception& e) {
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p22: ") + e.what()), current_statement_begin__, prog_reader__());
+        }
+        current_statement_begin__ = 42;
+        if (!(context__.contains_r("p23")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p23 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p23");
+        pos__ = 0U;
+        validate_non_negative_index("p23", "2", 2);
+        context__.validate_dims("parameter initialization", "p23", "vector_d", context__.to_vec(2));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p23(2);
+        size_t p23_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p23_j_1_max__; ++j_1__) {
+            p23(j_1__) = vals_r__[pos__++];
+        }
+        try {
+            writer__.simplex_unconstrain(p23);
+        } catch (const std::exception& e) {
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p23: ") + e.what()), current_statement_begin__, prog_reader__());
+        }
+        current_statement_begin__ = 44;
+        if (!(context__.contains_r("p31")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p31 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p31");
+        pos__ = 0U;
+        validate_non_negative_index("p31", "2", 2);
+        context__.validate_dims("parameter initialization", "p31", "vector_d", context__.to_vec(2));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p31(2);
+        size_t p31_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p31_j_1_max__; ++j_1__) {
+            p31(j_1__) = vals_r__[pos__++];
+        }
+        try {
+            writer__.simplex_unconstrain(p31);
+        } catch (const std::exception& e) {
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p31: ") + e.what()), current_statement_begin__, prog_reader__());
         }
         current_statement_begin__ = 45;
-        if (!(context__.contains_r("p2")))
-            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p2 missing")), current_statement_begin__, prog_reader__());
-        vals_r__ = context__.vals_r("p2");
+        if (!(context__.contains_r("p32")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p32 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p32");
         pos__ = 0U;
-        validate_non_negative_index("p2", "3", 3);
-        context__.validate_dims("parameter initialization", "p2", "vector_d", context__.to_vec(3));
-        Eigen::Matrix<double, Eigen::Dynamic, 1> p2(3);
-        size_t p2_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p2_j_1_max__; ++j_1__) {
-            p2(j_1__) = vals_r__[pos__++];
+        validate_non_negative_index("p32", "3", 3);
+        context__.validate_dims("parameter initialization", "p32", "vector_d", context__.to_vec(3));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p32(3);
+        size_t p32_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p32_j_1_max__; ++j_1__) {
+            p32(j_1__) = vals_r__[pos__++];
         }
         try {
-            writer__.simplex_unconstrain(p2);
+            writer__.simplex_unconstrain(p32);
         } catch (const std::exception& e) {
-            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p2: ") + e.what()), current_statement_begin__, prog_reader__());
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p32: ") + e.what()), current_statement_begin__, prog_reader__());
         }
         current_statement_begin__ = 46;
-        if (!(context__.contains_r("p3")))
-            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p3 missing")), current_statement_begin__, prog_reader__());
-        vals_r__ = context__.vals_r("p3");
+        if (!(context__.contains_r("p33")))
+            stan::lang::rethrow_located(std::runtime_error(std::string("Variable p33 missing")), current_statement_begin__, prog_reader__());
+        vals_r__ = context__.vals_r("p33");
         pos__ = 0U;
-        validate_non_negative_index("p3", "3", 3);
-        context__.validate_dims("parameter initialization", "p3", "vector_d", context__.to_vec(3));
-        Eigen::Matrix<double, Eigen::Dynamic, 1> p3(3);
-        size_t p3_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p3_j_1_max__; ++j_1__) {
-            p3(j_1__) = vals_r__[pos__++];
+        validate_non_negative_index("p33", "2", 2);
+        context__.validate_dims("parameter initialization", "p33", "vector_d", context__.to_vec(2));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p33(2);
+        size_t p33_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p33_j_1_max__; ++j_1__) {
+            p33(j_1__) = vals_r__[pos__++];
         }
         try {
-            writer__.simplex_unconstrain(p3);
+            writer__.simplex_unconstrain(p33);
         } catch (const std::exception& e) {
-            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p3: ") + e.what()), current_statement_begin__, prog_reader__());
+            stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable p33: ") + e.what()), current_statement_begin__, prog_reader__());
         }
         params_r__ = writer__.data_r();
         params_i__ = writer__.data_i();
@@ -285,71 +405,206 @@ public:
         try {
             stan::io::reader<local_scalar_t__> in__(params_r__, params_i__);
             // model parameters
+            current_statement_begin__ = 36;
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p11;
+            (void) p11;  // dummy to suppress unused var warning
+            if (jacobian__)
+                p11 = in__.simplex_constrain(2, lp__);
+            else
+                p11 = in__.simplex_constrain(2);
+            current_statement_begin__ = 37;
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p12;
+            (void) p12;  // dummy to suppress unused var warning
+            if (jacobian__)
+                p12 = in__.simplex_constrain(3, lp__);
+            else
+                p12 = in__.simplex_constrain(3);
+            current_statement_begin__ = 38;
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p13;
+            (void) p13;  // dummy to suppress unused var warning
+            if (jacobian__)
+                p13 = in__.simplex_constrain(2, lp__);
+            else
+                p13 = in__.simplex_constrain(2);
+            current_statement_begin__ = 40;
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p21;
+            (void) p21;  // dummy to suppress unused var warning
+            if (jacobian__)
+                p21 = in__.simplex_constrain(2, lp__);
+            else
+                p21 = in__.simplex_constrain(2);
+            current_statement_begin__ = 41;
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p22;
+            (void) p22;  // dummy to suppress unused var warning
+            if (jacobian__)
+                p22 = in__.simplex_constrain(3, lp__);
+            else
+                p22 = in__.simplex_constrain(3);
+            current_statement_begin__ = 42;
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p23;
+            (void) p23;  // dummy to suppress unused var warning
+            if (jacobian__)
+                p23 = in__.simplex_constrain(2, lp__);
+            else
+                p23 = in__.simplex_constrain(2);
             current_statement_begin__ = 44;
-            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p1;
-            (void) p1;  // dummy to suppress unused var warning
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p31;
+            (void) p31;  // dummy to suppress unused var warning
             if (jacobian__)
-                p1 = in__.simplex_constrain(3, lp__);
+                p31 = in__.simplex_constrain(2, lp__);
             else
-                p1 = in__.simplex_constrain(3);
+                p31 = in__.simplex_constrain(2);
             current_statement_begin__ = 45;
-            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p2;
-            (void) p2;  // dummy to suppress unused var warning
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p32;
+            (void) p32;  // dummy to suppress unused var warning
             if (jacobian__)
-                p2 = in__.simplex_constrain(3, lp__);
+                p32 = in__.simplex_constrain(3, lp__);
             else
-                p2 = in__.simplex_constrain(3);
+                p32 = in__.simplex_constrain(3);
             current_statement_begin__ = 46;
-            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p3;
-            (void) p3;  // dummy to suppress unused var warning
+            Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> p33;
+            (void) p33;  // dummy to suppress unused var warning
             if (jacobian__)
-                p3 = in__.simplex_constrain(3, lp__);
+                p33 = in__.simplex_constrain(2, lp__);
             else
-                p3 = in__.simplex_constrain(3);
+                p33 = in__.simplex_constrain(2);
             // transformed parameters
             current_statement_begin__ = 50;
+            validate_non_negative_index("p", "G", G);
             validate_non_negative_index("p", "A", A);
             validate_non_negative_index("p", "A", A);
-            std::vector<std::vector<local_scalar_t__> > p(A, std::vector<local_scalar_t__>(A, local_scalar_t__(0)));
+            std::vector<std::vector<std::vector<local_scalar_t__> > > p(G, std::vector<std::vector<local_scalar_t__> >(A, std::vector<local_scalar_t__>(A, local_scalar_t__(0))));
             stan::math::initialize(p, DUMMY_VAR__);
             stan::math::fill(p, DUMMY_VAR__);
             // transformed parameters block statements
             current_statement_begin__ = 51;
-            for (int ca = 1; ca <= A; ++ca) {
-                current_statement_begin__ = 52;
-                stan::model::assign(p, 
-                            stan::model::cons_list(stan::model::index_uni(ca), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list())), 
-                            get_base1(p1, ca, "p1", 1), 
-                            "assigning variable p");
-                current_statement_begin__ = 53;
-                stan::model::assign(p, 
-                            stan::model::cons_list(stan::model::index_uni(ca), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list())), 
-                            get_base1(p2, ca, "p2", 1), 
-                            "assigning variable p");
-                current_statement_begin__ = 54;
-                stan::model::assign(p, 
-                            stan::model::cons_list(stan::model::index_uni(ca), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list())), 
-                            get_base1(p3, ca, "p3", 1), 
-                            "assigning variable p");
-            }
+            stan::math::assign(p, rep_array(1e-12, G, A, A));
+            current_statement_begin__ = 53;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p11, 1, "p11", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 54;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p11, 2, "p11", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 55;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p12, 1, "p12", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 56;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p12, 2, "p12", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 57;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p12, 3, "p12", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 58;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p13, 1, "p13", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 59;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p13, 2, "p13", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 61;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p21, 1, "p21", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 62;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p21, 2, "p21", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 63;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p22, 1, "p22", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 64;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p22, 2, "p22", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 65;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p22, 3, "p22", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 66;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p23, 1, "p23", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 67;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p23, 2, "p23", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 69;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p31, 1, "p31", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 70;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p31, 2, "p31", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 71;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p32, 1, "p32", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 72;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p32, 2, "p32", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 73;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p32, 3, "p32", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 74;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p33, 1, "p33", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 75;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p33, 2, "p33", 1), 
+                        "assigning variable p");
             // validate transformed parameters
             const char* function__ = "validate transformed params";
             (void) function__;  // dummy to suppress unused var warning
             current_statement_begin__ = 50;
-            size_t p_k_0_max__ = A;
+            size_t p_k_0_max__ = G;
             size_t p_k_1_max__ = A;
+            size_t p_k_2_max__ = A;
             for (size_t k_0__ = 0; k_0__ < p_k_0_max__; ++k_0__) {
                 for (size_t k_1__ = 0; k_1__ < p_k_1_max__; ++k_1__) {
-                    if (stan::math::is_uninitialized(p[k_0__][k_1__])) {
-                        std::stringstream msg__;
-                        msg__ << "Undefined transformed parameter: p" << "[" << k_0__ << "]" << "[" << k_1__ << "]";
-                        stan::lang::rethrow_located(std::runtime_error(std::string("Error initializing variable p: ") + msg__.str()), current_statement_begin__, prog_reader__());
+                    for (size_t k_2__ = 0; k_2__ < p_k_2_max__; ++k_2__) {
+                        if (stan::math::is_uninitialized(p[k_0__][k_1__][k_2__])) {
+                            std::stringstream msg__;
+                            msg__ << "Undefined transformed parameter: p" << "[" << k_0__ << "]" << "[" << k_1__ << "]" << "[" << k_2__ << "]";
+                            stan::lang::rethrow_located(std::runtime_error(std::string("Error initializing variable p: ") + msg__.str()), current_statement_begin__, prog_reader__());
+                        }
                     }
                 }
             }
             // model body
             {
-            current_statement_begin__ = 61;
+            current_statement_begin__ = 80;
             validate_non_negative_index("n", "T", T);
             validate_non_negative_index("n", "A", A);
             validate_non_negative_index("n", "G", G);
@@ -358,67 +613,53 @@ public:
             std::vector<std::vector<std::vector<std::vector<std::vector<local_scalar_t__  >  >  >  >  > n(T, std::vector<std::vector<std::vector<std::vector<local_scalar_t__> > > >(A, std::vector<std::vector<std::vector<local_scalar_t__> > >(G, std::vector<std::vector<local_scalar_t__> >(L, std::vector<local_scalar_t__>(A, local_scalar_t__(DUMMY_VAR__))))));
             stan::math::initialize(n, DUMMY_VAR__);
             stan::math::fill(n, DUMMY_VAR__);
-            current_statement_begin__ = 62;
+            current_statement_begin__ = 81;
             validate_non_negative_index("s", "G", G);
             validate_non_negative_index("s", "ST", ST);
             validate_non_negative_index("s", "A", A);
             std::vector<std::vector<std::vector<local_scalar_t__  >  >  > s(G, std::vector<std::vector<local_scalar_t__> >(ST, std::vector<local_scalar_t__>(A, local_scalar_t__(DUMMY_VAR__))));
             stan::math::initialize(s, DUMMY_VAR__);
             stan::math::fill(s, DUMMY_VAR__);
-            current_statement_begin__ = 63;
+            current_statement_begin__ = 82;
             validate_non_negative_index("y_vec", "Y", Y);
             std::vector<int  > y_vec(Y, int(0));
             stan::math::fill(y_vec, std::numeric_limits<int>::min());
-            current_statement_begin__ = 64;
+            current_statement_begin__ = 83;
             validate_non_negative_index("y_hat", "Y", Y);
             std::vector<local_scalar_t__  > y_hat(Y, local_scalar_t__(DUMMY_VAR__));
             stan::math::initialize(y_hat, DUMMY_VAR__);
             stan::math::fill(y_hat, DUMMY_VAR__);
-            current_statement_begin__ = 65;
+            current_statement_begin__ = 84;
             int y_ind(0);
             (void) y_ind;  // dummy to suppress unused var warning
             stan::math::fill(y_ind, std::numeric_limits<int>::min());
-            current_statement_begin__ = 66;
+            current_statement_begin__ = 85;
             validate_non_negative_index("n_sub", "T", T);
             validate_non_negative_index("n_sub", "A", A);
             std::vector<std::vector<local_scalar_t__  >  > n_sub(T, std::vector<local_scalar_t__>(A, local_scalar_t__(DUMMY_VAR__)));
             stan::math::initialize(n_sub, DUMMY_VAR__);
             stan::math::fill(n_sub, DUMMY_VAR__);
-            current_statement_begin__ = 67;
+            current_statement_begin__ = 86;
             stan::math::assign(n, rep_array(rep_array(0, L, A), T, A, G));
-            current_statement_begin__ = 68;
+            current_statement_begin__ = 87;
             stan::math::assign(s, rep_array(0, G, ST, A));
-            current_statement_begin__ = 69;
+            current_statement_begin__ = 88;
             stan::math::assign(y_vec, rep_array(0, Y));
-            current_statement_begin__ = 70;
+            current_statement_begin__ = 89;
             stan::math::assign(y_hat, rep_array(0, Y));
-            current_statement_begin__ = 71;
+            current_statement_begin__ = 90;
             stan::math::assign(y_ind, 1);
-            current_statement_begin__ = 84;
+            current_statement_begin__ = 93;
             for (int mg = 1; mg <= G; ++mg) {
-                current_statement_begin__ = 85;
+                current_statement_begin__ = 94;
                 for (int ct = 1; ct <= ST; ++ct) {
-                    current_statement_begin__ = 86;
+                    current_statement_begin__ = 95;
                     for (int ca = 1; ca <= A; ++ca) {
-                        current_statement_begin__ = 87;
+                        current_statement_begin__ = 96;
                         stan::model::assign(s, 
                                     stan::model::cons_list(stan::model::index_uni(mg), stan::model::cons_list(stan::model::index_uni(ct), stan::model::cons_list(stan::model::index_uni(ca), stan::model::nil_index_list()))), 
                                     stan::math::exp(((-(f) - m) - h)), 
                                     "assigning variable s");
-                    }
-                }
-            }
-            current_statement_begin__ = 93;
-            for (int mt = 1; mt <= T; ++mt) {
-                current_statement_begin__ = 94;
-                for (int ma = 1; ma <= A; ++ma) {
-                    current_statement_begin__ = 95;
-                    for (int mg = 1; mg <= G; ++mg) {
-                        current_statement_begin__ = 96;
-                        stan::model::assign(n, 
-                                    stan::model::cons_list(stan::model::index_uni(mt), stan::model::cons_list(stan::model::index_uni(ma), stan::model::cons_list(stan::model::index_uni(mg), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(ma), stan::model::nil_index_list()))))), 
-                                    (d * get_base1(get_base1(get_base1(get_base1(get_base1(x, mt, "x", 1), ma, "x", 2), mg, "x", 3), 1, "x", 4), ma, "x", 5)), 
-                                    "assigning variable n");
                     }
                 }
             }
@@ -429,36 +670,50 @@ public:
                     current_statement_begin__ = 104;
                     for (int mg = 1; mg <= G; ++mg) {
                         current_statement_begin__ = 105;
+                        stan::model::assign(n, 
+                                    stan::model::cons_list(stan::model::index_uni(mt), stan::model::cons_list(stan::model::index_uni(ma), stan::model::cons_list(stan::model::index_uni(mg), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(ma), stan::model::nil_index_list()))))), 
+                                    (d * get_base1(get_base1(get_base1(get_base1(get_base1(x, mt, "x", 1), ma, "x", 2), mg, "x", 3), 1, "x", 4), ma, "x", 5)), 
+                                    "assigning variable n");
+                    }
+                }
+            }
+            current_statement_begin__ = 111;
+            for (int mt = 1; mt <= T; ++mt) {
+                current_statement_begin__ = 112;
+                for (int ma = 1; ma <= A; ++ma) {
+                    current_statement_begin__ = 113;
+                    for (int mg = 1; mg <= G; ++mg) {
+                        current_statement_begin__ = 114;
                         if (as_bool(logical_gt(get_base1(get_base1(get_base1(get_base1(get_base1(x, mt, "x", 1), ma, "x", 2), mg, "x", 3), 1, "x", 4), ma, "x", 5), 0))) {
-                            current_statement_begin__ = 106;
+                            current_statement_begin__ = 115;
                             for (int cl = 2; cl <= L; ++cl) {
-                                current_statement_begin__ = 107;
+                                current_statement_begin__ = 116;
                                 for (int ca = 1; ca <= A; ++ca) {
-                                    current_statement_begin__ = 108;
+                                    current_statement_begin__ = 117;
                                     for (int pa = 1; pa <= A; ++pa) {
-                                        current_statement_begin__ = 109;
+                                        current_statement_begin__ = 118;
                                         stan::model::assign(n, 
                                                     stan::model::cons_list(stan::model::index_uni(mt), stan::model::cons_list(stan::model::index_uni(ma), stan::model::cons_list(stan::model::index_uni(mg), stan::model::cons_list(stan::model::index_uni(cl), stan::model::cons_list(stan::model::index_uni(ca), stan::model::nil_index_list()))))), 
-                                                    (stan::model::rvalue(n, stan::model::cons_list(stan::model::index_uni(mt), stan::model::cons_list(stan::model::index_uni(ma), stan::model::cons_list(stan::model::index_uni(mg), stan::model::cons_list(stan::model::index_uni(cl), stan::model::cons_list(stan::model::index_uni(ca), stan::model::nil_index_list()))))), "n") + ((get_base1(get_base1(get_base1(get_base1(get_base1(n, mt, "n", 1), ma, "n", 2), mg, "n", 3), (cl - 1), "n", 4), pa, "n", 5) * get_base1(get_base1(get_base1(s, mg, "s", 1), ((mt + cl) - 2), "s", 2), pa, "s", 3)) * get_base1(get_base1(p, ca, "p", 1), pa, "p", 2))), 
+                                                    (stan::model::rvalue(n, stan::model::cons_list(stan::model::index_uni(mt), stan::model::cons_list(stan::model::index_uni(ma), stan::model::cons_list(stan::model::index_uni(mg), stan::model::cons_list(stan::model::index_uni(cl), stan::model::cons_list(stan::model::index_uni(ca), stan::model::nil_index_list()))))), "n") + ((get_base1(get_base1(get_base1(get_base1(get_base1(n, mt, "n", 1), ma, "n", 2), mg, "n", 3), (cl - 1), "n", 4), pa, "n", 5) * get_base1(get_base1(get_base1(s, mg, "s", 1), ((mt + cl) - 2), "s", 2), pa, "s", 3)) * get_base1(get_base1(get_base1(p, mg, "p", 1), ca, "p", 2), pa, "p", 3))), 
                                                     "assigning variable n");
                                     }
                                 }
                             }
-                            current_statement_begin__ = 114;
+                            current_statement_begin__ = 123;
                             for (int cl = 2; cl <= L; ++cl) {
-                                current_statement_begin__ = 115;
+                                current_statement_begin__ = 124;
                                 for (int ca = 1; ca <= A; ++ca) {
-                                    current_statement_begin__ = 116;
+                                    current_statement_begin__ = 125;
                                     stan::model::assign(y_vec, 
                                                 stan::model::cons_list(stan::model::index_uni(y_ind), stan::model::nil_index_list()), 
                                                 get_base1(get_base1(get_base1(get_base1(get_base1(x, mt, "x", 1), ma, "x", 2), mg, "x", 3), cl, "x", 4), ca, "x", 5), 
                                                 "assigning variable y_vec");
-                                    current_statement_begin__ = 117;
+                                    current_statement_begin__ = 126;
                                     stan::model::assign(y_hat, 
                                                 stan::model::cons_list(stan::model::index_uni(y_ind), stan::model::nil_index_list()), 
                                                 (get_base1(get_base1(get_base1(get_base1(get_base1(n, mt, "n", 1), ma, "n", 2), mg, "n", 3), cl, "n", 4), ca, "n", 5) * (1 - stan::math::exp(-(f)))), 
                                                 "assigning variable y_hat");
-                                    current_statement_begin__ = 118;
+                                    current_statement_begin__ = 127;
                                     stan::math::assign(y_ind, (y_ind + 1));
                                 }
                             }
@@ -466,7 +721,7 @@ public:
                     }
                 }
             }
-            current_statement_begin__ = 127;
+            current_statement_begin__ = 136;
             lp_accum__.add(poisson_log<propto__>(y_vec, y_hat));
             }
         } catch (const std::exception& e) {
@@ -489,24 +744,49 @@ public:
     }
     void get_param_names(std::vector<std::string>& names__) const {
         names__.resize(0);
-        names__.push_back("p1");
-        names__.push_back("p2");
-        names__.push_back("p3");
+        names__.push_back("p11");
+        names__.push_back("p12");
+        names__.push_back("p13");
+        names__.push_back("p21");
+        names__.push_back("p22");
+        names__.push_back("p23");
+        names__.push_back("p31");
+        names__.push_back("p32");
+        names__.push_back("p33");
         names__.push_back("p");
     }
     void get_dims(std::vector<std::vector<size_t> >& dimss__) const {
         dimss__.resize(0);
         std::vector<size_t> dims__;
         dims__.resize(0);
-        dims__.push_back(3);
+        dims__.push_back(2);
         dimss__.push_back(dims__);
         dims__.resize(0);
         dims__.push_back(3);
         dimss__.push_back(dims__);
         dims__.resize(0);
+        dims__.push_back(2);
+        dimss__.push_back(dims__);
+        dims__.resize(0);
+        dims__.push_back(2);
+        dimss__.push_back(dims__);
+        dims__.resize(0);
         dims__.push_back(3);
         dimss__.push_back(dims__);
         dims__.resize(0);
+        dims__.push_back(2);
+        dimss__.push_back(dims__);
+        dims__.resize(0);
+        dims__.push_back(2);
+        dimss__.push_back(dims__);
+        dims__.resize(0);
+        dims__.push_back(3);
+        dimss__.push_back(dims__);
+        dims__.resize(0);
+        dims__.push_back(2);
+        dimss__.push_back(dims__);
+        dims__.resize(0);
+        dims__.push_back(G);
         dims__.push_back(A);
         dims__.push_back(A);
         dimss__.push_back(dims__);
@@ -525,20 +805,50 @@ public:
         static const char* function__ = "model_mmm_namespace::write_array";
         (void) function__;  // dummy to suppress unused var warning
         // read-transform, write parameters
-        Eigen::Matrix<double, Eigen::Dynamic, 1> p1 = in__.simplex_constrain(3);
-        size_t p1_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p1_j_1_max__; ++j_1__) {
-            vars__.push_back(p1(j_1__));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p11 = in__.simplex_constrain(2);
+        size_t p11_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p11_j_1_max__; ++j_1__) {
+            vars__.push_back(p11(j_1__));
         }
-        Eigen::Matrix<double, Eigen::Dynamic, 1> p2 = in__.simplex_constrain(3);
-        size_t p2_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p2_j_1_max__; ++j_1__) {
-            vars__.push_back(p2(j_1__));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p12 = in__.simplex_constrain(3);
+        size_t p12_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p12_j_1_max__; ++j_1__) {
+            vars__.push_back(p12(j_1__));
         }
-        Eigen::Matrix<double, Eigen::Dynamic, 1> p3 = in__.simplex_constrain(3);
-        size_t p3_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p3_j_1_max__; ++j_1__) {
-            vars__.push_back(p3(j_1__));
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p13 = in__.simplex_constrain(2);
+        size_t p13_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p13_j_1_max__; ++j_1__) {
+            vars__.push_back(p13(j_1__));
+        }
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p21 = in__.simplex_constrain(2);
+        size_t p21_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p21_j_1_max__; ++j_1__) {
+            vars__.push_back(p21(j_1__));
+        }
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p22 = in__.simplex_constrain(3);
+        size_t p22_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p22_j_1_max__; ++j_1__) {
+            vars__.push_back(p22(j_1__));
+        }
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p23 = in__.simplex_constrain(2);
+        size_t p23_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p23_j_1_max__; ++j_1__) {
+            vars__.push_back(p23(j_1__));
+        }
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p31 = in__.simplex_constrain(2);
+        size_t p31_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p31_j_1_max__; ++j_1__) {
+            vars__.push_back(p31(j_1__));
+        }
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p32 = in__.simplex_constrain(3);
+        size_t p32_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p32_j_1_max__; ++j_1__) {
+            vars__.push_back(p32(j_1__));
+        }
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p33 = in__.simplex_constrain(2);
+        size_t p33_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p33_j_1_max__; ++j_1__) {
+            vars__.push_back(p33(j_1__));
         }
         double lp__ = 0.0;
         (void) lp__;  // dummy to suppress unused var warning
@@ -549,41 +859,134 @@ public:
         try {
             // declare and define transformed parameters
             current_statement_begin__ = 50;
+            validate_non_negative_index("p", "G", G);
             validate_non_negative_index("p", "A", A);
             validate_non_negative_index("p", "A", A);
-            std::vector<std::vector<double> > p(A, std::vector<double>(A, double(0)));
+            std::vector<std::vector<std::vector<double> > > p(G, std::vector<std::vector<double> >(A, std::vector<double>(A, double(0))));
             stan::math::initialize(p, DUMMY_VAR__);
             stan::math::fill(p, DUMMY_VAR__);
             // do transformed parameters statements
             current_statement_begin__ = 51;
-            for (int ca = 1; ca <= A; ++ca) {
-                current_statement_begin__ = 52;
-                stan::model::assign(p, 
-                            stan::model::cons_list(stan::model::index_uni(ca), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list())), 
-                            get_base1(p1, ca, "p1", 1), 
-                            "assigning variable p");
-                current_statement_begin__ = 53;
-                stan::model::assign(p, 
-                            stan::model::cons_list(stan::model::index_uni(ca), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list())), 
-                            get_base1(p2, ca, "p2", 1), 
-                            "assigning variable p");
-                current_statement_begin__ = 54;
-                stan::model::assign(p, 
-                            stan::model::cons_list(stan::model::index_uni(ca), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list())), 
-                            get_base1(p3, ca, "p3", 1), 
-                            "assigning variable p");
-            }
+            stan::math::assign(p, rep_array(1e-12, G, A, A));
+            current_statement_begin__ = 53;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p11, 1, "p11", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 54;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p11, 2, "p11", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 55;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p12, 1, "p12", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 56;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p12, 2, "p12", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 57;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p12, 3, "p12", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 58;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p13, 1, "p13", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 59;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p13, 2, "p13", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 61;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p21, 1, "p21", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 62;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p21, 2, "p21", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 63;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p22, 1, "p22", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 64;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p22, 2, "p22", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 65;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p22, 3, "p22", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 66;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p23, 1, "p23", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 67;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p23, 2, "p23", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 69;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p31, 1, "p31", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 70;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()))), 
+                        get_base1(p31, 2, "p31", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 71;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(1), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p32, 1, "p32", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 72;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p32, 2, "p32", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 73;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::nil_index_list()))), 
+                        get_base1(p32, 3, "p32", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 74;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(2), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p33, 1, "p33", 1), 
+                        "assigning variable p");
+            current_statement_begin__ = 75;
+            stan::model::assign(p, 
+                        stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::cons_list(stan::model::index_uni(3), stan::model::nil_index_list()))), 
+                        get_base1(p33, 2, "p33", 1), 
+                        "assigning variable p");
             if (!include_gqs__ && !include_tparams__) return;
             // validate transformed parameters
             const char* function__ = "validate transformed params";
             (void) function__;  // dummy to suppress unused var warning
             // write transformed parameters
             if (include_tparams__) {
-                size_t p_k_0_max__ = A;
+                size_t p_k_0_max__ = G;
                 size_t p_k_1_max__ = A;
-                for (size_t k_1__ = 0; k_1__ < p_k_1_max__; ++k_1__) {
-                    for (size_t k_0__ = 0; k_0__ < p_k_0_max__; ++k_0__) {
-                        vars__.push_back(p[k_0__][k_1__]);
+                size_t p_k_2_max__ = A;
+                for (size_t k_2__ = 0; k_2__ < p_k_2_max__; ++k_2__) {
+                    for (size_t k_1__ = 0; k_1__ < p_k_1_max__; ++k_1__) {
+                        for (size_t k_0__ = 0; k_0__ < p_k_0_max__; ++k_0__) {
+                            vars__.push_back(p[k_0__][k_1__][k_2__]);
+                        }
                     }
                 }
             }
@@ -618,33 +1021,72 @@ public:
                                  bool include_tparams__ = true,
                                  bool include_gqs__ = true) const {
         std::stringstream param_name_stream__;
-        size_t p1_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p1_j_1_max__; ++j_1__) {
+        size_t p11_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p11_j_1_max__; ++j_1__) {
             param_name_stream__.str(std::string());
-            param_name_stream__ << "p1" << '.' << j_1__ + 1;
+            param_name_stream__ << "p11" << '.' << j_1__ + 1;
             param_names__.push_back(param_name_stream__.str());
         }
-        size_t p2_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p2_j_1_max__; ++j_1__) {
+        size_t p12_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p12_j_1_max__; ++j_1__) {
             param_name_stream__.str(std::string());
-            param_name_stream__ << "p2" << '.' << j_1__ + 1;
+            param_name_stream__ << "p12" << '.' << j_1__ + 1;
             param_names__.push_back(param_name_stream__.str());
         }
-        size_t p3_j_1_max__ = 3;
-        for (size_t j_1__ = 0; j_1__ < p3_j_1_max__; ++j_1__) {
+        size_t p13_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p13_j_1_max__; ++j_1__) {
             param_name_stream__.str(std::string());
-            param_name_stream__ << "p3" << '.' << j_1__ + 1;
+            param_name_stream__ << "p13" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p21_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p21_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p21" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p22_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p22_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p22" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p23_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p23_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p23" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p31_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p31_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p31" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p32_j_1_max__ = 3;
+        for (size_t j_1__ = 0; j_1__ < p32_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p32" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p33_j_1_max__ = 2;
+        for (size_t j_1__ = 0; j_1__ < p33_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p33" << '.' << j_1__ + 1;
             param_names__.push_back(param_name_stream__.str());
         }
         if (!include_gqs__ && !include_tparams__) return;
         if (include_tparams__) {
-            size_t p_k_0_max__ = A;
+            size_t p_k_0_max__ = G;
             size_t p_k_1_max__ = A;
-            for (size_t k_1__ = 0; k_1__ < p_k_1_max__; ++k_1__) {
-                for (size_t k_0__ = 0; k_0__ < p_k_0_max__; ++k_0__) {
-                    param_name_stream__.str(std::string());
-                    param_name_stream__ << "p" << '.' << k_0__ + 1 << '.' << k_1__ + 1;
-                    param_names__.push_back(param_name_stream__.str());
+            size_t p_k_2_max__ = A;
+            for (size_t k_2__ = 0; k_2__ < p_k_2_max__; ++k_2__) {
+                for (size_t k_1__ = 0; k_1__ < p_k_1_max__; ++k_1__) {
+                    for (size_t k_0__ = 0; k_0__ < p_k_0_max__; ++k_0__) {
+                        param_name_stream__.str(std::string());
+                        param_name_stream__ << "p" << '.' << k_0__ + 1 << '.' << k_1__ + 1 << '.' << k_2__ + 1;
+                        param_names__.push_back(param_name_stream__.str());
+                    }
                 }
             }
         }
@@ -654,33 +1096,72 @@ public:
                                    bool include_tparams__ = true,
                                    bool include_gqs__ = true) const {
         std::stringstream param_name_stream__;
-        size_t p1_j_1_max__ = (3 - 1);
-        for (size_t j_1__ = 0; j_1__ < p1_j_1_max__; ++j_1__) {
+        size_t p11_j_1_max__ = (2 - 1);
+        for (size_t j_1__ = 0; j_1__ < p11_j_1_max__; ++j_1__) {
             param_name_stream__.str(std::string());
-            param_name_stream__ << "p1" << '.' << j_1__ + 1;
+            param_name_stream__ << "p11" << '.' << j_1__ + 1;
             param_names__.push_back(param_name_stream__.str());
         }
-        size_t p2_j_1_max__ = (3 - 1);
-        for (size_t j_1__ = 0; j_1__ < p2_j_1_max__; ++j_1__) {
+        size_t p12_j_1_max__ = (3 - 1);
+        for (size_t j_1__ = 0; j_1__ < p12_j_1_max__; ++j_1__) {
             param_name_stream__.str(std::string());
-            param_name_stream__ << "p2" << '.' << j_1__ + 1;
+            param_name_stream__ << "p12" << '.' << j_1__ + 1;
             param_names__.push_back(param_name_stream__.str());
         }
-        size_t p3_j_1_max__ = (3 - 1);
-        for (size_t j_1__ = 0; j_1__ < p3_j_1_max__; ++j_1__) {
+        size_t p13_j_1_max__ = (2 - 1);
+        for (size_t j_1__ = 0; j_1__ < p13_j_1_max__; ++j_1__) {
             param_name_stream__.str(std::string());
-            param_name_stream__ << "p3" << '.' << j_1__ + 1;
+            param_name_stream__ << "p13" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p21_j_1_max__ = (2 - 1);
+        for (size_t j_1__ = 0; j_1__ < p21_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p21" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p22_j_1_max__ = (3 - 1);
+        for (size_t j_1__ = 0; j_1__ < p22_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p22" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p23_j_1_max__ = (2 - 1);
+        for (size_t j_1__ = 0; j_1__ < p23_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p23" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p31_j_1_max__ = (2 - 1);
+        for (size_t j_1__ = 0; j_1__ < p31_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p31" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p32_j_1_max__ = (3 - 1);
+        for (size_t j_1__ = 0; j_1__ < p32_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p32" << '.' << j_1__ + 1;
+            param_names__.push_back(param_name_stream__.str());
+        }
+        size_t p33_j_1_max__ = (2 - 1);
+        for (size_t j_1__ = 0; j_1__ < p33_j_1_max__; ++j_1__) {
+            param_name_stream__.str(std::string());
+            param_name_stream__ << "p33" << '.' << j_1__ + 1;
             param_names__.push_back(param_name_stream__.str());
         }
         if (!include_gqs__ && !include_tparams__) return;
         if (include_tparams__) {
-            size_t p_k_0_max__ = A;
+            size_t p_k_0_max__ = G;
             size_t p_k_1_max__ = A;
-            for (size_t k_1__ = 0; k_1__ < p_k_1_max__; ++k_1__) {
-                for (size_t k_0__ = 0; k_0__ < p_k_0_max__; ++k_0__) {
-                    param_name_stream__.str(std::string());
-                    param_name_stream__ << "p" << '.' << k_0__ + 1 << '.' << k_1__ + 1;
-                    param_names__.push_back(param_name_stream__.str());
+            size_t p_k_2_max__ = A;
+            for (size_t k_2__ = 0; k_2__ < p_k_2_max__; ++k_2__) {
+                for (size_t k_1__ = 0; k_1__ < p_k_1_max__; ++k_1__) {
+                    for (size_t k_0__ = 0; k_0__ < p_k_0_max__; ++k_0__) {
+                        param_name_stream__.str(std::string());
+                        param_name_stream__ << "p" << '.' << k_0__ + 1 << '.' << k_1__ + 1 << '.' << k_2__ + 1;
+                        param_names__.push_back(param_name_stream__.str());
+                    }
                 }
             }
         }
