@@ -1,6 +1,19 @@
 
+functions {
+  // Matrix power (Remove upon release RStan 2.3)
+  matrix mat_power(matrix a, int n);
+  matrix mat_power(matrix a, int n) {
+    if (n == 0)
+      return diag_matrix(rep_vector(1, rows(a)));
+    else if (n == 1)
+      return a;
+    else
+      return a *  mat_power(a, n - 1);
+  } // End mat_power
+}
+
 data {
-	// Index limits
+  // Index limits
 	int A; // Number of release and recovery areas
 	int G; // Number of release groups
 	int L; // Maximum number of time steps at liberty
@@ -134,4 +147,27 @@ model {
 
 	// Sampling statement
 	y_vec ~ poisson(y_hat);
+}
+
+generated quantities {
+  // Annual movement rates
+  matrix[A, A] p_matrix[G];
+  matrix[A, A] p_matrix_annual[G];
+  real p_annual[A, A, G];
+  for (mg in 1:G) {
+    // Populate p_matrix
+    for (pa in 1:A) {
+      for (ca in 1:A) {
+        p_matrix[mg, pa, ca] = p[mg, ca, pa];
+      }
+    }
+    // Populate p_matrix_annual
+    p_matrix_annual[mg] = mat_power(p_matrix[mg],  12);
+    // Populate p_annual
+    for (pa in 1:A) {
+      for (ca in 1:A) {
+        p_annual[pa, ca, mg] = p_matrix_annual[mg, pa, ca];
+      }
+    }
+  }
 }
