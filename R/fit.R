@@ -5,21 +5,18 @@
 #' @return [mmmfit()]
 #' @export
 #'
-mmmfit <- function (data) {
-
-  # Define options -------------------------------------------------------------
-
-  if (is.null(options()$mc.cores)) {
-    options(mc.cores = parallel::detectCores())
-  }
+mmmfit <- function (data, iter = 750, chains = 1, warmup = 250, ...) {
 
   # Fit the model --------------------------------------------------------------
 
   samples <- rstan::stan(
     file = here::here("inst", "stan", "mmm.stan"),
-    chains = 1,
-    iter = 2000,
-    data = data
+    data = data,
+    iter = iter,
+    chains = chains,
+    warmup = warmup,
+    cores = parallel::detectCores(),
+    ...
   )
 
   # Return mmmfit object -------------------------------------------------------

@@ -25,7 +25,9 @@ Imports:
     stats,
     dplyr,
     magrittr,
-    lubridate
+    lubridate,
+    tidyr,
+    parallel
 LinkingTo: 
     BH (>= 1.66.0),
     Rcpp (>= 0.12.0),
