@@ -14,29 +14,32 @@ functions {
 
 data {
   // Index limits
-	int A; // Number of release and recovery areas
-	int G; // Number of release groups
-	int L; // Maximum number of time steps at liberty
-	int T; // Number of release time steps
-
-	// Tag data & movement index
-	int x[T, A, G, L, A]; // Tag array
-
-	// Input rates
-	real d; // Tags attached after release (proportion)
-	real f; // Fishing mortality rate
-	real h; // Tag loss rate
-	real m; // Natural mortality rate
+  int<lower=2> A; // Number of release and recovery areas
+  int<lower=1> G; // Number of release groups
+  int<lower=2> L; // Maximum number of time steps at liberty
+  int<lower=1> T; // Number of release time steps
+  // Constants
+  int<lower=1> Y; // Number of time steps per year
+  // Tag data
+  int<lower=0> x[T, A, G, L, A]; // Tag array
+  // Input rates
+  real<lower=0, upper=1> u; // Initial tag retention rate (proportion)
+  real<lower=0> v; // Tag loss rate
+  real<lower=0> m; // Natural mortality rate
+  // Prior parameters
+  real<lower=0> h_alpha[A];
+  real<lower=0> h_beta[A];
 }
 
 transformed data {
-  int ST = T + (L - 1);
-  int Y = 0;
+  // Transformed indexes
+  int ST = T + (L - 1); // TODO: Rename (Number of survival time steps)
+  int YT = 0; // TODO: Rename (Number of recovery observations)
   for (mt in 1:T) {
 		for (ma in 1:A) {
 			for (mg in 1:G) {
 			  if (x[mt, ma, mg, 1, ma] > 0) {
-			    Y += L * A;
+			    YT += L * A;
 			  }
 			}
 		}
@@ -44,23 +47,74 @@ transformed data {
 }
 
 parameters {
-	// real<lower=0> f; // Fishing mortality rate
+  // Harvest rate
+  real<lower=0, upper=1> h[A];
 	// Length class 1
 	simplex[2] p11;
 	simplex[3] p12;
 	simplex[2] p13;
-	// Length class 2
-	simplex[2] p21;
-	simplex[3] p22;
-	simplex[2] p23;
-	// Length class 3
-	simplex[2] p31;
-	simplex[3] p32;
-	simplex[2] p33;
+	// // Length class 2
+	// simplex[2] p21;
+	// simplex[3] p22;
+	// simplex[2] p23;
+	// // Length class 3
+	// simplex[2] p31;
+	// simplex[3] p32;
+	// simplex[2] p33;
 }
 
 transformed parameters {
+  real f[A]; // Fishing mortality
+  for (ca in 1:A) {
+    f[ca] = -log(1 - h[ca]);
+  }
+}
+
+// transformed parameters {
+//   real p[G, A, A]; // [mg, ca, pa] Movement rates
+// 	p = rep_array(1e-12, G, A, A);
+//   // Length class 1
+// 	p[1, 1, 1] = p11[1];
+// 	p[1, 2, 1] = p11[2];
+// 	p[1, 1, 2] = p12[1];
+// 	p[1, 2, 2] = p12[2];
+// 	p[1, 3, 2] = p12[3];
+// 	p[1, 2, 3] = p13[1];
+// 	p[1, 3, 3] = p13[2];
+// 	// Length class 1
+// 	p[2, 1, 1] = p21[1];
+// 	p[2, 2, 1] = p21[2];
+// 	p[2, 1, 2] = p22[1];
+// 	p[2, 2, 2] = p22[2];
+// 	p[2, 3, 2] = p22[3];
+// 	p[2, 2, 3] = p23[1];
+// 	p[2, 3, 3] = p23[2];
+// 	// Length class 1
+// 	p[3, 1, 1] = p31[1];
+// 	p[3, 2, 1] = p31[2];
+// 	p[3, 1, 2] = p32[1];
+// 	p[3, 2, 2] = p32[2];
+// 	p[3, 3, 2] = p32[3];
+// 	p[3, 2, 3] = p33[1];
+// 	p[3, 3, 3] = p33[2];
+// }
+
+model {
   real p[G, A, A]; // [mg, ca, pa] Movement rates
+	// Initialize values
+	real n[T, A, G, L, A]; // Predicted abundance
+	real s[G, ST, A]; // Survival rate
+	int y_vec[YT]; // Recoveries
+	real y_hat[YT]; // Predicted recoveries
+	int y_ind; // Recovery index counter
+	real n_sub[T, A];
+	n = rep_array(rep_array(0, L, A), T, A, G);
+	s = rep_array(0, G, ST, A);
+	y_vec = rep_array(0, YT);
+	y_hat = rep_array(0, YT);
+	y_ind = 1;
+
+	// Slipped in here
 	p = rep_array(1e-12, G, A, A);
   // Length class 1
 	p[1, 1, 1] = p11[1];
@@ -70,43 +124,12 @@ transformed parameters {
 	p[1, 3, 2] = p12[3];
 	p[1, 2, 3] = p13[1];
 	p[1, 3, 3] = p13[2];
-	// Length class 1
-	p[2, 1, 1] = p21[1];
-	p[2, 2, 1] = p21[2];
-	p[2, 1, 2] = p22[1];
-	p[2, 2, 2] = p22[2];
-	p[2, 3, 2] = p22[3];
-	p[2, 2, 3] = p23[1];
-	p[2, 3, 3] = p23[2];
-	// Length class 1
-	p[3, 1, 1] = p31[1];
-	p[3, 2, 1] = p31[2];
-	p[3, 1, 2] = p32[1];
-	p[3, 2, 2] = p32[2];
-	p[3, 3, 2] = p32[3];
-	p[3, 2, 3] = p33[1];
-	p[3, 3, 3] = p33[2];
-}
-
-model {
-	// Initialize values
-	real n[T, A, G, L, A]; // Predicted abundance
-	real s[G, ST, A]; // Survival rate
-	int y_vec[Y]; // Recoveries
-	real y_hat[Y]; // Predicted recoveries
-	int y_ind; // Recovery index counter
-	real n_sub[T, A];
-	n = rep_array(rep_array(0, L, A), T, A, G);
-	s = rep_array(0, G, ST, A);
-	y_vec = rep_array(0, Y);
-	y_hat = rep_array(0, Y);
-	y_ind = 1;
 
 	// Compute survival
 	for (mg in 1:G) {
 		for (ct in 1:ST) {
 			for (ca in 1:A) {
-				s[mg, ct, ca] = exp(-f - m - h);
+				s[mg, ct, ca] = exp(-f[ca] - m - v);
 			}
 		}
 	}
@@ -115,7 +138,7 @@ model {
 	for (mt in 1:T) {
 	  for (ma in 1:A) {
 	    for (mg in 1:G) {
-	      n[mt, ma, mg, 1, ma] = d * x[mt, ma, mg, 1, ma];
+	      n[mt, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
 	    }
 	  }
 	}
@@ -136,7 +159,7 @@ model {
   				for (cl in 2:L) { // Compute recoveries and predicted recoveries
   					for (ca in 1:A) {
   					  y_vec[y_ind] = x[mt, ma, mg, cl, ca];
-  						y_hat[y_ind] = n[mt, ma, mg, cl, ca] * (1 - exp(-f));
+  						y_hat[y_ind] = n[mt, ma, mg, cl, ca] * (1 - exp(-f[ca]));
   						y_ind += 1;
   					} // End for ra
   				} // End for cl
@@ -145,15 +168,31 @@ model {
 		} // End for ma
 	} // End for mt
 
+	// Priors
+  h ~ beta(h_alpha, h_beta);
+
 	// Sampling statement
 	y_vec ~ poisson(y_hat);
 }
 
 generated quantities {
+  real p[G, A, A]; // [mg, ca, pa] Movement rates
   // Annual movement rates
   matrix[A, A] p_matrix[G];
   matrix[A, A] p_matrix_annual[G];
   real p_annual[A, A, G];
+
+  // Slipped in here
+	p = rep_array(1e-12, G, A, A);
+  // Length class 1
+	p[1, 1, 1] = p11[1];
+	p[1, 2, 1] = p11[2];
+	p[1, 1, 2] = p12[1];
+	p[1, 2, 2] = p12[2];
+	p[1, 3, 2] = p12[3];
+	p[1, 2, 3] = p13[1];
+	p[1, 3, 3] = p13[2];
+
   for (mg in 1:G) {
     // Populate p_matrix
     for (pa in 1:A) {
