@@ -9,8 +9,8 @@ mmmfit <- function (data, iter = 750, chains = 1, warmup = 250, ...) {
 
   # Fit the model --------------------------------------------------------------
 
-  samples <- rstan::stan(
-    file = here::here("inst", "stan", "mmm.stan"),
+  samples <- rstan::sampling(
+    object = stanmodels$mmm,
     data = data,
     iter = iter,
     chains = chains,
