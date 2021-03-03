@@ -19,3 +19,4 @@
 *.o
 *.so
 inst/doc
+inst/stan/mmm
