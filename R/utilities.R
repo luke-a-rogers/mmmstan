@@ -3,7 +3,7 @@
 #' @param x [data.frame()] tag release observation data. See details
 #' @param y [data.frame()] tag recovery observation data. See details
 #' @param time_step [character()] desired time step for tag array. One of
-#'    \code{c("year", "month")}
+#'    \code{c("year", "quarter", "month")}
 #' @param max_steps_liberty [integer()] maximum time steps at liberty
 #' @param release_date_colname [character()] column name of the release date
 #'   in \code{x} and \code{y}
@@ -150,7 +150,7 @@ create_tag_array <- function (x,
 #' @param release_date [character()] vector of release dates
 #' @param release_start [character()] release date start
 #' @param release_end [character()] release date end
-#' @param time_step [character()] one of \code{c("year", "month")}
+#' @param time_step [character()] one of \code{c("year", "quarter", "month")}
 #'
 #' @return [integer()] vector of tag release time steps
 #' @export
@@ -161,6 +161,7 @@ create_tag_array <- function (x,
 #' d0 <- c("2011-01-01")
 #' d1 <- c("2020-12-31")
 #' create_tag_release_steps(x, d0, d1, "year")
+#' create_tag_release_steps(x, d0, d1, "quarter")
 #' create_tag_release_steps(x, d0, d1, "month")
 #'
 create_tag_release_steps <- function (release_date,
@@ -179,15 +180,19 @@ create_tag_release_steps <- function (release_date,
   # Define year and months
   release_year <- lubridate::year(release_date)
   release_month <- lubridate::month(release_date)
+  release_quart <- lubridate::quarter(release_date)
   start_year <- lubridate::year(release_start)
+  start_quart <- lubridate::quarter(release_start)
   start_month <- lubridate::month(release_start)
   # Create time step
   if (time_step == "year") {
     s <- release_year - start_year + 1
+  } else if (time_step == "quarter") {
+    s <- 4 * (release_year - start_year) + (release_quart - start_quart) + 1
   } else if (time_step == "month") {
     s <- 12 * (release_year - start_year) + (release_month - start_month) + 1
   } else {
-    stop("time_step must be 'year' or 'month'")
+    stop("time_step must be 'year', 'quarter', or 'month'")
   }
   # Return release step
   return(as.integer(s))
@@ -271,7 +276,7 @@ create_tag_groups <- function (x, group_list) {
 #' @param recovery_date [character()] vector of recovery dates
 #' @param release_start [character()] release date start
 #' @param release_end [character()] release date end
-#' @param time_step [character()] one of \code{c("year", "month")}
+#' @param time_step [character()] one of \code{c("year", "quarter", "month")}
 #' @param max_steps_liberty [integer()] maximum number of time steps at liberty
 #'
 #' @return [integer()] vector
@@ -286,6 +291,20 @@ create_tag_groups <- function (x, group_list) {
 #' rel_end <- c("2020-01-01")
 #' time_step <- "year"
 #' max_steps_liberty <- 10
+#' create_tag_liberty_steps(rel_date,
+#'                          rec_date,
+#'                          rel_start,
+#'                          rel_end,
+#'                          time_step,
+#'                          max_steps_liberty)
+#'
+#' # Quarterly
+#' rel_date <- rep("2011-01-01", 5)
+#' rec_date <- c("2011-01-01", "2012-12-31", NA, "2020-12-31", "2021-01-01")
+#' rel_start <- c("2011-01-01")
+#' rel_end <- c("2020-01-01")
+#' time_step <- "quarter"
+#' max_steps_liberty <- 40
 #' create_tag_liberty_steps(rel_date,
 #'                          rec_date,
 #'                          rel_start,
@@ -325,12 +344,18 @@ create_tag_liberty_steps <- function (release_date,
   release_date[which(release_date > release_end)] <- NA
   # Define year and months
   release_year <- lubridate::year(release_date)
+  release_quart <- lubridate::quarter(release_date)
   release_month <- lubridate::month(release_date)
   recovery_year <- lubridate::year(recovery_date)
+  recovery_quart <- lubridate::quarter(recovery_date)
   recovery_month <- lubridate::month(recovery_date)
   # Create liberty steps
   if (time_step == "year") {
     liberty_steps <- recovery_year - release_year + 1
+  } else if (time_step == "quarter") {
+    liberty_years <- recovery_year - release_year
+    liberty_quarters <- recovery_quart - release_quart
+    liberty_steps <- 4 * liberty_years + liberty_quarters + 1
   } else if (time_step == "month") {
     liberty_years <- recovery_year - release_year
     liberty_months <- recovery_month - release_month
