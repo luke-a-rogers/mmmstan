@@ -22,7 +22,7 @@ create_tag_liberty_steps(
 
 \item{release_end}{\code{\link[=character]{character()}} release date end}
 
-\item{time_step}{\code{\link[=character]{character()}} one of \code{c("year", "month")}}
+\item{time_step}{\code{\link[=character]{character()}} one of \code{c("year", "quarter", "month")}}
 
 \item{max_steps_liberty}{\code{\link[=integer]{integer()}} maximum number of time steps at liberty}
 }
@@ -41,6 +41,20 @@ rel_start <- c("2011-01-01")
 rel_end <- c("2020-01-01")
 time_step <- "year"
 max_steps_liberty <- 10
+create_tag_liberty_steps(rel_date,
+                         rec_date,
+                         rel_start,
+                         rel_end,
+                         time_step,
+                         max_steps_liberty)
+
+# Quarterly
+rel_date <- rep("2011-01-01", 5)
+rec_date <- c("2011-01-01", "2012-12-31", NA, "2020-12-31", "2021-01-01")
+rel_start <- c("2011-01-01")
+rel_end <- c("2020-01-01")
+time_step <- "quarter"
+max_steps_liberty <- 40
 create_tag_liberty_steps(rel_date,
                          rec_date,
                          rel_start,
