@@ -369,3 +369,65 @@ create_tag_liberty_steps <- function (release_date,
   # Return release step
   return(as.integer(liberty_steps))
 }
+
+#' Create Beta Parameters
+#'
+#' @param mu [numeric()] Mean
+#' @param sd [numeric()] Standard deviation
+#' @param n [integer()] Number of samples for histogram
+#' @param b [numeric()] Breaks passed to [hist()]
+#'
+#' @return [numeric()] vector of length two.
+#' @export
+#'
+#' @examples
+#' create_beta_parameters(0.01, 0.001)
+#'
+create_beta_parameters <- function (mu, sd, n = 10000, b = 100) {
+  # Compute var
+  var <- sd * sd
+  # Check parameter condition
+  stopifnot(var < mu * (1 - mu))
+  # Compute parameters
+  nu <- (mu * (1 - mu) / var) - 1
+  alpha <- mu * nu
+  beta <- (1 - mu) * nu
+  # Plot distribution
+  x <- rbeta(n, alpha, beta)
+  hist(x, breaks = b)
+  # Return vector
+  return(c(alpha = alpha, beta = beta))
+}
+
+#' Create Harvest Rate Step
+#'
+#' @param h_annual [numeric()] annual harvest rate
+#' @param y [integer()] number of time steps in one year
+#'
+#' @return [numeric()]
+#' @export
+#'
+#' @examples
+#' create_h_step(0.05, 1)
+#' create_h_step(0.05, 4)
+#'
+create_h_step <- function (h_annual, y) {
+  return(1 - (1 - h_annual)^(1/y))
+}
+
+#' Create Harvest Rate Annual
+#'
+#' @param h_step [numeric()] step harvest rate
+#' @param y [integer()] number of time steps in one year
+#'
+#' @return [numeric()]
+#' @export
+#'
+#' @examples
+#' create_h_annual(0.05, 1)
+#' create_h_annual(0.01274146, 4)
+#'
+create_h_annual <- function (h_step, y) {
+  return(1 - (1 - h_step)^(y))
+}
+

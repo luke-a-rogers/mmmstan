@@ -27,7 +27,8 @@ Imports:
     magrittr,
     lubridate,
     tidyr,
-    parallel
+    parallel,
+    cmdstanr
 LinkingTo: 
     BH (>= 1.66.0),
     Rcpp (>= 0.12.0),
