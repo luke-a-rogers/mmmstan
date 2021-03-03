@@ -13,7 +13,7 @@ create_tag_release_steps(release_date, release_start, release_end, time_step)
 
 \item{release_end}{\code{\link[=character]{character()}} release date end}
 
-\item{time_step}{\code{\link[=character]{character()}} one of \code{c("year", "month")}}
+\item{time_step}{\code{\link[=character]{character()}} one of \code{c("year", "quarter", "month")}}
 }
 \value{
 \code{\link[=integer]{integer()}} vector of tag release time steps
@@ -27,6 +27,7 @@ x <- c("2010-01-01", "2011-01-01", NA, "2020-12-31", "2021-01-01")
 d0 <- c("2011-01-01")
 d1 <- c("2020-12-31")
 create_tag_release_steps(x, d0, d1, "year")
+create_tag_release_steps(x, d0, d1, "quarter")
 create_tag_release_steps(x, d0, d1, "month")
 
 }

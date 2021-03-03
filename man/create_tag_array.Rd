@@ -27,7 +27,7 @@ create_tag_array(
 \item{y}{\code{\link[=data.frame]{data.frame()}} tag recovery observation data. See details}
 
 \item{time_step}{\code{\link[=character]{character()}} desired time step for tag array. One of
-\code{c("year", "month")}}
+\code{c("year", "quarter", "month")}}
 
 \item{max_steps_liberty}{\code{\link[=integer]{integer()}} maximum time steps at liberty}
 
