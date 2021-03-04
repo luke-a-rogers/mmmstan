@@ -1,5 +1,10 @@
 
 functions {
+  // Partial sum function for within-chain parallel threading
+  real partial_sum_lpmf(int[] x_slice, int start, int end, real[] x_hat) {
+    return poisson_lupmf(x_slice | x_hat[start:end]);
+  }
+
   // // Matrix power (Remove upon release RStan 2.3)
   // matrix matrix_power(matrix a, int n);
   // matrix matrix_power(matrix a, int n) {
