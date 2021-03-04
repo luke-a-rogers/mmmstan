@@ -5,21 +5,25 @@
 #' @return [mmmfit()]
 #' @export
 #'
-mmmfit <- function (data, iter = 750, chains = 1, warmup = 250, ...) {
+mmmfit <- function (data,
+                    chains = 1,
+                    iter_warmup = 250,
+                    iter_sampling = 750,
+                    ...) {
 
 
   # Fit the model via cmdstanr -------------------------------------------------
 
   # Create model object
-  mod <- cmdstanr::cmdstan_model(system.file("stan", "mmm.stan", package = "mmmstan"))
+  mod <- cmdstanr::cmdstan_model(
+    system.file("stan", "mmm.stan", package = "mmmstan"),
+    cpp_options = list(stan_threads = TRUE))
   # Fit the model
   cmdfit <- mod$sample(
     data = data,
     chains = chains,
-    parallel_chains = parallel::detectCores(),
-    threads_per_chain = 1,
-    iter_warmup = warmup,
-    iter_sampling = iter,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
     ...
   )
   # Convert to stanfit

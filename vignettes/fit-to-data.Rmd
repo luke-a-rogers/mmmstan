@@ -1,0 +1,170 @@
+---
+title: "fit-to-data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{fit-to-data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(mmmstan)
+```
+
+# Load Data
+```{r load-data}
+# Use observational data
+load("~/github/sablefishData/data/sable_released.rda")
+load("~/github/sablefishData/data/sable_recovered.rda")
+
+```
+
+# Prepare Data
+```{r prepare-data}
+
+# Quarterly
+tag_array_quarter <- create_tag_array(
+  x = sable_released,
+  y = sable_recovered,
+  time_step = "quarter",
+  max_steps_liberty = 12,
+  release_date_colname = "Release_Date",
+  release_area_colname = "Release_Region",
+  group_colname = "Release_Size",
+  recovery_date_colname = "Recovery_Date",
+  recovery_area_colname = "Recovery_Region",
+  id_colname = "Tag_ID",
+  area_list = list(ak = 1, bc = 2, wc = 3),
+  group_list = list(pooled = 400:799),
+  release_date_start = "1979-01-01",
+  release_date_end = "2016-12-31")
+
+# Monthly
+tag_array_month <- create_tag_array(
+  x = sable_released,
+  y = sable_recovered,
+  time_step = "month",
+  max_steps_liberty = 36,
+  release_date_colname = "Release_Date",
+  release_area_colname = "Release_Region",
+  group_colname = "Release_Size",
+  recovery_date_colname = "Recovery_Date",
+  recovery_area_colname = "Recovery_Region",
+  id_colname = "Tag_ID",
+  area_list = list(ak = 1, bc = 2, wc = 3),
+  group_list = list(pooled = 400:799),
+  release_date_start = "1979-01-01",
+  release_date_end = "2016-12-31")
+
+# Monthly by length class
+tag_array_month_and_length <- create_tag_array(
+  x = sable_released,
+  y = sable_recovered,
+  time_step = "month",
+  max_steps_liberty = 36,
+  release_date_colname = "Release_Date",
+  release_area_colname = "Release_Region",
+  group_colname = "Release_Size",
+  recovery_date_colname = "Recovery_Date",
+  recovery_area_colname = "Recovery_Region",
+  id_colname = "Tag_ID",
+  area_list = list(ak = 1, bc = 2, wc = 3),
+  group_list = list(small = 400:549, medium = 550:649, large = 650:799),
+  release_date_start = "1979-01-01",
+  release_date_end = "2016-12-31")
+
+```
+
+
+# Monthly fit by Length Class
+```{r monthly-fit-length-class}
+# Define data
+data_list <- list(
+  A = 3,
+  G = 3,
+  L = 36,
+  T = 455,
+  x = tag_array_month_and_length,
+  d = 0.9,
+  # f = 0.05 / 12,
+  h = 0.02 / 12,
+  m = 0.1 / 12
+)
+
+# m1 <- mmmfit(data = data_list)
+
+# rstan::plot(m1$samples, pars = "p_annual")
+# s1 <- shinystan::as.shinystan(m1$samples)
+# shinystan::launch_shinystan(s1)
+
+```
+
+# Monthly fit three F
+```{r monthly-fit-three-f}
+# Compute quarterly harvest rate
+h_step <- create_h_step(0.05, 12)
+
+# Compute beta parameters
+bpars <- create_beta_parameters(mu = h_step, sd = 0.0005)
+
+# Define data
+data_list <- list(
+  A = 3,
+  G = 1,
+  L = 36,
+  T = 455,
+  Y = 12,
+  x = tag_array_month,
+  u = 0.9,
+  v = 0.02 / 12,
+  m = 0.1 / 12,
+  h_alpha = rep(bpars[1], 3),
+  h_beta = rep(bpars[2], 3)
+)
+
+# m1 <- mmmfit(data = data_list)
+
+# rstan::plot(m1$samples, pars = "p")
+# s1 <- shinystan::as.shinystan(m1$samples)
+# shinystan::launch_shinystan(s1)
+
+```
+
+# Quarterly fit three F
+```{r quarterly-fit-three-f}
+# Compute quarterly harvest rate
+h_step <- create_h_step(0.05, 4)
+
+# Compute beta parameters
+bpars <- create_beta_parameters(mu = h_step, sd = 0.001)
+
+# Define data
+data_list <- list(
+  A = 3,
+  G = 1,
+  L = 12,
+  T = 152,
+  Y = 4,
+  x = tag_array_quarter,
+  u = 0.9,
+  v = 0.02 / 4,
+  m = 0.1 / 4,
+  h_alpha = rep(bpars[1], 3),
+  h_beta = rep(bpars[2], 3)
+)
+
+# m1 <- mmmfit(data = data_list)
+
+# rstan::plot(m1$samples, pars = "p")
+# s1 <- shinystan::as.shinystan(m1$samples)
+# shinystan::launch_shinystan(s1)
+
+```
+
