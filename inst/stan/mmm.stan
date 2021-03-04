@@ -1,15 +1,15 @@
 
 functions {
-  // Matrix power (Remove upon release RStan 2.3)
-  matrix mat_power(matrix a, int n);
-  matrix mat_power(matrix a, int n) {
-    if (n == 0)
-      return diag_matrix(rep_vector(1, rows(a)));
-    else if (n == 1)
-      return a;
-    else
-      return a *  mat_power(a, n - 1);
-  } // End mat_power
+  // // Matrix power (Remove upon release RStan 2.3)
+  // matrix matrix_power(matrix a, int n);
+  // matrix matrix_power(matrix a, int n) {
+  //   if (n == 0)
+  //     return diag_matrix(rep_vector(1, rows(a)));
+  //   else if (n == 1)
+  //     return a;
+  //   else
+  //     return a *  matrix_power(a, n - 1);
+  // } // End matrix_power
 }
 
 data {
@@ -201,7 +201,7 @@ generated quantities {
       }
     }
     // Populate p_matrix_annual
-    p_matrix_annual[mg] = mat_power(p_matrix[mg],  12);
+    p_matrix_annual[mg] = matrix_power(p_matrix[mg], 12);
     // Populate p_annual
     for (pa in 1:A) {
       for (ca in 1:A) {
