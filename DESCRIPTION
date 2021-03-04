@@ -1,6 +1,6 @@
 Package: mmmstan
 Title: Fit Markov Movement Models (MMM) via CmdStan
-Version: 0.0.1
+Version: 0.0.2
 Authors@R: person(given = c("Luke", "A."),
                   family = "Rogers",
                   role = c("aut", "cre"),
@@ -12,20 +12,12 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
-Biarch: true
-Depends: 
-    R (>= 3.4.0)
 Imports: 
-    methods,
-    here,
-    stats,
-    dplyr,
     magrittr,
+    dplyr,
     lubridate,
     tidyr,
-    parallel,
-    cmdstanr
-SystemRequirements: GNU make
+    parallel
 Suggests: 
     knitr,
     rmarkdown
