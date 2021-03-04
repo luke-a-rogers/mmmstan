@@ -4,7 +4,6 @@ functions {
   real partial_sum_lpmf(int[] x_slice, int start, int end, real[] x_hat) {
     return poisson_lupmf(x_slice | x_hat[start:end]);
   }
-
   // // Matrix power (Remove upon release RStan 2.3)
   // matrix matrix_power(matrix a, int n);
   // matrix matrix_power(matrix a, int n) {
@@ -113,6 +112,7 @@ model {
 	real y_hat[YT]; // Predicted recoveries
 	int y_ind; // Recovery index counter
 	real n_sub[T, A];
+	int grainsize = 1;
 	n = rep_array(rep_array(0, L, A), T, A, G);
 	s = rep_array(0, G, ST, A);
 	y_vec = rep_array(0, YT);
@@ -177,7 +177,9 @@ model {
   h ~ beta(h_alpha, h_beta);
 
 	// Sampling statement
-	y_vec ~ poisson(y_hat);
+	// y_vec ~ poisson(y_hat);
+	// Likelihood statement using reduce_sum()
+	target += reduce_sum(partial_sum_lupmf, y_vec, grainsize, y_hat);
 }
 
 generated quantities {
@@ -206,7 +208,7 @@ generated quantities {
       }
     }
     // Populate p_matrix_annual
-    p_matrix_annual[mg] = matrix_power(p_matrix[mg], 12);
+    p_matrix_annual[mg] = matrix_power(p_matrix[mg], Y);
     // Populate p_annual
     for (pa in 1:A) {
       for (ca in 1:A) {
