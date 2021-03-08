@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
 library(mmmstan)
 ```
 
+
 # Load Data
 ```{r load-data}
 # Use observational data
@@ -167,4 +168,3 @@ data_list <- list(
 # shinystan::launch_shinystan(s1)
 
 ```
-

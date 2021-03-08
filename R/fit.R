@@ -29,8 +29,8 @@ mmmfit <- function (data,
     chains = chains,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
-    threads_per_chain = threads_per_chain#,
-    #...
+    threads_per_chain = threads_per_chain,
+    ...
   )
   # Convert to stanfit
   samples <- rstan::read_stan_csv(cmdfit$output_files())
