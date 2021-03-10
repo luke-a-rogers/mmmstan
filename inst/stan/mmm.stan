@@ -1,19 +1,66 @@
 
 functions {
   // Partial sum function for within-chain parallel threading
-  real partial_sum_lpmf(int[] x_slice, int start, int end, real[] x_hat) {
-    return poisson_lupmf(x_slice | x_hat[start:end]);
+  real partial_sum_lpmf(
+    int[] release_steps_slice,
+    int start,
+    int end,
+    int T,
+    int A,
+    int G,
+    int L,
+    real u,
+    real[] f,
+    real[,,] p,
+    real[,,] s,
+    int[,,,,] x
+  ) {
+    // Instantiate objects
+    int span = end - start + 1;
+    int Y = span * A * G * L * A;
+    int y = 1;
+    int y_obs[Y];
+    real y_hat[Y];
+    real n[T, A, G, L, A]; // Predicted abundance
+
+    // Initialize objects
+    n = rep_array(rep_array(0, L, A), T, A, G);
+    y_obs = rep_array(0, Y);
+    y_hat = rep_array(0, Y);
+
+  	// Populate initial abundances
+  	for (mt in start:end) {
+  	  for (ma in 1:A) {
+  	    for (mg in 1:G) {
+  	      n[mt, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
+  	    }
+  	  }
+  	}
+	  // Compute predicted recoveries
+	  for (mt in start:end) {
+	  	for (ma in 1:A) {
+		  	for (mg in 1:G) {
+  			  for (cl in 2:L) { // Populate abundance array n
+	  				for (ca in 1:A) {
+		  		  	for (pa in 1:A) {
+			  		  	n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
+		  				  * s[mg, mt + cl - 2, pa] * p[mg, ca, pa];
+	  				  } // End for pa
+  				  } // End for ca
+  			  } // End for cl
+  			  for (cl in 2:L) { // Compute recoveries and predicted recoveries
+  				  for (ca in 1:A) {
+  				    y_obs[y] = x[mt, ma, mg, cl, ca];
+  					  y_hat[y] = n[mt, ma, mg, cl, ca] * (1 - exp(-f[ca])) + 1e-12;
+  					  y += 1;
+  				  } // End for ra
+  			  } // End for cl
+			  } // End for mg
+		  } // End for ma
+	  } // End for mt
+	  // Return partial sum
+    return poisson_lupmf(y_obs | y_hat);
   }
-  // // Matrix power (Remove upon release RStan 2.3)
-  // matrix matrix_power(matrix a, int n);
-  // matrix matrix_power(matrix a, int n) {
-  //   if (n == 0)
-  //     return diag_matrix(rep_vector(1, rows(a)));
-  //   else if (n == 1)
-  //     return a;
-  //   else
-  //     return a *  matrix_power(a, n - 1);
-  // } // End matrix_power
 }
 
 data {
@@ -38,16 +85,6 @@ data {
 transformed data {
   // Transformed indexes
   int ST = T + (L - 1); // TODO: Rename (Number of survival time steps)
-  int YT = 0; // TODO: Rename (Number of recovery observations)
-  for (mt in 1:T) {
-		for (ma in 1:A) {
-			for (mg in 1:G) {
-			  if (x[mt, ma, mg, 1, ma] > 0) {
-			    YT += L * A;
-			  }
-			}
-		}
-  }
 }
 
 parameters {
@@ -106,18 +143,10 @@ transformed parameters {
 model {
   real p[G, A, A]; // [mg, ca, pa] Movement rates
 	// Initialize values
-	real n[T, A, G, L, A]; // Predicted abundance
 	real s[G, ST, A]; // Survival rate
-	int y_vec[YT]; // Recoveries
-	real y_hat[YT]; // Predicted recoveries
-	int y_ind; // Recovery index counter
-	real n_sub[T, A];
 	int grainsize = 1;
-	n = rep_array(rep_array(0, L, A), T, A, G);
+	int release_steps[T];
 	s = rep_array(0, G, ST, A);
-	y_vec = rep_array(0, YT);
-	y_hat = rep_array(0, YT);
-	y_ind = 1;
 
 	// Slipped in here
 	p = rep_array(1e-12, G, A, A);
@@ -130,6 +159,11 @@ model {
 	p[1, 2, 3] = p13[1];
 	p[1, 3, 3] = p13[2];
 
+	// Populate release steps
+	for (mt in 1:T) {
+	  release_steps[mt] = mt;
+	}
+
 	// Compute survival
 	for (mg in 1:G) {
 		for (ct in 1:ST) {
@@ -139,47 +173,14 @@ model {
 		}
 	}
 
-	// Populate initial abundances
-	for (mt in 1:T) {
-	  for (ma in 1:A) {
-	    for (mg in 1:G) {
-	      n[mt, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
-	    }
-	  }
-	}
-
-	// Compute predicted recoveries
-	for (mt in 1:T) {
-		for (ma in 1:A) {
-			for (mg in 1:G) {
-			  if (x[mt, ma, mg, 1, ma] > 0) {
-  				for (cl in 2:L) { // Populate abundance array n
-	  				for (ca in 1:A) {
-		  				for (pa in 1:A) {
-			  				n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
-		  					* s[mg, mt + cl - 2, pa] * p[mg, ca, pa];
-	  					} // End for pa
-  					} // End for ca
-  				} // End for cl
-  				for (cl in 2:L) { // Compute recoveries and predicted recoveries
-  					for (ca in 1:A) {
-  					  y_vec[y_ind] = x[mt, ma, mg, cl, ca];
-  						y_hat[y_ind] = n[mt, ma, mg, cl, ca] * (1 - exp(-f[ca]));
-  						y_ind += 1;
-  					} // End for ra
-  				} // End for cl
-			  } // End if
-			} // End for mg
-		} // End for ma
-	} // End for mt
-
 	// Priors
   h ~ beta(h_alpha, h_beta);
 
 	// Sampling statement
 	// y_vec ~ poisson(y_hat);
 	// Likelihood statement using reduce_sum()
-	target += reduce_sum(partial_sum_lupmf, y_vec, grainsize, y_hat);
+	target += reduce_sum(partial_sum_lupmf, release_steps, grainsize,
+	  T, A, G, L, u, f, p, s, x);
 }
 
 generated quantities {
