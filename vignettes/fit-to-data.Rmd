@@ -161,7 +161,11 @@ data_list <- list(
   h_beta = rep(bpars[2], 3)
 )
 
-# m1 <- mmmfit(data = data_list)
+m1 <- mmmfit(data = data_list, threads_per_chain = 1)
+time_1 <- system.time(m1 <- mmmfit(data = data_list, threads_per_chain = 1))
+time_1
+time_8 <- system.time(m1 <- mmmfit(data = data_list, threads_per_chain = 8))
+time_8
 
 # rstan::plot(m1$samples, pars = "p")
 # s1 <- shinystan::as.shinystan(m1$samples)

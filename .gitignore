@@ -20,3 +20,4 @@
 *.so
 inst/doc
 inst/stan/mmm
+inst/stan/mmm_threads
