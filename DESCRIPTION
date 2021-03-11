@@ -17,7 +17,9 @@ Imports:
     dplyr,
     lubridate,
     tidyr,
-    parallel
+    parallel,
+    cmdstanr,
+    rstan
 Suggests: 
     knitr,
     rmarkdown
