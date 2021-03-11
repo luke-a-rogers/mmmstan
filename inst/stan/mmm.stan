@@ -20,6 +20,8 @@ data {
 
 transformed data {
   // Transformed indexes
+  real v_step = v / Y;
+  real m_step = m / Y;
   int ST = T + (L - 1); // TODO: Rename (Number of survival time steps)
   int YT = 0; // TODO: Rename (Number of recovery observations)
   for (mt in 1:T) {
@@ -52,8 +54,10 @@ parameters {
 
 transformed parameters {
   real f[A]; // Fishing mortality
+  real f_step[A];
   for (ca in 1:A) {
     f[ca] = -log(1 - h[ca]);
+    f_step[ca] = f[ca] / Y;
   }
 }
 
@@ -87,36 +91,36 @@ transformed parameters {
 // }
 
 model {
-  real p[G, A, A]; // [mg, ca, pa] Movement rates
+  real p_step[G, A, A]; // [mg, ca, pa] Movement rates
 	// Initialize values
 	real n[T, A, G, L, A]; // Predicted abundance
-	real s[G, ST, A]; // Survival rate
+	real s_step[G, ST, A]; // Survival rate
 	int y_vec[YT]; // Recoveries
 	real y_hat[YT]; // Predicted recoveries
 	int y_ind; // Recovery index counter
 	real n_sub[T, A];
 	n = rep_array(rep_array(0, L, A), T, A, G);
-	s = rep_array(0, G, ST, A);
+	s_step = rep_array(0, G, ST, A);
 	y_vec = rep_array(0, YT);
 	y_hat = rep_array(0, YT);
 	y_ind = 1;
 
 	// Slipped in here
-	p = rep_array(1e-12, G, A, A);
+	p_step = rep_array(1e-12, G, A, A);
   // Length class 1
-	p[1, 1, 1] = p11[1];
-	p[1, 2, 1] = p11[2];
-	p[1, 1, 2] = p12[1];
-	p[1, 2, 2] = p12[2];
-	p[1, 3, 2] = p12[3];
-	p[1, 2, 3] = p13[1];
-	p[1, 3, 3] = p13[2];
+	p_step[1, 1, 1] = p11[1];
+	p_step[1, 2, 1] = p11[2];
+	p_step[1, 1, 2] = p12[1];
+	p_step[1, 2, 2] = p12[2];
+	p_step[1, 3, 2] = p12[3];
+	p_step[1, 2, 3] = p13[1];
+	p_step[1, 3, 3] = p13[2];
 
 	// Compute survival
 	for (mg in 1:G) {
 		for (ct in 1:ST) {
 			for (ca in 1:A) {
-				s[mg, ct, ca] = exp(-f[ca] - m - v);
+				s_step[mg, ct, ca] = exp(-f_step[ca] - m_step - v_step);
 			}
 		}
 	}
@@ -139,14 +143,14 @@ model {
 	  				for (ca in 1:A) {
 		  				for (pa in 1:A) {
 			  				n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
-		  					* s[mg, mt + cl - 2, pa] * p[mg, ca, pa];
+		  					* s_step[mg, mt + cl - 2, pa] * p_step[mg, ca, pa];
 	  					} // End for pa
   					} // End for ca
   				} // End for cl
   				for (cl in 2:L) { // Compute recoveries and predicted recoveries
   					for (ca in 1:A) {
   					  y_vec[y_ind] = x[mt, ma, mg, cl, ca];
-  						y_hat[y_ind] = n[mt, ma, mg, cl, ca] * (1 - exp(-f[ca]));
+  						y_hat[y_ind] = n[mt, ma, mg, cl, ca] * (1 - exp(-f_step[ca]));
   						y_ind += 1;
   					} // End for ra
   				} // End for cl
@@ -163,36 +167,36 @@ model {
 }
 
 generated quantities {
-  real p[G, A, A]; // [mg, ca, pa] Movement rates
+  real p_step[G, A, A]; // [mg, ca, pa] Movement rates
   // Annual movement rates
+  matrix[A, A] p_step_matrix[G];
   matrix[A, A] p_matrix[G];
-  matrix[A, A] p_matrix_annual[G];
-  real p_annual[A, A, G];
+  real p[A, A, G];
 
   // Slipped in here
-	p = rep_array(1e-12, G, A, A);
+	p_step = rep_array(1e-12, G, A, A);
   // Length class 1
-	p[1, 1, 1] = p11[1];
-	p[1, 2, 1] = p11[2];
-	p[1, 1, 2] = p12[1];
-	p[1, 2, 2] = p12[2];
-	p[1, 3, 2] = p12[3];
-	p[1, 2, 3] = p13[1];
-	p[1, 3, 3] = p13[2];
+	p_step[1, 1, 1] = p11[1];
+	p_step[1, 2, 1] = p11[2];
+	p_step[1, 1, 2] = p12[1];
+	p_step[1, 2, 2] = p12[2];
+	p_step[1, 3, 2] = p12[3];
+	p_step[1, 2, 3] = p13[1];
+	p_step[1, 3, 3] = p13[2];
 
   for (mg in 1:G) {
     // Populate p_matrix
     for (pa in 1:A) {
       for (ca in 1:A) {
-        p_matrix[mg, pa, ca] = p[mg, ca, pa];
+        p_step_matrix[mg, pa, ca] = p_step[mg, ca, pa];
       }
     }
     // Populate p_matrix_annual
-    p_matrix_annual[mg] = matrix_power(p_matrix[mg], Y);
+    p_matrix[mg] = matrix_power(p_step_matrix[mg], Y);
     // Populate p_annual
     for (pa in 1:A) {
       for (ca in 1:A) {
-        p_annual[pa, ca, mg] = p_matrix_annual[mg, pa, ca];
+        p[pa, ca, mg] = p_matrix[mg, pa, ca];
       }
     }
   }
