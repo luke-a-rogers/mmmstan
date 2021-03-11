@@ -5,13 +5,11 @@ An R package to fit Markov movement models (MMM) via CmdStan
 [![R-CMD-check](https://github.com/luke-a-rogers/mmmstan/workflows/R-CMD-check/badge.svg)](https://github.com/luke-a-rogers/mmmstan/actions)
 <!-- badges: end -->
 
-## R-CMD-check
+## CmdStan / CmdStanR
 
 The mmmstan package currently depends on the cmdstanr package to take advantage
-of within-chain parallel threading proviced by the `reduce_sum()` function. The 
-cmdstanr package is not currently available on CRAN, so R-CMD-check will fail 
-until (I imagine) I specify the appropriate repository in the DESCRIPTION and 
-convince the system that performs the check to install CmdStan.
+of within-chain parallel threading proviced by the `reduce_sum()` function in
+CmdStan >= 2.23.
 
 ## Installation
 
