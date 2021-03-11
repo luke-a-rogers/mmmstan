@@ -20,3 +20,6 @@
 *.so
 inst/doc
 inst/stan/mmm
+inst/stan/mmm_threads
+inst/stan/mmm_reduce_sum
+inst/stan/mmm_reduce_sum_threads

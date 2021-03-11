@@ -4,10 +4,18 @@
 \alias{mmmfit}
 \title{Fit Markov Movement Model via RStan}
 \usage{
-mmmfit(data, iter = 750, chains = 1, warmup = 250, ...)
+mmmfit(data, chains = 1, iter_warmup = 250, iter_sampling = 750, ...)
 }
 \arguments{
 \item{data}{\code{\link[=list]{list()}}}
+
+\item{chains}{\code{\link[=integer]{integer()}} number of chains}
+
+\item{iter_warmup}{\code{\link[=integer]{integer()}} number of warmup iterations}
+
+\item{iter_sampling}{\code{\link[=integer]{integer()}} number of sampling iterations}
+
+\item{...}{additional arguments to pass to \code{\link[=$sample]{$sample()}}}
 }
 \value{
 \code{\link[=mmmfit]{mmmfit()}}
