@@ -16,6 +16,9 @@ data {
   // Prior parameters
   real<lower=0> h_alpha[A];
   real<lower=0> h_beta[A];
+  // Fudge constants
+  real<lower=0> p_fudge;
+  real<lower=0> y_fudge;
 }
 
 transformed data {
@@ -106,7 +109,7 @@ model {
 	y_ind = 1;
 
 	// Slipped in here
-	p_step = rep_array(1e-12, G, A, A);
+	p_step = rep_array(p_fudge, G, A, A);
   // Length class 1
 	p_step[1, 1, 1] = p11[1];
 	p_step[1, 2, 1] = p11[2];
@@ -150,7 +153,8 @@ model {
   				for (cl in 2:L) { // Compute recoveries and predicted recoveries
   					for (ca in 1:A) {
   					  y_vec[y_ind] = x[mt, ma, mg, cl, ca];
-  						y_hat[y_ind] = n[mt, ma, mg, cl, ca] * (1 - exp(-f_step[ca]));
+  						y_hat[y_ind] = n[mt, ma, mg, cl, ca]
+  						* (1 - exp(-f_step[ca]))+ y_fudge;
   						y_ind += 1;
   					} // End for ra
   				} // End for cl
@@ -174,7 +178,7 @@ generated quantities {
   real p[A, A, G];
 
   // Slipped in here
-	p_step = rep_array(1e-12, G, A, A);
+	p_step = rep_array(p_fudge, G, A, A);
   // Length class 1
 	p_step[1, 1, 1] = p11[1];
 	p_step[1, 2, 1] = p11[2];
