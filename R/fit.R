@@ -13,6 +13,7 @@ mmmfit <- function (data,
                     chains = 1,
                     iter_warmup = 250,
                     iter_sampling = 750,
+                    use_reduce_sum = FALSE,
                     threads_per_chain = 8,
                     ...) {
 
@@ -21,7 +22,11 @@ mmmfit <- function (data,
 
   # Create model object
   mod <- cmdstanr::cmdstan_model(
-    system.file("stan", "mmm.stan", package = "mmmstan"),
+    ifelse(
+      use_reduce_sum,
+      system.file("stan", "mmm_reduce_sum.stan", package = "mmmstan"),
+      system.file("stan", "mmm.stan", package = "mmmstan")
+    ),
     cpp_options = list(stan_threads = TRUE))
   # Fit the model
   cmdfit <- mod$sample(

@@ -4,7 +4,15 @@
 \alias{mmmfit}
 \title{Fit Markov Movement Model via RStan}
 \usage{
-mmmfit(data, chains = 1, iter_warmup = 250, iter_sampling = 750, ...)
+mmmfit(
+  data,
+  chains = 1,
+  iter_warmup = 250,
+  iter_sampling = 750,
+  use_reduce_sum = FALSE,
+  threads_per_chain = 8,
+  ...
+)
 }
 \arguments{
 \item{data}{\code{\link[=list]{list()}}}
