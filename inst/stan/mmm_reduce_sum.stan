@@ -10,9 +10,10 @@ functions {
     int G,
     int L,
     real u,
-    real[] f,
-    real[,,] p,
-    real[,,] s,
+    real y_fudge,
+    real[] f_step,
+    real[,,] p_step,
+    real[,,] s_step,
     int[,,,,] x
   ) {
     // Instantiate objects
@@ -45,7 +46,7 @@ functions {
 		  		  	for (pa in 1:A) {
 			  		  	n[mt - start + 1, ma, mg, cl, ca]
 			  		  	+= n[mt - start + 1, ma, mg, cl - 1, pa]
-		  				  * s[mg, mt + cl - 2, pa] * p[mg, ca, pa];
+		  				  * s_step[mg, mt + cl - 2, pa] * p_step[mg, ca, pa];
 	  				  } // End for pa
   				  } // End for ca
   			  } // End for cl
@@ -53,7 +54,7 @@ functions {
   				  for (ca in 1:A) {
   				    y_obs[y] = x[mt, ma, mg, cl, ca];
   					  y_hat[y] = n[mt - start + 1, ma, mg, cl, ca]
-  					  * (1 - exp(-f[ca])) + 1e-12;
+  					  * (1 - exp(-f_step[ca])) + y_fudge;
   					  y += 1;
   				  } // End for ra
   			  } // End for cl
@@ -82,10 +83,15 @@ data {
   // Prior parameters
   real<lower=0> h_alpha[A];
   real<lower=0> h_beta[A];
+  // Fudge constants
+  real<lower=0> p_fudge;
+  real<lower=0> y_fudge;
 }
 
 transformed data {
-  // Transformed indexes
+  // Transformed values
+  real v_step = v / Y;
+  real m_step = m / Y;
   int ST = T + (L - 1); // TODO: Rename (Number of survival time steps)
 }
 
@@ -108,8 +114,10 @@ parameters {
 
 transformed parameters {
   real f[A]; // Fishing mortality
+  real f_step[A];
   for (ca in 1:A) {
     f[ca] = -log(1 - h[ca]);
+    f_step[ca] = f[ca] / Y;
   }
 }
 
@@ -143,23 +151,23 @@ transformed parameters {
 // }
 
 model {
-  real p[G, A, A]; // [mg, ca, pa] Movement rates
+  real p_step[G, A, A]; // [mg, ca, pa] Movement rates
 	// Initialize values
-	real s[G, ST, A]; // Survival rate
+	real s_step[G, ST, A]; // Survival rate
 	int grainsize = 1;
 	int release_steps[T];
-	s = rep_array(0, G, ST, A);
+	s_step = rep_array(0, G, ST, A);
 
 	// Slipped in here
-	p = rep_array(1e-12, G, A, A);
+	p_step = rep_array(1e-12, G, A, A);
   // Length class 1
-	p[1, 1, 1] = p11[1];
-	p[1, 2, 1] = p11[2];
-	p[1, 1, 2] = p12[1];
-	p[1, 2, 2] = p12[2];
-	p[1, 3, 2] = p12[3];
-	p[1, 2, 3] = p13[1];
-	p[1, 3, 3] = p13[2];
+	p_step[1, 1, 1] = p11[1];
+	p_step[1, 2, 1] = p11[2];
+	p_step[1, 1, 2] = p12[1];
+	p_step[1, 2, 2] = p12[2];
+	p_step[1, 3, 2] = p12[3];
+	p_step[1, 2, 3] = p13[1];
+	p_step[1, 3, 3] = p13[2];
 
 	// Populate release steps
 	for (mt in 1:T) {
@@ -170,7 +178,7 @@ model {
 	for (mg in 1:G) {
 		for (ct in 1:ST) {
 			for (ca in 1:A) {
-				s[mg, ct, ca] = exp(-f[ca] - m - v);
+				s_step[mg, ct, ca] = exp(-f_step[ca] - m_step - v_step);
 			}
 		}
 	}
@@ -182,40 +190,40 @@ model {
 	// y_vec ~ poisson(y_hat);
 	// Likelihood statement using reduce_sum()
 	target += reduce_sum(partial_sum_lupmf, release_steps, grainsize,
-	  T, A, G, L, u, f, p, s, x);
+	  T, A, G, L, u, y_fudge, f_step, p_step, s_step, x);
 }
 
 generated quantities {
-  real p[G, A, A]; // [mg, ca, pa] Movement rates
+  real p_step[G, A, A]; // [mg, ca, pa] Movement rates
   // Annual movement rates
+  matrix[A, A] p_step_matrix[G];
   matrix[A, A] p_matrix[G];
-  matrix[A, A] p_matrix_annual[G];
-  real p_annual[A, A, G];
+  real p[A, A, G];
 
   // Slipped in here
-	p = rep_array(1e-12, G, A, A);
+	p_step = rep_array(p_fudge, G, A, A);
   // Length class 1
-	p[1, 1, 1] = p11[1];
-	p[1, 2, 1] = p11[2];
-	p[1, 1, 2] = p12[1];
-	p[1, 2, 2] = p12[2];
-	p[1, 3, 2] = p12[3];
-	p[1, 2, 3] = p13[1];
-	p[1, 3, 3] = p13[2];
+	p_step[1, 1, 1] = p11[1];
+	p_step[1, 2, 1] = p11[2];
+	p_step[1, 1, 2] = p12[1];
+	p_step[1, 2, 2] = p12[2];
+	p_step[1, 3, 2] = p12[3];
+	p_step[1, 2, 3] = p13[1];
+	p_step[1, 3, 3] = p13[2];
 
   for (mg in 1:G) {
     // Populate p_matrix
     for (pa in 1:A) {
       for (ca in 1:A) {
-        p_matrix[mg, pa, ca] = p[mg, ca, pa];
+        p_step_matrix[mg, pa, ca] = p_step[mg, ca, pa];
       }
     }
     // Populate p_matrix_annual
-    p_matrix_annual[mg] = matrix_power(p_matrix[mg], Y);
+    p_matrix[mg] = matrix_power(p_step_matrix[mg], Y);
     // Populate p_annual
     for (pa in 1:A) {
       for (ca in 1:A) {
-        p_annual[pa, ca, mg] = p_matrix_annual[mg, pa, ca];
+        p[pa, ca, mg] = p_matrix[mg, pa, ca];
       }
     }
   }
