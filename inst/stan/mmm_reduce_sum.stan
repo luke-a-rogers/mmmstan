@@ -21,10 +21,10 @@ functions {
     int y = 1;
     int y_obs[Y];
     real y_hat[Y];
-    real n[T, A, G, L, A]; // Predicted abundance
+    real n[span, A, G, L, A]; // Predicted abundance
 
     // Initialize objects
-    n = rep_array(rep_array(0, L, A), T, A, G);
+    n = rep_array(rep_array(0, L, A), span, A, G);
     y_obs = rep_array(0, Y);
     y_hat = rep_array(0, Y);
 
@@ -32,7 +32,7 @@ functions {
   	for (mt in start:end) {
   	  for (ma in 1:A) {
   	    for (mg in 1:G) {
-  	      n[mt, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
+  	      n[mt - start + 1, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
   	    }
   	  }
   	}
@@ -43,7 +43,8 @@ functions {
   			  for (cl in 2:L) { // Populate abundance array n
 	  				for (ca in 1:A) {
 		  		  	for (pa in 1:A) {
-			  		  	n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
+			  		  	n[mt - start + 1, ma, mg, cl, ca]
+			  		  	+= n[mt - start + 1, ma, mg, cl - 1, pa]
 		  				  * s[mg, mt + cl - 2, pa] * p[mg, ca, pa];
 	  				  } // End for pa
   				  } // End for ca
@@ -51,7 +52,8 @@ functions {
   			  for (cl in 2:L) { // Compute recoveries and predicted recoveries
   				  for (ca in 1:A) {
   				    y_obs[y] = x[mt, ma, mg, cl, ca];
-  					  y_hat[y] = n[mt, ma, mg, cl, ca] * (1 - exp(-f[ca])) + 1e-12;
+  					  y_hat[y] = n[mt - start + 1, ma, mg, cl, ca]
+  					  * (1 - exp(-f[ca])) + 1e-12;
   					  y += 1;
   				  } // End for ra
   			  } // End for cl
