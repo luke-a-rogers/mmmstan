@@ -8,7 +8,7 @@ An R package to fit Markov movement models (MMM) via CmdStan
 ## CmdStan / CmdStanR
 
 The mmmstan package currently depends on the cmdstanr package to take advantage
-of within-chain parallel threading proviced by the `reduce_sum()` function in
+of within-chain parallel threading provided by the `reduce_sum()` function in
 CmdStan >= 2.23.
 
 ## Installation
