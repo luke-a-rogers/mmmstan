@@ -5,6 +5,8 @@ data {
   int<lower=1> G; // Number of release groups
   int<lower=2> L; // Maximum number of time steps at liberty
   int<lower=1> T; // Number of release time steps
+  int<lower=1> H; // Number of harvest rate time steps
+  int<lower=2> I; // Number of study time steps (T + L - 1)
   // Constants
   int<lower=1> Y; // Number of time steps per year
   // Tag data
@@ -13,6 +15,8 @@ data {
   real<lower=0, upper=1> u; // Initial tag retention rate (proportion)
   real<lower=0> v; // Tag loss rate
   real<lower=0> m; // Natural mortality rate
+  // Index vectors
+  int<lower=1> h_index[I];
   // Prior parameters
   real<lower=0> h_alpha[A];
   real<lower=0> h_beta[A];
@@ -25,7 +29,6 @@ transformed data {
   // Transformed indexes
   real v_step = v / Y;
   real m_step = m / Y;
-  int ST = T + (L - 1); // TODO: Rename (Number of survival time steps)
   int YT = 0; // TODO: Rename (Number of recovery observations)
   for (mt in 1:T) {
 		for (ma in 1:A) {
@@ -40,7 +43,7 @@ transformed data {
 
 parameters {
   // Harvest rate
-  real<lower=0, upper=1> h[A];
+  real<lower=0, upper=1> h[H, A];
 	// Length class 1
 	simplex[2] p11;
 	simplex[3] p12;
@@ -56,11 +59,13 @@ parameters {
 }
 
 transformed parameters {
-  real f[A]; // Fishing mortality
-  real f_step[A];
-  for (ca in 1:A) {
-    f[ca] = -log(1 - h[ca]);
-    f_step[ca] = f[ca] / Y;
+  real f[H, A]; // Fishing mortality
+  real f_step[H, A];
+  for (ct in 1:H) {
+    for (ca in 1:A) {
+      f[ct, ca] = -log(1 - h[ct, ca]);
+      f_step[ct, ca] = f[ct, ca] / Y;
+    }
   }
 }
 
@@ -97,13 +102,13 @@ model {
   real p_step[G, A, A]; // [mg, ca, pa] Movement rates
 	// Initialize values
 	real n[T, A, G, L, A]; // Predicted abundance
-	real s_step[G, ST, A]; // Survival rate
+	real s_step[G, I, A]; // Survival rate
 	int y_vec[YT]; // Recoveries
 	real y_hat[YT]; // Predicted recoveries
 	int y_ind; // Recovery index counter
 	real n_sub[T, A];
 	n = rep_array(rep_array(0, L, A), T, A, G);
-	s_step = rep_array(0, G, ST, A);
+	s_step = rep_array(0, G, I, A);
 	y_vec = rep_array(0, YT);
 	y_hat = rep_array(0, YT);
 	y_ind = 1;
@@ -121,9 +126,9 @@ model {
 
 	// Compute survival
 	for (mg in 1:G) {
-		for (ct in 1:ST) {
+		for (ct in 1:I) {
 			for (ca in 1:A) {
-				s_step[mg, ct, ca] = exp(-f_step[ca] - m_step - v_step);
+				s_step[mg, ct, ca] = exp(-f_step[h_index[ct], ca] - m_step - v_step);
 			}
 		}
 	}
@@ -154,7 +159,7 @@ model {
   					for (ca in 1:A) {
   					  y_vec[y_ind] = x[mt, ma, mg, cl, ca];
   						y_hat[y_ind] = n[mt, ma, mg, cl, ca]
-  						* (1 - exp(-f_step[ca]))+ y_fudge;
+  						* (1 - exp(-f_step[h_index[mt + cl - 1], ca])) + y_fudge;
   						y_ind += 1;
   					} // End for ra
   				} // End for cl
@@ -164,7 +169,9 @@ model {
 	} // End for mt
 
 	// Priors
-  h ~ beta(h_alpha, h_beta);
+	for (ct in 1:H) {
+    h[ct] ~ beta(h_alpha, h_beta);
+	}
 
 	// Sampling statement
 	y_vec ~ poisson(y_hat);
