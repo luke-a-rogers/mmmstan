@@ -6,7 +6,7 @@ data {
   int<lower=2> L; // Maximum number of time steps at liberty
   int<lower=1> T; // Number of release time steps
   int<lower=1> H; // Number of harvest rate time steps
-  int<lower=2> I; // Number of study time steps (T + L - 1)
+  int<lower=2> I; // Number of study time steps L + (T - 1) or L + 1
   // Constants
   int<lower=1> Y; // Number of time steps per year
   // Tag data
@@ -29,12 +29,14 @@ transformed data {
   // Transformed indexes
   real v_step = v / Y;
   real m_step = m / Y;
-  int YT = 0; // TODO: Rename (Number of recovery observations)
+  int R = 0; // Number of recovery observations
+  int E = 0; // Number of realized steps at libery
   for (mt in 1:T) {
 		for (ma in 1:A) {
 			for (mg in 1:G) {
 			  if (x[mt, ma, mg, 1, ma] > 0) {
-			    YT += L * A;
+			    E = min(L, I - mt);
+			    R += E * A;
 			  }
 			}
 		}
@@ -103,14 +105,15 @@ model {
 	// Initialize values
 	real n[T, A, G, L, A]; // Predicted abundance
 	real s_step[G, I, A]; // Survival rate
-	int y_vec[YT]; // Recoveries
-	real y_hat[YT]; // Predicted recoveries
+	int y_obs[R]; // Recoveries
+	real y_hat[R]; // Predicted recoveries
 	int y_ind; // Recovery index counter
 	real n_sub[T, A];
+	int J = 0; // Number of realized steps at libery
 	n = rep_array(rep_array(0, L, A), T, A, G);
 	s_step = rep_array(0, G, I, A);
-	y_vec = rep_array(0, YT);
-	y_hat = rep_array(0, YT);
+	y_obs = rep_array(0, R);
+	y_hat = rep_array(0, R);
 	y_ind = 1;
 
 	// Slipped in here
@@ -147,7 +150,8 @@ model {
 		for (ma in 1:A) {
 			for (mg in 1:G) {
 			  if (x[mt, ma, mg, 1, ma] > 0) {
-  				for (cl in 2:L) { // Populate abundance array n
+			    J = min(L, I - mt);
+  				for (cl in 2:J) { // Populate abundance array n
 	  				for (ca in 1:A) {
 		  				for (pa in 1:A) {
 			  				n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
@@ -155,9 +159,9 @@ model {
 	  					} // End for pa
   					} // End for ca
   				} // End for cl
-  				for (cl in 2:L) { // Compute recoveries and predicted recoveries
+  				for (cl in 2:J) { // Compute recoveries and predicted recoveries
   					for (ca in 1:A) {
-  					  y_vec[y_ind] = x[mt, ma, mg, cl, ca];
+  					  y_obs[y_ind] = x[mt, ma, mg, cl, ca];
   						y_hat[y_ind] = n[mt, ma, mg, cl, ca]
   						* (1 - exp(-f_step[h_index[mt + cl - 1], ca])) + y_fudge;
   						y_ind += 1;
@@ -174,7 +178,7 @@ model {
 	}
 
 	// Sampling statement
-	y_vec ~ poisson(y_hat);
+	y_obs ~ poisson(y_hat);
 }
 
 generated quantities {
