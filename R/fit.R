@@ -17,6 +17,10 @@ mmmfit <- function (data,
                     threads_per_chain = 8,
                     ...) {
 
+  # Check arguments ------------------------------------------------------------
+
+  # Check that max(rowSums(data$z)) <= 6
+
 
   # Fit the model via cmdstanr -------------------------------------------------
 
