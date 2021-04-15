@@ -80,6 +80,7 @@ data {
   int<lower=1> H; // Number of harvest rate time steps
   int<lower=2> I; // Number of study time steps L + (T - 1) or L + 1
   int<lower=1> P; // Number of movement time steps
+  int<lower=1> Q; // Number of harvest rate groups
   // Constants
   int<lower=1> Y; // Number of time steps per year
   // Tag data
@@ -93,6 +94,7 @@ data {
   // Index vectors
   int<lower=1> h_index[I];
   int<lower=1> p_index[I];
+  int<lower=1> q_index[I];
   // Prior parameters
   real<lower=0> h_alpha[A];
   real<lower=0> h_beta[A];
@@ -123,7 +125,7 @@ transformed data {
 
 parameters {
   // Harvest rate
-  real<lower=0, upper=1> h[H, A];
+  real<lower=0, upper=1> h[Q, H, A];
   // Movement simplexes
   simplex[1] s1[simplex_dimensions[1]]; // Not used
   simplex[2] s2[simplex_dimensions[2]];
@@ -142,8 +144,8 @@ transformed parameters {
   real p5[simplex_dimensions[5], 5];
   real p6[simplex_dimensions[6], 6];
   // Initialize fishing mortality rates
-  real f[H, A];
-  real f_step[H, A];
+  real f[Q, H, A];
+  real f_step[Q, H, A];
   // Populate array version of movement simplexes
   for (i in 1:simplex_dimensions[1]) {for (j in 1:1) {p1[i, j] = s1[i, j]; } }
   for (i in 1:simplex_dimensions[2]) {for (j in 1:2) {p2[i, j] = s2[i, j]; } }
@@ -152,10 +154,12 @@ transformed parameters {
   for (i in 1:simplex_dimensions[5]) {for (j in 1:5) {p5[i, j] = s5[i, j]; } }
   for (i in 1:simplex_dimensions[6]) {for (j in 1:6) {p6[i, j] = s6[i, j]; } }
   // Populate fishing mortality rates
-  for (ct in 1:H) {
-    for (ca in 1:A) {
-      f[ct, ca] = -log(1 - h[ct, ca]);
-      f_step[ct, ca] = f[ct, ca] / Y;
+  for (cg in 1:Q) {
+    for (ct in 1:H) {
+      for (ca in 1:A) {
+        f[cg, ct, ca] = -log(1 - h[cg, ct, ca]);
+        f_step[cg, ct, ca] = f[cg, ct, ca] / Y;
+      }
     }
   }
 }
@@ -183,7 +187,10 @@ model {
 	for (mg in 1:G) {
 		for (ct in 1:I) {
 			for (ca in 1:A) {
-				s_step[mg, ct, ca] = exp(-f_step[h_index[ct], ca] - m_step - v_step);
+				s_step[mg, ct, ca] = exp(
+				  -f_step[q_index[mg], h_index[ct], ca]
+				  - m_step
+				  - v_step);
 			}
 		}
 	}
@@ -216,7 +223,8 @@ model {
   					for (ca in 1:A) {
   					  y_obs[y_ind] = x[mt, ma, mg, cl, ca];
   						y_hat[y_ind] = n[mt, ma, mg, cl, ca]
-  						* (1 - exp(-f_step[h_index[mt + cl - 1], ca])) + y_fudge;
+  						* (1 - exp(-f_step[q_index[mg], h_index[mt + cl - 1], ca]))
+  						+ y_fudge;
   						y_ind += 1;
   					} // End for ra
   				} // End for cl
@@ -226,8 +234,10 @@ model {
 	} // End for mt
 
 	// Priors
-	for (ct in 1:H) {
-    h[ct] ~ beta(h_alpha, h_beta);
+	for (cg in 1:Q) {
+	  for (ct in 1:H) {
+      h[cg, ct] ~ beta(h_alpha, h_beta);
+	  }
 	}
 
 	// Sampling statement
