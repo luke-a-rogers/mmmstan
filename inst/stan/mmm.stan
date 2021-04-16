@@ -135,6 +135,8 @@ parameters {
   simplex[4] s4[simplex_dimensions[4]];
   simplex[5] s5[simplex_dimensions[5]];
   simplex[6] s6[simplex_dimensions[6]];
+  // Negative binomial dispersion var = mu + mu^2 / y_phi
+  real<lower=0.1> y_phi;
 }
 
 transformed parameters {
@@ -179,7 +181,7 @@ model {
 	n = rep_array(rep_array(0, L, A), T, A, G);
 	s_step = rep_array(0, G, S, A);
 	y_obs = rep_array(0, R);
-	y_hat = rep_array(0, R);
+	y_hat = rep_array(y_fudge, R);
 	y_ind = 1;
 
 	// Create stepwise movement rates
@@ -244,7 +246,8 @@ model {
 	}
 
 	// Sampling statement
-	y_obs ~ poisson(y_hat);
+	// y_obs ~ poisson(y_hat); // 11.9 sec simplest model
+	y_obs ~ neg_binomial_2(y_hat, y_phi);
 }
 
 generated quantities {
