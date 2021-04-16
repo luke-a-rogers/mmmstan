@@ -31,6 +31,7 @@ mmmfit <- function (data,
       system.file("stan", "mmm_reduce_sum.stan", package = "mmmstan"),
       system.file("stan", "mmm.stan", package = "mmmstan")
     ),
+    include_path = system.file("stan", package = "mmmstan"),
     cpp_options = list(stan_threads = TRUE))
   # Fit the model
   cmdfit <- mod$sample(
