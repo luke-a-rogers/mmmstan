@@ -78,13 +78,16 @@ data {
   int<lower=2> L; // Maximum number of time steps at liberty
   int<lower=1> T; // Number of release time steps
   int<lower=1> H; // Number of harvest rate time steps
-  int<lower=2> I; // Number of study time steps L + (T - 1) or L + 1
+  int<lower=2> S; // Number of study time steps L + (T - 1) or L + 1
   int<lower=1> P; // Number of movement time steps
   int<lower=1> Q; // Number of harvest rate groups
-  // Constants
+  int<lower=1> W; // Number of tag reporting rate time steps
+ // Constants
   int<lower=1> Y; // Number of time steps per year
   // Tag data
   int<lower=0> x[T, A, G, L, A]; // Tag array
+  // Reporting rate
+  real<lower=0, upper=1> w[W, A]; // Tag reporting rate array
   // Movement index array
   int<lower=0, upper=1> z[A, A]; // Movement index array
   // Input rates
@@ -92,9 +95,10 @@ data {
   real<lower=0> v; // Tag loss rate
   real<lower=0> m; // Natural mortality rate
   // Index vectors
-  int<lower=1> h_index[I];
-  int<lower=1> p_index[I];
-  int<lower=1> q_index[I];
+  int<lower=1> h_index[S];
+  int<lower=1> p_index[S];
+  int<lower=1> q_index[S];
+  int<lower=1> w_index[S];
   // Prior parameters
   real<lower=0> h_alpha[A];
   real<lower=0> h_beta[A];
@@ -110,13 +114,11 @@ transformed data {
   real v_step = v / Y;
   real m_step = m / Y;
   int R = 0; // Number of recovery observations
-  int E = 0; // Number of realized steps at libery
   for (mt in 1:T) {
 		for (ma in 1:A) {
 			for (mg in 1:G) {
 			  if (x[mt, ma, mg, 1, ma] > 0) {
-			    E = min(L, I - mt);
-			    R += E * A;
+			    R += (min(L, S - mt) - 1) * A; // Realized liberty after release
 			  }
 			}
 		}
@@ -133,6 +135,8 @@ parameters {
   simplex[4] s4[simplex_dimensions[4]];
   simplex[5] s5[simplex_dimensions[5]];
   simplex[6] s6[simplex_dimensions[6]];
+  // Negative binomial dispersion var = mu + mu^2 / y_phi
+  real<lower=0.1> y_phi;
 }
 
 transformed parameters {
@@ -168,14 +172,14 @@ model {
 	// Initialize values
 	real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
   real n[T, A, G, L, A]; // Predicted abundance
-	real s_step[G, I, A]; // Survival rate
+	real s_step[G, S, A]; // Survival rate
 	int y_obs[R]; // Recoveries
 	real y_hat[R]; // Predicted recoveries
 	int y_ind; // Recovery index counter
 	real n_sub[T, A];
-	int J = 0; // Number of realized steps at libery
+	int E = 0; // Number of realized steps at libery
 	n = rep_array(rep_array(0, L, A), T, A, G);
-	s_step = rep_array(0, G, I, A);
+	s_step = rep_array(0, G, S, A);
 	y_obs = rep_array(0, R);
 	y_hat = rep_array(0, R);
 	y_ind = 1;
@@ -185,7 +189,7 @@ model {
 
 	// Compute survival
 	for (mg in 1:G) {
-		for (ct in 1:I) {
+		for (ct in 1:S) {
 			for (ca in 1:A) {
 				s_step[mg, ct, ca] = exp(
 				  -f_step[q_index[mg], h_index[ct], ca]
@@ -209,8 +213,8 @@ model {
 		for (ma in 1:A) {
 			for (mg in 1:G) {
 			  if (x[mt, ma, mg, 1, ma] > 0) {
-			    J = min(L, I - mt);
-  				for (cl in 2:J) { // Populate abundance array n
+			    E = min(L, S - mt);
+  				for (cl in 2:E) { // Populate abundance array n
 	  				for (ca in 1:A) {
 		  				for (pa in 1:A) {
 			  				n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
@@ -219,11 +223,12 @@ model {
 	  					} // End for pa
   					} // End for ca
   				} // End for cl
-  				for (cl in 2:J) { // Compute recoveries and predicted recoveries
+  				for (cl in 2:E) { // Compute recoveries and predicted recoveries
   					for (ca in 1:A) {
   					  y_obs[y_ind] = x[mt, ma, mg, cl, ca];
   						y_hat[y_ind] = n[mt, ma, mg, cl, ca]
   						* (1 - exp(-f_step[q_index[mg], h_index[mt + cl - 1], ca]))
+  						* w[w_index[mt + cl - 1], ca]
   						+ y_fudge;
   						y_ind += 1;
   					} // End for ra
@@ -241,7 +246,8 @@ model {
 	}
 
 	// Sampling statement
-	y_obs ~ poisson(y_hat);
+	// y_obs ~ poisson(y_hat); // 11.9 sec simplest model
+	y_obs ~ neg_binomial_2(y_hat, y_phi);
 }
 
 generated quantities {
