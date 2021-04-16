@@ -118,7 +118,7 @@ transformed data {
 		for (ma in 1:A) {
 			for (mg in 1:G) {
 			  if (x[mt, ma, mg, 1, ma] > 0) {
-			    R += min(L, S - mt) * A; // Realized steps liberty * number of areas
+			    R += (min(L, S - mt) - 1) * A; // Realized liberty after release
 			  }
 			}
 		}
@@ -181,7 +181,7 @@ model {
 	n = rep_array(rep_array(0, L, A), T, A, G);
 	s_step = rep_array(0, G, S, A);
 	y_obs = rep_array(0, R);
-	y_hat = rep_array(y_fudge, R);
+	y_hat = rep_array(0, R);
 	y_ind = 1;
 
 	// Create stepwise movement rates
