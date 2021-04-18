@@ -152,7 +152,7 @@ model {
 		  				for (pa in 1:A) {
 			  				n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
 		  					* s_step[mg, mt + cl - 2, pa]
-		  					* p_step[mg, p_index[mt + cl - 1], ca, pa];
+		  					* p_step[mg, p_index[mt + cl - 2], ca, pa];
 	  					} // End for pa
   					} // End for ca
   				} // End for cl
