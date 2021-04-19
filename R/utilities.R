@@ -393,8 +393,8 @@ create_beta_parameters <- function (mu, sd, n = 10000, b = 100) {
   alpha <- mu * nu
   beta <- (1 - mu) * nu
   # Plot distribution
-  x <- rbeta(n, alpha, beta)
-  hist(x, breaks = b)
+  x <- stats::rbeta(n, alpha, beta)
+  graphics::hist(x, breaks = b)
   # Return vector
   return(c(alpha = alpha, beta = beta))
 }
