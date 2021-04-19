@@ -19,7 +19,10 @@ Imports:
     tidyr,
     parallel,
     cmdstanr,
-    rstan
+    rstan,
+    markdown,
+    graphics,
+    stats
 Suggests: 
     knitr,
     rmarkdown
