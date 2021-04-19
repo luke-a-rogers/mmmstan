@@ -4,7 +4,9 @@
 #' @param chains [integer()] number of chains
 #' @param iter_warmup [integer()] number of warmup iterations
 #' @param iter_sampling [integer()] number of sampling iterations
-#' @param ... additional arguments to pass to [$sample()]
+#' @param use_reduce_sum [logical()] use within chain parallel threading
+#' @param threads_per_chain [integer()] number of threads per chain
+#' @param ... additional arguments to pass to \code{$sample()} method
 #'
 #' @return [mmmfit()]
 #' @export
