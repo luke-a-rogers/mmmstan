@@ -23,7 +23,11 @@ mmmfit(
 
 \item{iter_sampling}{\code{\link[=integer]{integer()}} number of sampling iterations}
 
-\item{...}{additional arguments to pass to \code{\link[=$sample]{$sample()}}}
+\item{use_reduce_sum}{\code{\link[=logical]{logical()}} use within chain parallel threading}
+
+\item{threads_per_chain}{\code{\link[=integer]{integer()}} number of threads per chain}
+
+\item{...}{additional arguments to pass to \code{$sample()} method}
 }
 \value{
 \code{\link[=mmmfit]{mmmfit()}}
