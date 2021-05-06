@@ -28,10 +28,10 @@ data {
   real<lower=0> v; // Tag loss rate
   real<lower=0> m; // Natural mortality rate
   // Index vectors
-  int<lower=1> h_index[S];
-  int<lower=1> p_index[S];
-  int<lower=1> q_index[S];
-  int<lower=1> w_index[S];
+  int<lower=1> h_index[S]; // Harvest rate time step index
+  int<lower=1> p_index[S]; // Movement rate time step index
+  int<lower=1> q_index[G]; // Harvest rate group index
+  int<lower=1> w_index[S]; // Reporting rate time step index
   // Prior parameters
   real<lower=0> h_alpha[A];
   real<lower=0> h_beta[A];
