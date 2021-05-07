@@ -69,7 +69,7 @@ parameters {
   simplex[5] s5[simplex_dimensions[5]];
   simplex[6] s6[simplex_dimensions[6]];
   // Negative binomial dispersion var = mu + mu^2 / y_phi
-  real<lower=0.1> y_phi;
+  real<lower=0.1,upper=10> y_phi;
 }
 
 transformed parameters {
