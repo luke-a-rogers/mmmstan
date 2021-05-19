@@ -3,6 +3,7 @@
 export(create_beta_parameters)
 export(create_h_annual)
 export(create_h_step)
+export(create_index)
 export(create_tag_areas)
 export(create_tag_array)
 export(create_tag_groups)

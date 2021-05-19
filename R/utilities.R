@@ -431,3 +431,76 @@ create_h_annual <- function (h_step, y) {
   return(1 - (1 - h_step)^(y))
 }
 
+
+#' Create Movement Index Matrix
+#'
+#' @param n [integer()] Number of areas.
+#' @param pattern [integer()] One of \code{1}: full movement, or \code{0}:
+#'   direct movement between numerically sequential neighbours only.
+#' @param allow [integer()] [matrix()] Each row indicates directional
+#'   movement between a pair of areas indexed from one.
+#' @param disallow [integer()] [matrix()] As for \code{allow}, but
+#'   specified movement is disallowed.
+#'
+#' @return A square binary matrix
+#' @export
+#'
+#' @examples
+#'
+#' # Neighbours (default)
+#' create_index(6)
+#'
+#' # Full movement
+#' create_index(6, 1)
+#'
+#' # Neighbours plus 1-6, 2-5, and 5-2, but not 6-1
+#' allow <- matrix(c(1,6,2,5,5,2), ncol = 2, byrow = TRUE)
+#' create_index(6, 0, allow)
+#'
+#' # Full minus 1-6
+#' disallow <- matrix(c(1,6), ncol = 2, byrow = TRUE)
+#' create_index(6, 1, disallow = disallow)
+#'
+create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
+
+  # Check arguments
+  # checkmate::assert_integerish(n, lower = 2, len = 1, any.missing = FALSE)
+  # checkmate::assert_integerish(pattern, len = 1, null.ok = TRUE)
+  # checkmate::assert_integerish(pattern, lower = 0, upper = 1, null.ok = TRUE)
+  # checkmate::assert_integerish(pattern, any.missing = FALSE, null.ok = TRUE)
+  # checkmate::assert_matrix(allow, mode = "integerish", null.ok = TRUE)
+  # checkmate::assert_matrix(allow, any.missing = FALSE, null.ok = TRUE)
+  # checkmate::assert_matrix(allow, ncols = 2, null.ok = TRUE)
+  # Initialize matrix
+  z <- matrix(0L, nrow = n, ncol = n)
+  diag(z) <- 1L
+  # Default
+  if (is.null(pattern) & is.null(allow)) {
+    # Immediate neighbours only
+    for (i in seq_len(n - 1L)) {
+      z[i, i + 1L] <- 1L
+      z[i + 1L, i] <- 1L
+    }
+  }
+  # Add pattern
+  if (!is.null(pattern)) {
+    if (pattern) {
+      z <- matrix(1L, nrow = n, ncol = n)
+    } else {
+      for (i in seq_len(n - 1L)) {
+        z[i, i + 1L] <- 1L
+        z[i + 1L, i] <- 1L
+      }
+    }
+  }
+  # Allow indexes
+  if (!is.null(allow)) {
+    z[allow] <- 1L
+  }
+  # Disallow indexes
+  if (!is.null(disallow)) {
+    z[disallow] <- 0L
+  }
+  # Return
+  return(z)
+}
