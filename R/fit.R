@@ -63,6 +63,7 @@ mmmfit <- function (data,
 
   structure(list(
     data = data,
-    samples = samples),
+    samples = samples,
+    cmdfit = cmdfit),
     class = "mmmfit")
 }
