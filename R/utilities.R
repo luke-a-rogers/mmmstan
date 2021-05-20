@@ -512,7 +512,7 @@ create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
 #'   \code{phi})
 #'
 #' @return [array()]
-#' @export
+#'
 #'
 create_sample_array <- function (fit, par_name) {
 
@@ -571,9 +571,68 @@ create_sample_array <- function (fit, par_name) {
   return(x)
 }
 
-create_sample_summary <- function (
+#' Create MCMC Sample Summary
+#'
+#' @param x [array()] sample array (see \code{create_sample_array()})
+#' @param ci_level [numeric()] scalar in c(0, 1)
+#' @param outer_level [numeric()] scalar in c(0, 1)
+#'
+#' @return [array()]
+#'
+#'
+create_sample_summary <- function (x, ci_level = 0.8, outer_level = 0.95) {
 
-) {
+  # Check arguments ------------------------------------------------------------
 
+  # Compute constants ----------------------------------------------------------
 
+  num_dim <- length(dim(x))
+  ci_lower <- (1 - ci_level) / 2
+  ci_upper <- ci_level + ci_lower
+  outer_lower <- (1 - outer_level) / 2
+  outer_upper <- outer_level + outer_lower
+  probs <- c(ci_lower, ci_upper, outer_lower, outer_upper)
+
+  # Compute summary ------------------------------------------------------------
+
+  if (num_dim == 5) {
+    # Instantiate summary
+    s <- array(NA, dim = c(dim(x)[1:4], 5))
+    # Populate summary
+    for (pa in seq_len(dim(x)[1])) {
+      for (ca in seq_len(dim(x)[2])) {
+        for (ct in seq_len(dim(x)[3])) {
+          for (mg in seq_len(dim(x)[4])) {
+            s[pa, ca, ct, mg, 1] <- mean(x[pa, ca, ct, mg, ])
+            ci_vals <- stats::quantile(x[pa, ca, ct, mg, ], probs = probs)
+            s[pa, ca, ct, mg, 2:5] <- ci_vals
+          }
+        }
+      }
+    }
+  } else if (num_dim == 4) {
+    # Instantiate summary
+    s <- array(NA, dim = c(dim(x)[1:3], 5))
+    # Populate summary
+    for (q in seq_len(dim(x)[1])) {
+      for (h in seq_len(dim(x)[2])) {
+        for (a in seq_len(dim(x)[3])) {
+          s[q, h, a, 1] <- mean(x[q, h, a, ])
+          s[q, h, a, 2:5] <- stats::quantile(x[q, h, a, ], probs = probs)
+        }
+      }
+    }
+  } else if (num_dim == 1) {
+    # Instantiate summary
+    s <- array(NA, dim = 5)
+    # Populate summary
+    s[1] <- mean(x)
+    s[2:5] <- stats::quantile(x, probs = probs)
+  } else {
+    stop("length(dim(x)) must be 5 (p), 4 (h) or 1 (phi)")
+  }
+
+  # Return summary -------------------------------------------------------------
+
+  return(s)
 }
