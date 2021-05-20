@@ -9,7 +9,7 @@ real partial_sum_lpmf(
   int G,
   int L,
   real u,
-  real y_phi,
+  real phi,
   real y_fudge,
   int[] h_index,
   int[] p_index,
@@ -78,5 +78,5 @@ real partial_sum_lpmf(
 
   // Return partial sum
   // return poisson_lupmf(y_obs | y_hat);
-  return neg_binomial_2_lupmf(y_obs | y_hat, y_phi);
+  return neg_binomial_2_lupmf(y_obs | y_hat, phi);
 }
