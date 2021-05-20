@@ -504,3 +504,76 @@ create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
   # Return
   return(z)
 }
+
+#' Create MCMC Sample Array
+#'
+#' @param fit [mmmfit()] object
+#' @param par_name [character()] parameter name (\code{p}, \code{h}, or
+#'   \code{phi})
+#'
+#' @return [array()]
+#' @export
+#'
+create_sample_array <- function (fit, par_name) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Extract samples ------------------------------------------------------------
+
+  s <- as.matrix(fit$samples)
+
+  # Extract dimensions ---------------------------------------------------------
+
+  A <- fit$data$A
+  G <- fit$data$G
+  H <- fit$data$H
+  P <- fit$data$P
+  Q <- fit$data$Q
+  I <- nrow(s)
+
+  # Create array ---------------------------------------------------------------
+
+  if (par_name == "p") {
+    # Instantiate array
+    x <- array(NA, dim = c(A, A, P, G, I))
+    # Populate array
+    for (pa in seq_len(A)) {
+      for (ca in seq_len(A)) {
+        for (ct in seq_len(P)) {
+          for (mg in seq_len(G)) {
+            inds <- paste(pa, ca, ct, mg, sep = ",")
+            x[pa, ca, ct, mg, ] <- s[, paste0("p[", inds, "]")]
+          }
+        }
+      }
+    }
+  } else if (par_name == "h") {
+    # Instantiate array
+    x <- array(NA, dim = c(Q, H, A, I))
+    # Populate array
+    for (q in seq_len(Q)) {
+      for (h in seq_len(H)) {
+        for (a in seq_len(A)) {
+          inds <- paste(q, h, a, sep = ",")
+          x[q, h, a, ] <- s[, paste0("h[", inds, "]")]
+        }
+      }
+    }
+  } else if (par_name == "phi") {
+    # Populate array
+    x <- array(s[ , "phi"], dim = I)
+  } else {
+    stop("par_name must be 'p' or 'h' or 'phi'")
+  }
+
+  # Return array ---------------------------------------------------------------
+
+  return(x)
+}
+
+create_sample_summary <- function (
+
+) {
+
+
+}
