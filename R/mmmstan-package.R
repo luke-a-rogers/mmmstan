@@ -1,1 +1,1 @@
-cat("mmmstan-package.R is run on build and load")
+cat("mmmstan-package.R is run on build and load\n")
