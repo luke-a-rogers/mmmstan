@@ -4,17 +4,15 @@
 \alias{create_sample_summary}
 \title{Create MCMC Sample Summary}
 \usage{
-create_sample_summary(x, ci_level = 0.8, outer_level = 0.95)
+create_sample_summary(x, ci = c(0.8, 0.95))
 }
 \arguments{
-\item{x}{\code{\link[=array]{array()}} sample array (see \code{create_sample_array()})}
+\item{x}{\code{\link[tibble:tibble]{tibble::tibble()}} sample tibble (see \code{\link[=create_sample_tibble]{create_sample_tibble()}})}
 
-\item{ci_level}{\code{\link[=numeric]{numeric()}} scalar in c(0, 1)}
-
-\item{outer_level}{\code{\link[=numeric]{numeric()}} scalar in c(0, 1)}
+\item{ci}{\code{\link[=numeric]{numeric()}} \code{\link[=vector]{vector()}} of credible interval levels}
 }
 \value{
-\code{\link[=array]{array()}}
+\code{\link[tibble:tibble]{tibble::tibble()}}
 }
 \description{
 Create MCMC Sample Summary
