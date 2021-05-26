@@ -68,8 +68,8 @@ parameters {
   simplex[4] s4[simplex_dimensions[4]];
   simplex[5] s5[simplex_dimensions[5]];
   simplex[6] s6[simplex_dimensions[6]];
-  // Negative binomial dispersion var = mu + mu^2 / y_phi
-  real<lower=0.1,upper=10> y_phi;
+  // Negative binomial dispersion var = mu + mu^2 / phi
+  real<lower=0.1,upper=10> phi;
 }
 
 transformed parameters {
@@ -180,7 +180,7 @@ model {
 
 	// Sampling statement
 	// y_obs ~ poisson(y_hat); // 11.9 sec simplest model
-	y_obs ~ neg_binomial_2(y_hat, y_phi);
+	y_obs ~ neg_binomial_2(y_hat, phi);
 }
 
 generated quantities {

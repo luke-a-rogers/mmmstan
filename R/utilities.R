@@ -25,6 +25,7 @@
 #' @details TBD
 #'
 #' @importFrom magrittr `%>%`
+#' @importFrom rlang .data
 #'
 #' @return [array()] aggregated tag observation data.
 #' @export
@@ -77,18 +78,18 @@ create_tag_array <- function (x,
   x1 <- x0 %>%
     dplyr::mutate(
       mt = create_tag_release_steps(
-        rel_date,
+        .data$rel_date,
         release_date_start,
         release_date_end,
         time_step),
-      ma = create_tag_areas(rel_area, area_list),
-      mg = create_tag_groups(raw_group, group_list)) %>%
-    dplyr::select(mt, ma, mg) %>%
-    dplyr::group_by(mt, ma, mg) %>%
+      ma = create_tag_areas(.data$rel_area, area_list),
+      mg = create_tag_groups(.data$raw_group, group_list)) %>%
+    dplyr::select(.data$mt, .data$ma, .data$mg) %>%
+    dplyr::group_by(.data$mt, .data$ma, .data$mg) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(mt, ma, mg) %>%
+    dplyr::arrange(.data$mt, .data$ma, .data$mg) %>%
     tidyr::drop_na()
 
   # Aggregate recovery data ----------------------------------------------------
@@ -96,26 +97,26 @@ create_tag_array <- function (x,
   y1 <- y0 %>%
     dplyr::mutate(
       mt = create_tag_release_steps(
-        rel_date,
+        .data$rel_date,
         release_date_start,
         release_date_end,
         time_step),
-      ma = create_tag_areas(rel_area, area_list),
-      mg = create_tag_groups(raw_group, group_list),
+      ma = create_tag_areas(.data$rel_area, area_list),
+      mg = create_tag_groups(.data$raw_group, group_list),
       cl = create_tag_liberty_steps(
-        rel_date,
-        rec_date,
+        .data$rel_date,
+        .data$rec_date,
         release_date_start,
         release_date_end,
         time_step,
         max_steps_liberty),
-      ca = create_tag_areas(rec_area, area_list)) %>%
-    dplyr::select(mt, ma, mg, cl, ca) %>%
-    dplyr::group_by(mt, ma, mg, cl, ca) %>%
+      ca = create_tag_areas(.data$rec_area, area_list)) %>%
+    dplyr::select(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
+    dplyr::group_by(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(mt, ma, mg, cl, ca) %>%
+    dplyr::arrange(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
     tidyr::drop_na()
 
   # Compute array dimensions ---------------------------------------------------
@@ -503,4 +504,167 @@ create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
   }
   # Return
   return(z)
+}
+
+#' Create MCMC Sample Tibble
+#'
+#' @param fit [mmmfit()] object
+#' @param pars [character()] [vector()] parameter names (\code{p}, \code{h},
+#'   and/or \code{phi})
+#'
+#' @return [tibble::tibble()]
+#' @export
+#'
+create_sample_tibble <- function (fit, pars = c("p", "h", "phi")) {
+
+  # Check arguments ------------------------------------------------------------
+
+
+  # Extract samples ------------------------------------------------------------
+
+  s <- as.matrix(fit$samples)
+
+  # Extract dimensions ---------------------------------------------------------
+
+  A <- fit$data$A
+  G <- fit$data$G
+  H <- fit$data$H
+  P <- fit$data$P
+  Q <- fit$data$Q
+  D <- nrow(s)
+
+  # Compute tibble rows --------------------------------------------------------
+
+  num_rows <- 0
+  if (is.element("p", pars)) {
+    num_rows <- num_rows + A * G * P * D
+  }
+  if (is.element("h", pars)) {
+    num_rows <- num_rows + Q * H * A * D
+  }
+  if (is.element("phi", pars)) {
+    num_rows <- num_rows + D
+  }
+
+  # Initialize tibble ----------------------------------------------------------
+
+  x <- tibble::tibble(
+    parameter = rep(NA_character_, num_rows),
+    area = rep(NA_integer_, num_rows),
+    step = rep(NA_integer_, num_rows),
+    group = rep(NA_integer_, num_rows),
+    draw = rep(NA_integer_, num_rows),
+    value = rep(NA_real_, num_rows)
+  )
+
+  # Populate tibble ------------------------------------------------------------
+
+  row_ind <- 1
+  # Parameter p
+  if (is.element("p", pars)) {
+    for (ca in seq_len(A)) {
+      for (ct in seq_len(P)) {
+        for (mg in seq_len(G)) {
+          fit_inds <- paste(ca, ca, ct, mg, sep = ",")
+          for (cd in seq_len(D)) {
+            x$parameter[row_ind] <- "p"
+            x$area[row_ind] <- ca
+            x$step[row_ind] <- ct
+            x$group[row_ind] <- mg
+            x$draw[row_ind] <- cd
+            x$value[row_ind] <- s[cd, paste0("p[", fit_inds, "]")]
+            row_ind <- row_ind + 1
+          }
+        }
+      }
+    }
+  }
+  # Parameter h
+  if (is.element("h", pars)) {
+    for (mg in seq_len(Q)) {
+      for (ct in seq_len(H)) {
+        for (ca in seq_len(A)) {
+          fit_inds <- paste(mg, ct, ca, sep = ",")
+          for (cd in seq_len(D)) {
+            x$parameter[row_ind] <- "h"
+            x$area[row_ind] <- ca
+            x$step[row_ind] <- ct
+            x$group[row_ind] <- mg
+            x$draw[row_ind] <- cd
+            x$value[row_ind] <- s[cd, paste0("h[", fit_inds, "]")]
+            row_ind <- row_ind + 1
+          }
+        }
+      }
+    }
+  }
+  # Parameter phi
+  if (is.element("phi", pars)) {
+    for (cd in seq_len(D)) {
+      x$parameter[row_ind] <- "phi"
+      x$area[row_ind] <- 1
+      x$step[row_ind] <- 1
+      x$group[row_ind] <- 1
+      x$draw[row_ind] <- cd
+      x$value[row_ind] <- s[cd, "phi"]
+      row_ind <- row_ind + 1
+    }
+  }
+
+  # Return tibble --------------------------------------------------------------
+
+  return(x)
+}
+
+#' Create MCMC Sample Summary
+#'
+#' @param x [tibble::tibble()] sample tibble (see [create_sample_tibble()])
+#' @param ci [numeric()] [vector()] of credible interval levels
+#'
+#' @return [tibble::tibble()]
+#'
+#' @importFrom magrittr `%>%`
+#' @importFrom rlang .data
+#'
+create_sample_summary <- function (x, ci = c(0.8, 0.95)) {
+
+  # Check arguments ------------------------------------------------------------
+
+
+  # Compute ci probs -----------------------------------------------------------
+
+  inner_lower <- (1 - ci[1]) / 2
+  inner_upper <- ci[1] + inner_lower
+  outer_lower <- (1 - ci[2]) / 2
+  outer_upper <- ci[2] + outer_lower
+
+  # Compute sample summary -----------------------------------------------------
+
+  s <- x %>%
+    dplyr::group_by(.data$parameter, .data$area, .data$step, .data$group) %>%
+    dplyr::mutate(
+      a_mean = mean(.data$value),
+      a_inner = stats::quantile(.data$value, probs = inner_lower),
+      b_inner = stats::quantile(.data$value, probs = inner_upper),
+      a_outer = stats::quantile(.data$value, probs = outer_lower),
+      b_outer = stats::quantile(.data$value, probs = outer_upper)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-.data$draw, -.data$value) %>%
+    dplyr::distinct(
+      .data$parameter,
+      .data$area,
+      .data$step,
+      .data$group,
+      .keep_all = TRUE) %>%
+    tidyr::pivot_longer(
+      cols = .data$a_mean:.data$b_outer,
+      names_to = "type",
+      names_prefix = "..",
+      values_to = "value"
+    )
+
+  # Return summary -------------------------------------------------------------
+
+  return(s)
 }
