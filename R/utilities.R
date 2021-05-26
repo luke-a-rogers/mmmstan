@@ -25,6 +25,7 @@
 #' @details TBD
 #'
 #' @importFrom magrittr `%>%`
+#' @importFrom rlang .data
 #'
 #' @return [array()] aggregated tag observation data.
 #' @export
@@ -77,18 +78,18 @@ create_tag_array <- function (x,
   x1 <- x0 %>%
     dplyr::mutate(
       mt = create_tag_release_steps(
-        rel_date,
+        .data$rel_date,
         release_date_start,
         release_date_end,
         time_step),
-      ma = create_tag_areas(rel_area, area_list),
-      mg = create_tag_groups(raw_group, group_list)) %>%
-    dplyr::select(mt, ma, mg) %>%
-    dplyr::group_by(mt, ma, mg) %>%
+      ma = create_tag_areas(.data$rel_area, area_list),
+      mg = create_tag_groups(.data$raw_group, group_list)) %>%
+    dplyr::select(.data$mt, .data$ma, .data$mg) %>%
+    dplyr::group_by(.data$mt, .data$ma, .data$mg) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(mt, ma, mg) %>%
+    dplyr::arrange(.data$mt, .data$ma, .data$mg) %>%
     tidyr::drop_na()
 
   # Aggregate recovery data ----------------------------------------------------
@@ -96,26 +97,26 @@ create_tag_array <- function (x,
   y1 <- y0 %>%
     dplyr::mutate(
       mt = create_tag_release_steps(
-        rel_date,
+        .data$rel_date,
         release_date_start,
         release_date_end,
         time_step),
-      ma = create_tag_areas(rel_area, area_list),
-      mg = create_tag_groups(raw_group, group_list),
+      ma = create_tag_areas(.data$rel_area, area_list),
+      mg = create_tag_groups(.data$raw_group, group_list),
       cl = create_tag_liberty_steps(
-        rel_date,
-        rec_date,
+        .data$rel_date,
+        .data$rec_date,
         release_date_start,
         release_date_end,
         time_step,
         max_steps_liberty),
-      ca = create_tag_areas(rec_area, area_list)) %>%
-    dplyr::select(mt, ma, mg, cl, ca) %>%
-    dplyr::group_by(mt, ma, mg, cl, ca) %>%
+      ca = create_tag_areas(.data$rec_area, area_list)) %>%
+    dplyr::select(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
+    dplyr::group_by(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(mt, ma, mg, cl, ca) %>%
+    dplyr::arrange(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
     tidyr::drop_na()
 
   # Compute array dimensions ---------------------------------------------------
@@ -505,18 +506,19 @@ create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
   return(z)
 }
 
-#' Create MCMC Sample Array
+#' Create MCMC Sample Tibble
 #'
 #' @param fit [mmmfit()] object
-#' @param par_name [character()] parameter name (\code{p}, \code{h}, or
-#'   \code{phi})
+#' @param pars [character()] [vector()] parameter names (\code{p}, \code{h},
+#'   and/or \code{phi})
 #'
-#' @return [array()]
+#' @return [tibble::tibble()]
+#' @export
 #'
-#'
-create_sample_array <- function (fit, par_name) {
+create_sample_tibble <- function (fit, pars = c("p", "h", "phi")) {
 
   # Check arguments ------------------------------------------------------------
+
 
   # Extract samples ------------------------------------------------------------
 
@@ -529,108 +531,138 @@ create_sample_array <- function (fit, par_name) {
   H <- fit$data$H
   P <- fit$data$P
   Q <- fit$data$Q
-  I <- nrow(s)
+  D <- nrow(s)
 
-  # Create array ---------------------------------------------------------------
+  # Compute tibble rows --------------------------------------------------------
 
-  if (par_name == "p") {
-    # Instantiate array
-    x <- array(NA, dim = c(A, A, P, G, I))
-    # Populate array
-    for (pa in seq_len(A)) {
-      for (ca in seq_len(A)) {
-        for (ct in seq_len(P)) {
-          for (mg in seq_len(G)) {
-            inds <- paste(pa, ca, ct, mg, sep = ",")
-            x[pa, ca, ct, mg, ] <- s[, paste0("p[", inds, "]")]
+  num_rows <- 0
+  if (is.element("p", pars)) {
+    num_rows <- num_rows + A * G * P * D
+  }
+  if (is.element("h", pars)) {
+    num_rows <- num_rows + Q * H * A * D
+  }
+  if (is.element("phi", pars)) {
+    num_rows <- num_rows + D
+  }
+
+  # Initialize tibble ----------------------------------------------------------
+
+  x <- tibble::tibble(
+    parameter = rep(NA_character_, num_rows),
+    area = rep(NA_integer_, num_rows),
+    step = rep(NA_integer_, num_rows),
+    group = rep(NA_integer_, num_rows),
+    draw = rep(NA_integer_, num_rows),
+    value = rep(NA_real_, num_rows)
+  )
+
+  # Populate tibble ------------------------------------------------------------
+
+  row_ind <- 1
+  # Parameter p
+  if (is.element("p", pars)) {
+    for (ca in seq_len(A)) {
+      for (ct in seq_len(P)) {
+        for (mg in seq_len(G)) {
+          fit_inds <- paste(ca, ca, ct, mg, sep = ",")
+          for (cd in seq_len(D)) {
+            x$parameter[row_ind] <- "p"
+            x$area[row_ind] <- ca
+            x$step[row_ind] <- ct
+            x$group[row_ind] <- mg
+            x$draw[row_ind] <- cd
+            x$value[row_ind] <- s[cd, paste0("p[", fit_inds, "]")]
+            row_ind <- row_ind + 1
           }
         }
       }
     }
-  } else if (par_name == "h") {
-    # Instantiate array
-    x <- array(NA, dim = c(Q, H, A, I))
-    # Populate array
-    for (q in seq_len(Q)) {
-      for (h in seq_len(H)) {
-        for (a in seq_len(A)) {
-          inds <- paste(q, h, a, sep = ",")
-          x[q, h, a, ] <- s[, paste0("h[", inds, "]")]
+  }
+  # Parameter h
+  if (is.element("h", pars)) {
+    for (mg in seq_len(Q)) {
+      for (ct in seq_len(H)) {
+        for (ca in seq_len(A)) {
+          fit_inds <- paste(mg, ct, ca, sep = ",")
+          for (cd in seq_len(D)) {
+            x$parameter[row_ind] <- "h"
+            x$area[row_ind] <- ca
+            x$step[row_ind] <- ct
+            x$group[row_ind] <- mg
+            x$draw[row_ind] <- cd
+            x$value[row_ind] <- s[cd, paste0("h[", fit_inds, "]")]
+            row_ind <- row_ind + 1
+          }
         }
       }
     }
-  } else if (par_name == "phi") {
-    # Populate array
-    x <- array(s[ , "phi"], dim = I)
-  } else {
-    stop("par_name must be 'p' or 'h' or 'phi'")
+  }
+  # Parameter phi
+  if (is.element("phi", pars)) {
+    for (cd in seq_len(D)) {
+      x$parameter[row_ind] <- "phi"
+      x$area[row_ind] <- 1
+      x$step[row_ind] <- 1
+      x$group[row_ind] <- 1
+      x$draw[row_ind] <- cd
+      x$value[row_ind] <- s[cd, "phi"]
+      row_ind <- row_ind + 1
+    }
   }
 
-  # Return array ---------------------------------------------------------------
+  # Return tibble --------------------------------------------------------------
 
   return(x)
 }
 
 #' Create MCMC Sample Summary
 #'
-#' @param x [array()] sample array (see \code{create_sample_array()})
-#' @param ci_level [numeric()] scalar in c(0, 1)
-#' @param outer_level [numeric()] scalar in c(0, 1)
+#' @param x [tibble::tibble()] sample tibble (see [create_sample_tibble()])
+#' @param ci [numeric()] [vector()] of credible interval levels
 #'
-#' @return [array()]
+#' @return [tibble::tibble()]
 #'
+#' @importFrom magrittr `%>%`
+#' @importFrom rlang .data
 #'
-create_sample_summary <- function (x, ci_level = 0.8, outer_level = 0.95) {
+create_sample_summary <- function (x, ci = c(0.8, 0.95)) {
 
   # Check arguments ------------------------------------------------------------
 
-  # Compute constants ----------------------------------------------------------
 
-  num_dim <- length(dim(x))
-  ci_lower <- (1 - ci_level) / 2
-  ci_upper <- ci_level + ci_lower
-  outer_lower <- (1 - outer_level) / 2
-  outer_upper <- outer_level + outer_lower
-  probs <- c(ci_lower, ci_upper, outer_lower, outer_upper)
+  # Compute ci probs -----------------------------------------------------------
 
-  # Compute summary ------------------------------------------------------------
+  inner_lower <- (1 - ci[1]) / 2
+  inner_upper <- ci[1] + inner_lower
+  outer_lower <- (1 - ci[2]) / 2
+  outer_upper <- ci[2] + outer_lower
 
-  if (num_dim == 5) {
-    # Instantiate summary
-    s <- array(NA, dim = c(dim(x)[1:4], 5))
-    # Populate summary
-    for (pa in seq_len(dim(x)[1])) {
-      for (ca in seq_len(dim(x)[2])) {
-        for (ct in seq_len(dim(x)[3])) {
-          for (mg in seq_len(dim(x)[4])) {
-            s[pa, ca, ct, mg, 1] <- mean(x[pa, ca, ct, mg, ])
-            ci_vals <- stats::quantile(x[pa, ca, ct, mg, ], probs = probs)
-            s[pa, ca, ct, mg, 2:5] <- ci_vals
-          }
-        }
-      }
-    }
-  } else if (num_dim == 4) {
-    # Instantiate summary
-    s <- array(NA, dim = c(dim(x)[1:3], 5))
-    # Populate summary
-    for (q in seq_len(dim(x)[1])) {
-      for (h in seq_len(dim(x)[2])) {
-        for (a in seq_len(dim(x)[3])) {
-          s[q, h, a, 1] <- mean(x[q, h, a, ])
-          s[q, h, a, 2:5] <- stats::quantile(x[q, h, a, ], probs = probs)
-        }
-      }
-    }
-  } else if (num_dim == 1) {
-    # Instantiate summary
-    s <- array(NA, dim = 5)
-    # Populate summary
-    s[1] <- mean(x)
-    s[2:5] <- stats::quantile(x, probs = probs)
-  } else {
-    stop("length(dim(x)) must be 5 (p), 4 (h) or 1 (phi)")
-  }
+  # Compute sample summary -----------------------------------------------------
+
+  s <- x %>%
+    dplyr::group_by(.data$parameter, .data$area, .data$step, .data$group) %>%
+    dplyr::mutate(
+      a_mean = mean(.data$value),
+      a_inner = stats::quantile(.data$value, probs = inner_lower),
+      b_inner = stats::quantile(.data$value, probs = inner_upper),
+      a_outer = stats::quantile(.data$value, probs = outer_lower),
+      b_outer = stats::quantile(.data$value, probs = outer_upper)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-.data$draw, -.data$value) %>%
+    dplyr::distinct(
+      .data$parameter,
+      .data$area,
+      .data$step,
+      .data$group,
+      .keep_all = TRUE) %>%
+    tidyr::pivot_longer(
+      cols = .data$a_mean:.data$b_outer,
+      names_to = "type",
+      names_prefix = "..",
+      values_to = "value"
+    )
 
   # Return summary -------------------------------------------------------------
 
