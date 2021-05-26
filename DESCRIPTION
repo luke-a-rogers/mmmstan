@@ -22,7 +22,11 @@ Imports:
     rstan,
     markdown,
     graphics,
-    stats
+    stats,
+    tibble,
+    ggplot2,
+    ggpubr,
+    rlang
 Suggests: 
     knitr,
     rmarkdown
