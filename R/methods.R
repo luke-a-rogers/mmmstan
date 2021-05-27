@@ -33,10 +33,10 @@ plot.mmmfit <- function (x = NULL,
     # Plot parameter summary
     p_plot <- ggplot2::ggplot() +
       ggplot2::geom_line(
-        ggplot2::aes(x = .data$value, y = .data$step),
+        ggplot2::aes(x = .data$value, y = .data$step, group = .data$step),
         dplyr::filter(s_p, .data$type == "outer")) +
       ggplot2::geom_line(
-        ggplot2::aes(x = .data$value, y = .data$step),
+        ggplot2::aes(x = .data$value, y = .data$step, group = .data$step),
         dplyr::filter(s_p, .data$type == "inner"),
         color = "red",
         size = 1.5) +
@@ -58,10 +58,10 @@ plot.mmmfit <- function (x = NULL,
     # Plot parameter summary
     h_plot <- ggplot2::ggplot() +
       ggplot2::geom_line(
-        ggplot2::aes(x = .data$value, y = .data$step),
+        ggplot2::aes(x = .data$value, y = .data$step, group = .data$step),
         dplyr::filter(s_h, .data$type == "outer")) +
       ggplot2::geom_line(
-        ggplot2::aes(x = .data$value, y = .data$step),
+        ggplot2::aes(x = .data$value, y = .data$step, group = .data$step),
         dplyr::filter(s_h, .data$type == "inner"),
         color = "red",
         size = 1.5) +
