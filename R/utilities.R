@@ -522,98 +522,85 @@ create_sample_tibble <- function (fit, pars = c("p", "h", "phi")) {
 
   # Extract samples ------------------------------------------------------------
 
-  s <- as.matrix(fit$samples)
-
-  # Extract dimensions ---------------------------------------------------------
-
-  A <- fit$data$A
-  G <- fit$data$G
-  H <- fit$data$H
-  P <- fit$data$P
-  Q <- fit$data$Q
-  D <- nrow(s)
-
-  # Compute tibble rows --------------------------------------------------------
-
-  num_rows <- 0
+  # Movement rates
   if (is.element("p", pars)) {
-    num_rows <- num_rows + A * G * P * D
+    p_tbl <- rstan::extract(fit$samples)$p %>%
+      reshape2::melt(
+        varnames = c("iteration", "pa", "area", "step", "group")) %>%
+      tibble::as_tibble() %>%
+      dplyr::filter(.data$pa == .data$area) %>%
+      dplyr::mutate(parameter = "p") %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    p_tbl <- NULL
   }
+
+  # Harvest rates
   if (is.element("h", pars)) {
-    num_rows <- num_rows + Q * H * A * D
+    h_tbl <- rstan::extract(fit$samples)$h %>%
+      reshape2::melt(varnames = c("iteration", "group", "step", "area")) %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(parameter = "h") %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    h_tbl <- NULL
   }
+
+  # Dispersion parameter
   if (is.element("phi", pars)) {
-    num_rows <- num_rows + D
+    phi_tbl <- rstan::extract(fit$samples)$phi %>%
+      reshape2::melt(varnames = c("iteration")) %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(
+        parameter = "phi",
+        area = 1,
+        group = 1,
+        step = 1) %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    phi_tbl <- NULL
   }
 
-  # Initialize tibble ----------------------------------------------------------
+  # Create tibble --------------------------------------------------------------
 
-  x <- tibble::tibble(
-    parameter = rep(NA_character_, num_rows),
-    area = rep(NA_integer_, num_rows),
-    step = rep(NA_integer_, num_rows),
-    group = rep(NA_integer_, num_rows),
-    draw = rep(NA_integer_, num_rows),
-    value = rep(NA_real_, num_rows)
-  )
-
-  # Populate tibble ------------------------------------------------------------
-
-  row_ind <- 1
-  # Parameter p
-  if (is.element("p", pars)) {
-    for (ca in seq_len(A)) {
-      for (ct in seq_len(P)) {
-        for (mg in seq_len(G)) {
-          fit_inds <- paste(ca, ca, ct, mg, sep = ",")
-          for (cd in seq_len(D)) {
-            x$parameter[row_ind] <- "p"
-            x$area[row_ind] <- ca
-            x$step[row_ind] <- ct
-            x$group[row_ind] <- mg
-            x$draw[row_ind] <- cd
-            x$value[row_ind] <- s[cd, paste0("p[", fit_inds, "]")]
-            row_ind <- row_ind + 1
-          }
-        }
-      }
-    }
-  }
-  # Parameter h
-  if (is.element("h", pars)) {
-    for (mg in seq_len(Q)) {
-      for (ct in seq_len(H)) {
-        for (ca in seq_len(A)) {
-          fit_inds <- paste(mg, ct, ca, sep = ",")
-          for (cd in seq_len(D)) {
-            x$parameter[row_ind] <- "h"
-            x$area[row_ind] <- ca
-            x$step[row_ind] <- ct
-            x$group[row_ind] <- mg
-            x$draw[row_ind] <- cd
-            x$value[row_ind] <- s[cd, paste0("h[", fit_inds, "]")]
-            row_ind <- row_ind + 1
-          }
-        }
-      }
-    }
-  }
-  # Parameter phi
-  if (is.element("phi", pars)) {
-    for (cd in seq_len(D)) {
-      x$parameter[row_ind] <- "phi"
-      x$area[row_ind] <- 1
-      x$step[row_ind] <- 1
-      x$group[row_ind] <- 1
-      x$draw[row_ind] <- cd
-      x$value[row_ind] <- s[cd, "phi"]
-      row_ind <- row_ind + 1
-    }
-  }
+  par_tbl <- dplyr::bind_rows(p_tbl, h_tbl, phi_tbl)
 
   # Return tibble --------------------------------------------------------------
 
-  return(x)
+  return(par_tbl)
 }
 
 #' Create MCMC Sample Summary
