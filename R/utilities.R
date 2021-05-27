@@ -637,7 +637,7 @@ create_sample_summary <- function (x, ci = c(0.8, 0.95)) {
       b_outer = stats::quantile(.data$value, probs = outer_upper)
     ) %>%
     dplyr::ungroup() %>%
-    dplyr::select(-.data$draw, -.data$value) %>%
+    dplyr::select(-.data$iteration, -.data$value) %>%
     dplyr::distinct(
       .data$parameter,
       .data$area,
