@@ -35,8 +35,8 @@ data {
   int<lower=1> q_index[G]; // Harvest rate group index
   int<lower=1> w_index[S]; // Reporting rate time step index
   // Prior parameters
-  real<lower=0> h_alpha[A];
-  real<lower=0> h_beta[A];
+  real<lower=0> h_alpha[Q, H, A];
+  real<lower=0> h_beta[Q, H, A];
   // Fudge constants
   real<lower=0> p_fudge;
   real<lower=0> y_fudge;
@@ -124,7 +124,9 @@ model {
 	// Priors
 	for (cg in 1:Q) {
 	  for (ct in 1:H) {
-      h[cg, ct] ~ beta(h_alpha, h_beta);
+	    for (ca in 1:A) {
+        h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
+	    }
 	  }
 	}
 
