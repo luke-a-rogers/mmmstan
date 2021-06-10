@@ -21,7 +21,6 @@ Imports:
     cmdstanr,
     rstan,
     markdown,
-    graphics,
     stats,
     tibble,
     ggplot2,

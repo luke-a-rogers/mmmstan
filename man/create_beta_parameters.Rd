@@ -4,24 +4,23 @@
 \alias{create_beta_parameters}
 \title{Create Beta Parameters}
 \usage{
-create_beta_parameters(mu, sd, n = 10000, b = 100)
+create_beta_parameters(mu, sd)
 }
 \arguments{
-\item{mu}{\code{\link[=numeric]{numeric()}} Mean}
+\item{mu}{\code{\link[=numeric]{numeric()}} \code{\link[=array]{array()}} with \code{dim = c(Q, H, A)} giving the
+harvest rate means}
 
-\item{sd}{\code{\link[=numeric]{numeric()}} Standard deviation}
-
-\item{n}{\code{\link[=integer]{integer()}} Number of samples for histogram}
-
-\item{b}{\code{\link[=numeric]{numeric()}} Breaks passed to \code{\link[=hist]{hist()}}}
+\item{sd}{\code{\link[=numeric]{numeric()}} shared standard deviation}
 }
 \value{
-\code{\link[=numeric]{numeric()}} vector of length two.
+\code{\link[=list]{list()}} of two arrays
 }
 \description{
 Create Beta Parameters
 }
 \examples{
-create_beta_parameters(0.01, 0.001)
+mu <- array(0.05, dim = c(2, 10, 3))
+l <- create_beta_parameters(mu, 0.001)
+hist(rbeta(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
 
 }
