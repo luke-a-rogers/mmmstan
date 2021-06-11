@@ -94,63 +94,63 @@ transformed parameters {
 }
 
 model {
-// Initialize values
-real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
-real s_step[G, S, A]; // Survival rate
-int release_steps[T];
-int grainsize = 1;
-s_step = rep_array(0, G, S, A);
+  // Initialize values
+  real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
+  real s_step[G, S, A]; // Survival rate
+  int release_steps[T];
+  int grainsize = 1;
+  s_step = rep_array(0, G, S, A);
 
-// Create stepwise movement rates
-p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+  // Create stepwise movement rates
+  p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
 
-// Populate release steps
-for (mt in 1:T) {
- release_steps[mt] = mt;
-}
+  // Populate release steps
+  for (mt in 1:T) {
+    release_steps[mt] = mt;
+  }
 
-// Compute survival
-for (mg in 1:G) {
-for (ct in 1:S) {
-for (ca in 1:A) {
-s_step[mg, ct, ca] = exp(
--f_step[q_index[mg], h_index[ct], ca]
-- m_step
-- v_step);
-}
-}
-}
+  // Compute survival
+  for (mg in 1:G) {
+    for (ct in 1:S) {
+      for (ca in 1:A) {
+        s_step[mg, ct, ca] = exp(
+          -f_step[q_index[mg], h_index[ct], ca]
+          - m_step
+          - v_step);
+      }
+    }
+  }
 
-// Priors
-for (cg in 1:Q) {
-for (ct in 1:H) {
-for (ca in 1:A) {
-h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
-}
-}
-}
+  // Priors
+  for (cg in 1:Q) {
+    for (ct in 1:H) {
+      for (ca in 1:A) {
+        h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
+      }
+    }
+  }
 
-// Likelihood statement using reduce_sum()
-target += reduce_sum(
-partial_sum_lupmf,
-release_steps,
-grainsize,
-S,
-A,
-G,
-L,
-u,
-phi,
-y_fudge,
-h_index,
-p_index,
-q_index,
-w_index,
-w,
-f_step,
-s_step,
-p_step,
-x);
+  // Likelihood statement using reduce_sum()
+  target += reduce_sum(
+    partial_sum_lupmf,
+    release_steps,
+    grainsize,
+    S,
+    A,
+    G,
+    L,
+    u,
+    phi,
+    y_fudge,
+    h_index,
+    p_index,
+    q_index,
+    w_index,
+    w,
+    f_step,
+    s_step,
+    p_step,
+    x);
 }
 
 generated quantities {
