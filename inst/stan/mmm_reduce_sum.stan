@@ -17,7 +17,7 @@ data {
   int<lower=1> P; // Number of movement time steps
   int<lower=1> Q; // Number of harvest rate groups
   int<lower=1> W; // Number of tag reporting rate time steps
- // Constants
+  // Constants
   int<lower=1> Y; // Number of time steps per year
   // Tag data
   int<lower=0> x[T, A, G, L, A]; // Tag array
@@ -94,63 +94,63 @@ transformed parameters {
 }
 
 model {
-  // Initialize values
-	real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
-	real s_step[G, S, A]; // Survival rate
-	int release_steps[T];
-	int grainsize = 1;
-	s_step = rep_array(0, G, S, A);
+// Initialize values
+real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
+real s_step[G, S, A]; // Survival rate
+int release_steps[T];
+int grainsize = 1;
+s_step = rep_array(0, G, S, A);
 
-  // Create stepwise movement rates
-	p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+// Create stepwise movement rates
+p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
 
-	// Populate release steps
-	for (mt in 1:T) {
-	  release_steps[mt] = mt;
-	}
+// Populate release steps
+for (mt in 1:T) {
+ release_steps[mt] = mt;
+}
 
-	// Compute survival
-	for (mg in 1:G) {
-		for (ct in 1:S) {
-			for (ca in 1:A) {
-				s_step[mg, ct, ca] = exp(
-				  -f_step[q_index[mg], h_index[ct], ca]
-				  - m_step
-				  - v_step);
-			}
-		}
-	}
+// Compute survival
+for (mg in 1:G) {
+for (ct in 1:S) {
+for (ca in 1:A) {
+s_step[mg, ct, ca] = exp(
+-f_step[q_index[mg], h_index[ct], ca]
+- m_step
+- v_step);
+}
+}
+}
 
-	// Priors
-	for (cg in 1:Q) {
-	  for (ct in 1:H) {
-	    for (ca in 1:A) {
-        h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
-	    }
-	  }
-	}
+// Priors
+for (cg in 1:Q) {
+for (ct in 1:H) {
+for (ca in 1:A) {
+h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
+}
+}
+}
 
-	// Likelihood statement using reduce_sum()
-	target += reduce_sum(
-	  partial_sum_lupmf,
-	  release_steps,
-	  grainsize,
-	  S,
-	  A,
-	  G,
-	  L,
-	  u,
-	  phi,
-	  y_fudge,
-	  h_index,
-	  p_index,
-	  q_index,
-	  w_index,
-	  w,
-	  f_step,
-	  s_step,
-	  p_step,
-	  x);
+// Likelihood statement using reduce_sum()
+target += reduce_sum(
+partial_sum_lupmf,
+release_steps,
+grainsize,
+S,
+A,
+G,
+L,
+u,
+phi,
+y_fudge,
+h_index,
+p_index,
+q_index,
+w_index,
+w,
+f_step,
+s_step,
+p_step,
+x);
 }
 
 generated quantities {
@@ -161,7 +161,7 @@ generated quantities {
   real p[A, A, P, G]; // Annual user version [pa, ca, , ,]
 
   // Create stepwise movement rates
-	p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
 
   // Populate annual movement rate array
   for (mg in 1:G) {
