@@ -161,7 +161,7 @@ generated quantities {
   real p[A, A, P, G]; // Annual user version [pa, ca, , ,]
 
   // Create stepwise movement rates
-p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+  p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
 
   // Populate annual movement rate array
   for (mg in 1:G) {
