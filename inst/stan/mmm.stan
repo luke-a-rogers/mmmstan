@@ -186,32 +186,32 @@ model {
 }
 
 generated quantities {
-// Initialize
-real p_step[G, P, A, A]; // Stepwise model version [ , , ca, pa]
-matrix[A, A] p_step_matrix[G, P]; // Stepwise intermediary
-matrix[A, A] p_matrix[G, P]; // Annual intermediary
-real p[A, A, P, G]; // Annual user version [pa, ca, , ,]
+  // Initialize
+  real p_step[G, P, A, A]; // Stepwise model version [ , , ca, pa]
+  matrix[A, A] p_step_matrix[G, P]; // Stepwise intermediary
+  matrix[A, A] p_matrix[G, P]; // Annual intermediary
+  real p[A, A, P, G]; // Annual user version [pa, ca, , ,]
 
-// Create stepwise movement rates
-p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+  // Create stepwise movement rates
+  p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
 
-// Populate annual movement rate array
-for (mg in 1:G) {
-for (ct in 1:P) {
-// Populate p_matrix
-for (pa in 1:A) {
-for (ca in 1:A) {
-p_step_matrix[mg, ct, pa, ca] = p_step[mg, ct, ca, pa];
-}
-}
-// Populate annual p_matrix
-p_matrix[mg, ct] = matrix_power(p_step_matrix[mg, ct], Y);
-// Populate annual array p
-for (pa in 1:A) {
-for (ca in 1:A) {
-p[pa, ca, ct, mg] = p_matrix[mg, ct, pa, ca];
-}
-}
-}
-}
+  // Populate annual movement rate array
+  for (mg in 1:G) {
+    for (ct in 1:P) {
+      // Populate p_matrix
+      for (pa in 1:A) {
+        for (ca in 1:A) {
+          p_step_matrix[mg, ct, pa, ca] = p_step[mg, ct, ca, pa];
+        }
+      }
+      // Populate annual p_matrix
+      p_matrix[mg, ct] = matrix_power(p_step_matrix[mg, ct], Y);
+      // Populate annual array p
+      for (pa in 1:A) {
+        for (ca in 1:A) {
+          p[pa, ca, ct, mg] = p_matrix[mg, ct, pa, ca];
+        }
+      }
+    }
+  }
 }
