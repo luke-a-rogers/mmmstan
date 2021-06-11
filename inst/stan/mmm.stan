@@ -102,87 +102,87 @@ transformed parameters {
 }
 
 model {
-// Initialize values
-real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
-real n[T, A, G, L, A]; // Predicted abundance
-real s_step[G, S, A]; // Survival rate
-int y_obs[R]; // Recoveries
-real y_hat[R]; // Predicted recoveries
-int y_ind; // Recovery index counter
-real n_sub[T, A];
-int E = 0; // Number of realized steps at libery
-n = rep_array(rep_array(0, L, A), T, A, G);
-s_step = rep_array(0, G, S, A);
-y_obs = rep_array(0, R);
-y_hat = rep_array(0, R);
-y_ind = 1;
+  // Initialize values
+  real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
+  real n[T, A, G, L, A]; // Predicted abundance
+  real s_step[G, S, A]; // Survival rate
+  int y_obs[R]; // Recoveries
+  real y_hat[R]; // Predicted recoveries
+  int y_ind; // Recovery index counter
+  real n_sub[T, A];
+  int E = 0; // Number of realized steps at libery
+  n = rep_array(rep_array(0, L, A), T, A, G);
+  s_step = rep_array(0, G, S, A);
+  y_obs = rep_array(0, R);
+  y_hat = rep_array(0, R);
+  y_ind = 1;
 
-// Create stepwise movement rates
-p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+  // Create stepwise movement rates
+  p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
 
-// Compute survival
-for (mg in 1:G) {
-for (ct in 1:S) {
-for (ca in 1:A) {
-s_step[mg, ct, ca] = exp(
--f_step[q_index[mg], h_index[ct], ca]
-- m_step
-- v_step);
-}
-}
-}
+  // Compute survival
+  for (mg in 1:G) {
+    for (ct in 1:S) {
+      for (ca in 1:A) {
+        s_step[mg, ct, ca] = exp(
+          -f_step[q_index[mg], h_index[ct], ca]
+          - m_step
+          - v_step);
+      }
+    }
+  }
 
-// Populate initial abundances
-for (mt in 1:T) {
-for (ma in 1:A) {
-for (mg in 1:G) {
-n[mt, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
-}
-}
-}
+  // Populate initial abundances
+  for (mt in 1:T) {
+    for (ma in 1:A) {
+      for (mg in 1:G) {
+        n[mt, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
+      }
+    }
+  }
 
-// Compute predicted recoveries
-for (mt in 1:T) {
-for (ma in 1:A) {
-for (mg in 1:G) {
-if (x[mt, ma, mg, 1, ma] > 0) {
-E = min(L, S - mt);
-for (cl in 2:E) { // Populate abundance array n
-for (ca in 1:A) {
-for (pa in 1:A) {
-n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
-* s_step[mg, mt + cl - 2, pa]
-* p_step[mg, p_index[mt + cl - 2], ca, pa];
-} // End for pa
-} // End for ca
-} // End for cl
-for (cl in 2:E) { // Compute recoveries and predicted recoveries
-for (ca in 1:A) {
-y_obs[y_ind] = x[mt, ma, mg, cl, ca];
-y_hat[y_ind] = n[mt, ma, mg, cl, ca]
-* (1 - exp(-f_step[q_index[mg], h_index[mt + cl - 1], ca]))
-* w[w_index[mt + cl - 1], ca]
-+ y_fudge;
-y_ind += 1;
-} // End for ra
-} // End for cl
-} // End if
-} // End for mg
-} // End for ma
-} // End for mt
+  // Compute predicted recoveries
+  for (mt in 1:T) {
+    for (ma in 1:A) {
+      for (mg in 1:G) {
+        if (x[mt, ma, mg, 1, ma] > 0) {
+          E = min(L, S - mt);
+          for (cl in 2:E) { // Populate abundance array n
+            for (ca in 1:A) {
+              for (pa in 1:A) {
+                n[mt, ma, mg, cl, ca] += n[mt, ma, mg, cl - 1, pa]
+                * s_step[mg, mt + cl - 2, pa]
+                * p_step[mg, p_index[mt + cl - 2], ca, pa];
+              } // End for pa
+            } // End for ca
+          } // End for cl
+          for (cl in 2:E) { // Compute recoveries and predicted recoveries
+            for (ca in 1:A) {
+              y_obs[y_ind] = x[mt, ma, mg, cl, ca];
+              y_hat[y_ind] = n[mt, ma, mg, cl, ca]
+              * (1 - exp(-f_step[q_index[mg], h_index[mt + cl - 1], ca]))
+              * w[w_index[mt + cl - 1], ca]
+              + y_fudge;
+              y_ind += 1;
+            } // End for ra
+          } // End for cl
+        } // End if
+      } // End for mg
+    } // End for ma
+  } // End for mt
 
-// Priors
-for (cg in 1:Q) {
-for (ct in 1:H) {
-for (ca in 1:A) {
-h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
-}
-}
-}
+  // Priors
+  for (cg in 1:Q) {
+    for (ct in 1:H) {
+      for (ca in 1:A) {
+        h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
+      }
+    }
+  }
 
-// Sampling statement
-// y_obs ~ poisson(y_hat); // 11.9 sec simplest model
-y_obs ~ neg_binomial_2(y_hat, phi);
+  // Sampling statement
+  // y_obs ~ poisson(y_hat); // 11.9 sec simplest model
+  y_obs ~ neg_binomial_2(y_hat, phi);
 }
 
 generated quantities {
