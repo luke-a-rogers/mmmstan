@@ -41,21 +41,21 @@ data {
 }
 
 transformed data {
-// Initialize
-int simplex_dimensions[6] = create_simplex_dimensions(P, A, G, z);
-// Transformed indexes
-real v_step = v / Y;
-real m_step = m / Y;
-int R = 0; // Number of recovery observations
-for (mt in 1:T) {
-for (ma in 1:A) {
-for (mg in 1:G) {
-if (x[mt, ma, mg, 1, ma] > 0) {
-R += (min(L, S - mt) - 1) * A; // Realized liberty after release
-}
-}
-}
-}
+  // Initialize
+  int simplex_dimensions[6] = create_simplex_dimensions(P, A, G, z);
+  // Transformed indexes
+  real v_step = v / Y;
+  real m_step = m / Y;
+  int R = 0; // Number of recovery observations
+  for (mt in 1:T) {
+    for (ma in 1:A) {
+      for (mg in 1:G) {
+        if (x[mt, ma, mg, 1, ma] > 0) {
+          R += (min(L, S - mt) - 1) * A; // Realized liberty after release
+        }
+      }
+    }
+  }
 }
 
 parameters {
