@@ -63,7 +63,7 @@ parameters {
   simplex[5] s5[simplex_dimensions[5]];
   simplex[6] s6[simplex_dimensions[6]];
   // Random walk standard deviation
-  real<lower=0> sigma[(rw == 1 && P > 1) ? G : 0]; // Conditional dim G or 0
+  real<lower=0> sigma[(rw == 1 && P > 1) ? A : 0]; // Conditional dim G or 0
   // Negative binomial dispersion var = mu + mu^2 / phi
   real<lower=0.1,upper=10> phi;
 }
@@ -141,7 +141,7 @@ model {
         for (ca in 1:A) {
           p_step[mg, ct, ca, ca] ~ normal(
             p_step[mg, ct - 1, ca, ca],
-            sigma[mg]);
+            sigma[ca]);
         }
       }
     }
