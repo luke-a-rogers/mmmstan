@@ -22,6 +22,7 @@ mmmfit <- function (data,
   # Check arguments ------------------------------------------------------------
 
   # Check that max(rowSums(data$z)) <= 6
+  # Check that if rw == 1, P > 2
 
 
   # Fit the model via cmdstanr -------------------------------------------------
