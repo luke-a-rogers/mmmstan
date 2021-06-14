@@ -202,7 +202,7 @@ create_sample_summary <- function (x, ci = c(0.8, 0.95)) {
 #'
 #' @param fit [mmmfit()] object
 #' @param pars [character()] [vector()] parameter names (\code{p}, \code{h},
-#'   and/or \code{phi})
+#'   \code{phi}, and/or \code{sigma})
 #'
 #' @return [tibble::tibble()]
 #' @export
@@ -286,9 +286,34 @@ create_sample_tibble <- function (fit, pars = c("p", "h", "phi")) {
     phi_tbl <- NULL
   }
 
+  # Random walk sigmas
+  if (is.element("sigma", pars)) {
+    sigma_tbl <- rstan::extract(fit$samples)$sigma %>%
+      reshape2::melt(varnames = c("iteration", "area")) %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(
+        parameter = "sigma",
+        group = 1,
+        step = 1) %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    sigma_tbl <- NULL
+  }
+
   # Create tibble --------------------------------------------------------------
 
-  par_tbl <- dplyr::bind_rows(p_tbl, h_tbl, phi_tbl)
+  par_tbl <- dplyr::bind_rows(p_tbl, h_tbl, phi_tbl, sigma_tbl)
 
   # Return tibble --------------------------------------------------------------
 
