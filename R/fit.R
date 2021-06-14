@@ -40,6 +40,7 @@ mmmfit <- function (data,
   cmdfit <- mod$sample(
     data = data,
     chains = chains,
+    step_size = 0.1,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     threads_per_chain = threads_per_chain,
