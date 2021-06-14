@@ -97,11 +97,35 @@ plot.mmmfit <- function (x = NULL,
     phi_plot <- NULL
   }
 
+  # Create sigma plot ----------------------------------------------------------
+
+  if (is.element("sigma", pars)) {
+    # Filter sample summary
+    s_sigma <-  dplyr::filter(s, .data$parameter == "sigma")
+    # Plot parameter summary
+    sigma_plot <- ggplot2::ggplot() +
+      ggplot2::geom_line(
+        ggplot2::aes(x = .data$value, y = .data$step, group = .data$area),
+        dplyr::filter(s_sigma, .data$type == "outer")) +
+      ggplot2::geom_line(
+        ggplot2::aes(x = .data$value, y = .data$step, group = .data$area),
+        dplyr::filter(s_sigma, .data$type == "inner"),
+        color = "red",
+        size = 1.5) +
+      ggplot2::geom_point(
+        ggplot2::aes(x = .data$value, y = .data$step),
+        dplyr::filter(s_sigma, .data$type == "mean")) +
+      ggplot2::facet_grid(
+        cols = ggplot2::vars(.data$area))
+  } else {
+    sigma_plot <- NULL
+  }
+
   # Create composite plot ------------------------------------------------------
 
   mmm_plot <- ggpubr::ggarrange(
-    p_plot, h_plot, phi_plot,
-    labels = c("p", "h", "phi"),
+    p_plot, h_plot, phi_plot, sigma_plot,
+    labels = c("p", "h", "phi", "sigma"),
     ncol = 1)
 
   # Return composite plot ------------------------------------------------------
