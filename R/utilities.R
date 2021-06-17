@@ -1,40 +1,36 @@
 #' Create Beta Parameters
 #'
-#' @param mu [numeric()] [array()] with \code{dim = c(Q, H, A)} giving the
-#'   harvest rate means
+#' @param mu [numeric()] [array()] giving the mean(s). For harvest rates use
+#'   an array with \code{dim = c(Q, H, A)} giving the harvest rate means.
 #' @param sd [numeric()] shared standard deviation
 #'
 #' @return [list()] of two arrays
 #' @export
 #'
 #' @examples
+#' # Scalar mu
+#' mu <- 0.05
+#' l <- create_beta_parameters(mu, 0.01)
+#' hist(rbeta(10000, l$alpha, l$beta), breaks = 100)
+#'
+#' # Array mu
 #' mu <- array(0.05, dim = c(2, 10, 3))
 #' l <- create_beta_parameters(mu, 0.001)
 #' hist(rbeta(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
 #'
 create_beta_parameters <- function (mu, sd) {
-  # Instantiate alpha and beta
-  alpha <- array(NA, dim = dim(mu))
-  beta <- array(NA, dim = dim(mu))
-  # Define constants
-  Q <- dim(mu)[1]
-  H <- dim(mu)[2]
-  A <- dim(mu)[3]
-  # Iterate over arrays
-  for (cg in seq_len(Q)) {
-    for (ct in seq_len(H)) {
-      for (ca in seq_len(A)) {
-        # Compute var
-        var <- sd * sd
-        # Check parameter condition
-        stopifnot(var < mu[cg, ct, ca] * (1 - mu[cg, ct, ca]))
-        # Compute parameters
-        nu <- (mu[cg, ct, ca] * (1 - mu[cg, ct, ca]) / var) - 1
-        alpha[cg, ct, ca] <- mu[cg, ct, ca] * nu
-        beta[cg, ct, ca] <- (1 - mu[cg, ct, ca]) * nu
-      }
-    }
-  }
+  # Check arguments
+
+  # Handle scalar mu
+  if (is.null(dim(mu))) dim(mu) <- 1
+  # Compute variance
+  v <- sd * sd
+  # Check parameter condition
+  stopifnot(all(v < mu * (1 - mu)))
+  # Compute parameters
+  nu <- (mu * (1 - mu) / v) - 1
+  alpha <- mu * nu
+  beta <- (1 - mu) * nu
   # Return list
   return(list(alpha = alpha, beta = beta))
 }

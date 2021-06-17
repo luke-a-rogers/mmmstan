@@ -7,8 +7,8 @@
 create_beta_parameters(mu, sd)
 }
 \arguments{
-\item{mu}{\code{\link[=numeric]{numeric()}} \code{\link[=array]{array()}} with \code{dim = c(Q, H, A)} giving the
-harvest rate means}
+\item{mu}{\code{\link[=numeric]{numeric()}} \code{\link[=array]{array()}} giving the mean(s). For harvest rates use
+an array with \code{dim = c(Q, H, A)} giving the harvest rate means.}
 
 \item{sd}{\code{\link[=numeric]{numeric()}} shared standard deviation}
 }
@@ -19,6 +19,12 @@ harvest rate means}
 Create Beta Parameters
 }
 \examples{
+# Scalar mu
+mu <- 0.05
+l <- create_beta_parameters(mu, 0.01)
+hist(rbeta(10000, l$alpha, l$beta), breaks = 100)
+
+# Array mu
 mu <- array(0.05, dim = c(2, 10, 3))
 l <- create_beta_parameters(mu, 0.001)
 hist(rbeta(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
