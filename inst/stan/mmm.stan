@@ -32,11 +32,13 @@ data {
   int<lower=1> p_index[S]; // Movement rate time step index
   int<lower=1> q_index[G]; // Harvest rate group index
   int<lower=1> w_index[S]; // Reporting rate time step index
+  // Option constants
+  int<lower=0, upper=1> rw; // Include random walk on retention rates
   // Prior parameters
   real<lower=0> h_alpha[Q, H, A];
   real<lower=0> h_beta[Q, H, A];
-  // Option constants
-  int<lower=0, upper=1> rw; // Include random walk on retention rates
+  real sigma_alpha[(rw == 1 && P > 1) ? A : 0]; // Conditional dim A or 0
+  real sigma_beta[(rw == 1 && P > 1) ? A : 0]; // Conditional dim A or 0
   // Fudge constants
   real<lower=0> p_fudge;
   real<lower=0> y_fudge;
@@ -71,7 +73,7 @@ parameters {
   simplex[5] s5[simplex_dimensions[5]];
   simplex[6] s6[simplex_dimensions[6]];
   // Random walk standard deviation
-  real<lower=0> sigma[(rw == 1 && P > 1) ? A : 0]; // Conditional dim G or 0
+  real<lower=0> sigma[(rw == 1 && P > 1) ? A : 0]; // Conditional dim A or 0
   // Negative binomial dispersion var = mu + mu^2 / phi
   real<lower=0.1,upper=10> phi;
 }
@@ -175,13 +177,18 @@ model {
     } // End for ma
   } // End for mt
 
-  // Priors
+  // Harvest rate priors
   for (cg in 1:Q) {
     for (ct in 1:H) {
       for (ca in 1:A) {
         h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
       }
     }
+  }
+
+  // Random walk priors
+  if (rw == 1 && P > 1) {
+    sigma ~ beta(sigma_alpha, sigma_beta);
   }
 
   // Random walk on retention rates (self-movement rates)

@@ -88,9 +88,11 @@ knitr::opts_chunk$set(
 <!--   # p_index = rep(1, 160), -->
 <!--   q_index = array(rep(1, 1), dim = c(1)), # Harvest rate group index -->
 <!--   w_index = rep(1, 159), # Reporting rate time step index -->
+<!--   rw = 0, -->
 <!--   h_alpha = h_pars$alpha, -->
 <!--   h_beta = h_pars$beta, -->
-<!--   rw = 0, -->
+<!--   sigma_alpha = numeric(0), -->
+<!--   sigma_beta = numeric(0), -->
 <!--   p_fudge = 1e-12, -->
 <!--   y_fudge = 1e-12 -->
 <!-- ) -->
