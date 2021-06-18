@@ -60,8 +60,8 @@ create_gamma_parameters <- function (mu, sd) {
   # Handle scalar mu
   if (is.null(dim(mu))) dim(mu) <- 1
   # Compute parameters
-  alpha <- mu^2 / sd
-  beta <- mu / sd
+  alpha <- mu^2 / sd^2
+  beta <- mu / sd^2
   # Return list
   return(list(alpha = alpha, beta = beta))
 }
