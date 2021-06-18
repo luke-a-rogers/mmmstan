@@ -35,6 +35,37 @@ create_beta_parameters <- function (mu, sd) {
   return(list(alpha = alpha, beta = beta))
 }
 
+#' Create Gamma Parameters
+#'
+#' @param mu [numeric()] [array()] giving the mean(s).
+#' @param sd [numeric()] shared standard deviation.
+#'
+#' @return [list()] of two arrays
+#' @export
+#'
+#' @examples
+#' # Scalar mu
+#' mu <- 0.05
+#' l <- create_gamma_parameters(mu, 0.01)
+#' hist(rgamma(10000, l$alpha, l$beta), breaks = 100)
+#'
+#' # Array mu
+#' mu <- array(0.05, dim = c(2, 10, 3))
+#' l <- create_gamma_parameters(mu, 0.001)
+#' hist(rgamma(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
+#'
+create_gamma_parameters <- function (mu, sd) {
+  # Check arguments
+
+  # Handle scalar mu
+  if (is.null(dim(mu))) dim(mu) <- 1
+  # Compute parameters
+  alpha <- mu^2 / sd
+  beta <- mu / sd
+  # Return list
+  return(list(alpha = alpha, beta = beta))
+}
+
 #' Create Harvest Rate Annual
 #'
 #' @param h_step [numeric()] step harvest rate

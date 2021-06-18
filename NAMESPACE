@@ -2,6 +2,7 @@
 
 S3method(plot,mmmfit)
 export(create_beta_parameters)
+export(create_gamma_parameters)
 export(create_h_annual)
 export(create_h_step)
 export(create_index)

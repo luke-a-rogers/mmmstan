@@ -39,8 +39,8 @@ data {
   // Prior parameters
   real<lower=0> h_alpha[Q, H, A];
   real<lower=0> h_beta[Q, H, A];
-  real sigma_alpha[(rw == 1 && P > 1) ? A : 0]; // Conditional dim A or 0
-  real sigma_beta[(rw == 1 && P > 1) ? A : 0]; // Conditional dim A or 0
+  real<lower=0> sigma_alpha[(rw == 1 && P > 1) ? A : 0]; // dim A or 0
+  real<lower=0> sigma_beta[(rw == 1 && P > 1) ? A : 0]; // dim A or 0
   // Fudge constants
   real<lower=0> p_fudge;
   real<lower=0> y_fudge;
@@ -138,7 +138,7 @@ model {
 
   // Random walk priors
   if (rw == 1 && P > 1) {
-    sigma ~ beta(sigma_alpha, sigma_beta);
+    sigma ~ gamma(sigma_alpha, sigma_beta);
   }
 
   // Random walk on retention rates (self-movement rates)
