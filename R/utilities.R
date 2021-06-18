@@ -1,3 +1,388 @@
+#' Create Beta Parameters
+#'
+#' @param mu [numeric()] [array()] giving the mean(s). For harvest rates use
+#'   an array with \code{dim = c(Q, H, A)} giving the harvest rate means.
+#' @param sd [numeric()] shared standard deviation
+#'
+#' @return [list()] of two arrays
+#' @export
+#'
+#' @examples
+#' # Scalar mu
+#' mu <- 0.05
+#' l <- create_beta_parameters(mu, 0.01)
+#' hist(rbeta(10000, l$alpha, l$beta), breaks = 100)
+#'
+#' # Array mu
+#' mu <- array(0.05, dim = c(2, 10, 3))
+#' l <- create_beta_parameters(mu, 0.001)
+#' hist(rbeta(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
+#'
+create_beta_parameters <- function (mu, sd) {
+  # Check arguments
+
+  # Handle scalar mu
+  if (is.null(dim(mu))) dim(mu) <- 1
+  # Compute variance
+  v <- sd * sd
+  # Check parameter condition
+  stopifnot(all(v < mu * (1 - mu)))
+  # Compute parameters
+  nu <- (mu * (1 - mu) / v) - 1
+  alpha <- mu * nu
+  beta <- (1 - mu) * nu
+  # Return list
+  return(list(alpha = alpha, beta = beta))
+}
+
+#' Create Gamma Parameters
+#'
+#' @param mu [numeric()] [array()] giving the mean(s).
+#' @param sd [numeric()] shared standard deviation.
+#'
+#' @return [list()] of two arrays
+#' @export
+#'
+#' @examples
+#' # Scalar mu
+#' mu <- 0.05
+#' l <- create_gamma_parameters(mu, 0.01)
+#' hist(rgamma(10000, l$alpha, l$beta), breaks = 100)
+#'
+#' # Array mu
+#' mu <- array(0.05, dim = c(2, 10, 3))
+#' l <- create_gamma_parameters(mu, 0.001)
+#' hist(rgamma(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
+#'
+create_gamma_parameters <- function (mu, sd) {
+  # Check arguments
+
+  # Handle scalar mu
+  if (is.null(dim(mu))) dim(mu) <- 1
+  # Compute parameters
+  alpha <- mu^2 / sd^2
+  beta <- mu / sd^2
+  # Return list
+  return(list(alpha = alpha, beta = beta))
+}
+
+#' Create Harvest Rate Annual
+#'
+#' @param h_step [numeric()] step harvest rate
+#' @param y [integer()] number of time steps in one year
+#'
+#' @return [numeric()]
+#' @export
+#'
+#' @examples
+#' create_h_annual(0.05, 1)
+#' create_h_annual(0.01274146, 4)
+#'
+create_h_annual <- function (h_step, y) {
+  return(1 - (1 - h_step)^(y))
+}
+
+#' Create Harvest Rate Step
+#'
+#' @param h_annual [numeric()] annual harvest rate
+#' @param y [integer()] number of time steps in one year
+#'
+#' @return [numeric()]
+#' @export
+#'
+#' @examples
+#' create_h_step(0.05, 1)
+#' create_h_step(0.05, 4)
+#'
+create_h_step <- function (h_annual, y) {
+  return(1 - (1 - h_annual)^(1/y))
+}
+
+#' Create Movement Index Matrix
+#'
+#' @param n [integer()] Number of areas.
+#' @param pattern [integer()] One of \code{1}: full movement, or \code{0}:
+#'   direct movement between numerically sequential neighbours only.
+#' @param allow [integer()] [matrix()] Each row indicates directional
+#'   movement between a pair of areas indexed from one.
+#' @param disallow [integer()] [matrix()] As for \code{allow}, but
+#'   specified movement is disallowed.
+#'
+#' @return A square binary matrix
+#' @export
+#'
+#' @examples
+#'
+#' # Neighbours (default)
+#' create_index(6)
+#'
+#' # Full movement
+#' create_index(6, 1)
+#'
+#' # Neighbours plus 1-6, 2-5, and 5-2, but not 6-1
+#' allow <- matrix(c(1,6,2,5,5,2), ncol = 2, byrow = TRUE)
+#' create_index(6, 0, allow)
+#'
+#' # Full minus 1-6
+#' disallow <- matrix(c(1,6), ncol = 2, byrow = TRUE)
+#' create_index(6, 1, disallow = disallow)
+#'
+create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
+
+  # Check arguments
+  # checkmate::assert_integerish(n, lower = 2, len = 1, any.missing = FALSE)
+  # checkmate::assert_integerish(pattern, len = 1, null.ok = TRUE)
+  # checkmate::assert_integerish(pattern, lower = 0, upper = 1, null.ok = TRUE)
+  # checkmate::assert_integerish(pattern, any.missing = FALSE, null.ok = TRUE)
+  # checkmate::assert_matrix(allow, mode = "integerish", null.ok = TRUE)
+  # checkmate::assert_matrix(allow, any.missing = FALSE, null.ok = TRUE)
+  # checkmate::assert_matrix(allow, ncols = 2, null.ok = TRUE)
+  # Initialize matrix
+  z <- matrix(0L, nrow = n, ncol = n)
+  diag(z) <- 1L
+  # Default
+  if (is.null(pattern) & is.null(allow)) {
+    # Immediate neighbours only
+    for (i in seq_len(n - 1L)) {
+      z[i, i + 1L] <- 1L
+      z[i + 1L, i] <- 1L
+    }
+  }
+  # Add pattern
+  if (!is.null(pattern)) {
+    if (pattern) {
+      z <- matrix(1L, nrow = n, ncol = n)
+    } else {
+      for (i in seq_len(n - 1L)) {
+        z[i, i + 1L] <- 1L
+        z[i + 1L, i] <- 1L
+      }
+    }
+  }
+  # Allow indexes
+  if (!is.null(allow)) {
+    z[allow] <- 1L
+  }
+  # Disallow indexes
+  if (!is.null(disallow)) {
+    z[disallow] <- 0L
+  }
+  # Return
+  return(z)
+}
+
+#' Create MCMC Sample Summary
+#'
+#' @param x [tibble::tibble()] sample tibble (see [create_sample_tibble()])
+#' @param ci [numeric()] [vector()] of credible interval levels
+#'
+#' @return [tibble::tibble()]
+#' @export
+#'
+#' @importFrom magrittr `%>%`
+#' @importFrom rlang .data
+#'
+create_sample_summary <- function (x, ci = c(0.8, 0.95)) {
+
+  # Check arguments ------------------------------------------------------------
+
+
+  # Compute ci probs -----------------------------------------------------------
+
+  inner_lower <- (1 - ci[1]) / 2
+  inner_upper <- ci[1] + inner_lower
+  outer_lower <- (1 - ci[2]) / 2
+  outer_upper <- ci[2] + outer_lower
+
+  # Compute sample summary -----------------------------------------------------
+
+  s <- x %>%
+    dplyr::group_by(.data$parameter, .data$area, .data$step, .data$group) %>%
+    dplyr::mutate(
+      a_mean = mean(.data$value),
+      a_inner = stats::quantile(.data$value, probs = inner_lower),
+      b_inner = stats::quantile(.data$value, probs = inner_upper),
+      a_outer = stats::quantile(.data$value, probs = outer_lower),
+      b_outer = stats::quantile(.data$value, probs = outer_upper)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-.data$iteration, -.data$value) %>%
+    dplyr::distinct(
+      .data$parameter,
+      .data$area,
+      .data$step,
+      .data$group,
+      .keep_all = TRUE) %>%
+    tidyr::pivot_longer(
+      cols = .data$a_mean:.data$b_outer,
+      names_to = "type",
+      names_prefix = "..",
+      values_to = "value"
+    )
+
+  # Return summary -------------------------------------------------------------
+
+  return(s)
+}
+
+#' Create MCMC Sample Tibble
+#'
+#' @param fit [mmmfit()] object
+#' @param pars [character()] [vector()] parameter names (\code{p}, \code{h},
+#'   \code{phi}, and/or \code{sigma})
+#'
+#' @return [tibble::tibble()]
+#' @export
+#'
+create_sample_tibble <- function (fit, pars = c("p", "h", "phi")) {
+
+  # Check arguments ------------------------------------------------------------
+
+
+  # Extract samples ------------------------------------------------------------
+
+  # Movement rates
+  if (is.element("p", pars)) {
+    p_tbl <- rstan::extract(fit$samples)$p %>%
+      reshape2::melt(
+        varnames = c("iteration", "pa", "area", "step", "group")) %>%
+      tibble::as_tibble() %>%
+      dplyr::filter(.data$pa == .data$area) %>%
+      dplyr::mutate(parameter = "p") %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    p_tbl <- NULL
+  }
+
+  # Harvest rates
+  if (is.element("h", pars)) {
+    h_tbl <- rstan::extract(fit$samples)$h %>%
+      reshape2::melt(varnames = c("iteration", "group", "step", "area")) %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(parameter = "h") %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    h_tbl <- NULL
+  }
+
+  # Dispersion parameter
+  if (is.element("phi", pars)) {
+    phi_tbl <- rstan::extract(fit$samples)$phi %>%
+      reshape2::melt(varnames = c("iteration")) %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(
+        parameter = "phi",
+        area = 1,
+        group = 1,
+        step = 1) %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    phi_tbl <- NULL
+  }
+
+  # Random walk sigmas
+  if (is.element("sigma", pars)) {
+    sigma_tbl <- rstan::extract(fit$samples)$sigma %>%
+      reshape2::melt(varnames = c("iteration", "area")) %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(
+        parameter = "sigma",
+        group = 1,
+        step = 1) %>%
+      dplyr::select(
+        .data$parameter,
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration,
+        .data$value) %>%
+      dplyr::arrange(
+        .data$area,
+        .data$group,
+        .data$step,
+        .data$iteration)
+  } else {
+    sigma_tbl <- NULL
+  }
+
+  # Create tibble --------------------------------------------------------------
+
+  par_tbl <- dplyr::bind_rows(p_tbl, h_tbl, phi_tbl, sigma_tbl)
+
+  # Return tibble --------------------------------------------------------------
+
+  return(par_tbl)
+}
+
+#' Create Tag Areas
+#'
+#' @param x [atomic()] vector of area identifiers
+#' @param area_list [list()] of named vectors of area identifiers
+#'
+#' @return [integer()] vector
+#' @export
+#'
+#' @examples
+#'
+#' # Numeric area identifiers
+#' x <- c(1, 4, 2, 3, NA, 2, 7)
+#' a <- list(area_1 = 1:2, area_2 = 3:4)
+#' create_tag_areas(x, a)
+#'
+#' # Character area identifiers
+#' x <- c("A", "B", "B", NA, "A", "C", "B")
+#' a <- list(area_1 = "A", area_2 = "B")
+#' create_tag_areas(x, a)
+#'
+#' # Factor
+#' x <- factor(c("C", "A", "B", NA, "B", "D"))
+#' a <- list(area_1 = "A", area_2 = "B", area_3 = "C")
+#' create_tag_areas(x, a)
+#'
+create_tag_areas <- function (x, area_list) {
+  # Check arguments
+
+  # Create areas
+  s <- seq_along(area_list)
+  x <- data.frame(val = x)
+  y <- data.frame(val = unlist(area_list), ind = rep(s, lengths(area_list)))
+  # Return group vector
+  return(as.integer(dplyr::left_join(x, y, by = "val")$ind))
+}
+
 #' Create Tag Array
 #'
 #' @param x [data.frame()] tag release observation data. See details
@@ -146,95 +531,6 @@ create_tag_array <- function (x,
   return(a)
 }
 
-#' Create Tag Release Step
-#'
-#' @param release_date [character()] vector of release dates
-#' @param release_start [character()] release date start
-#' @param release_end [character()] release date end
-#' @param time_step [character()] one of \code{c("year", "quarter", "month")}
-#'
-#' @return [integer()] vector of tag release time steps
-#' @export
-#'
-#' @examples
-#'
-#' x <- c("2010-01-01", "2011-01-01", NA, "2020-12-31", "2021-01-01")
-#' d0 <- c("2011-01-01")
-#' d1 <- c("2020-12-31")
-#' create_tag_release_steps(x, d0, d1, "year")
-#' create_tag_release_steps(x, d0, d1, "quarter")
-#' create_tag_release_steps(x, d0, d1, "month")
-#'
-create_tag_release_steps <- function (release_date,
-                                      release_start,
-                                      release_end,
-                                      time_step) {
-  # Check arguments
-
-  # Convert to dates
-  release_date <- lubridate::as_date(release_date)
-  release_start <- lubridate::as_date(release_start)
-  release_end <- lubridate::as_date(release_end)
-  # Replace disallowed dates by NAs
-  release_date[which(release_date < release_start)] <- NA
-  release_date[which(release_date > release_end)] <- NA
-  # Define year and months
-  release_year <- lubridate::year(release_date)
-  release_month <- lubridate::month(release_date)
-  release_quart <- lubridate::quarter(release_date)
-  start_year <- lubridate::year(release_start)
-  start_quart <- lubridate::quarter(release_start)
-  start_month <- lubridate::month(release_start)
-  # Create time step
-  if (time_step == "year") {
-    s <- release_year - start_year + 1
-  } else if (time_step == "quarter") {
-    s <- 4 * (release_year - start_year) + (release_quart - start_quart) + 1
-  } else if (time_step == "month") {
-    s <- 12 * (release_year - start_year) + (release_month - start_month) + 1
-  } else {
-    stop("time_step must be 'year', 'quarter', or 'month'")
-  }
-  # Return release step
-  return(as.integer(s))
-}
-
-#' Create Tag Areas
-#'
-#' @param x [atomic()] vector of area identifiers
-#' @param area_list [list()] of named vectors of area identifiers
-#'
-#' @return [integer()] vector
-#' @export
-#'
-#' @examples
-#'
-#' # Numeric area identifiers
-#' x <- c(1, 4, 2, 3, NA, 2, 7)
-#' a <- list(area_1 = 1:2, area_2 = 3:4)
-#' create_tag_areas(x, a)
-#'
-#' # Character area identifiers
-#' x <- c("A", "B", "B", NA, "A", "C", "B")
-#' a <- list(area_1 = "A", area_2 = "B")
-#' create_tag_areas(x, a)
-#'
-#' # Factor
-#' x <- factor(c("C", "A", "B", NA, "B", "D"))
-#' a <- list(area_1 = "A", area_2 = "B", area_3 = "C")
-#' create_tag_areas(x, a)
-#'
-create_tag_areas <- function (x, area_list) {
-  # Check arguments
-
-  # Create areas
-  s <- seq_along(area_list)
-  x <- data.frame(val = x)
-  y <- data.frame(val = unlist(area_list), ind = rep(s, lengths(area_list)))
-  # Return group vector
-  return(as.integer(dplyr::left_join(x, y, by = "val")$ind))
-}
-
 #' Create Tag Groups
 #'
 #' @param x [atomic()] vector of values to be grouped
@@ -371,299 +667,55 @@ create_tag_liberty_steps <- function (release_date,
   return(as.integer(liberty_steps))
 }
 
-#' Create Beta Parameters
+#' Create Tag Release Step
 #'
-#' @param mu [numeric()] [array()] with \code{dim = c(Q, H, A)} giving the
-#'   harvest rate means
-#' @param sd [numeric()] shared standard deviation
+#' @param release_date [character()] vector of release dates
+#' @param release_start [character()] release date start
+#' @param release_end [character()] release date end
+#' @param time_step [character()] one of \code{c("year", "quarter", "month")}
 #'
-#' @return [list()] of two arrays
-#' @export
-#'
-#' @examples
-#' mu <- array(0.05, dim = c(2, 10, 3))
-#' l <- create_beta_parameters(mu, 0.001)
-#' hist(rbeta(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
-#'
-create_beta_parameters <- function (mu, sd) {
-  # Instantiate alpha and beta
-  alpha <- array(NA, dim = dim(mu))
-  beta <- array(NA, dim = dim(mu))
-  # Define constants
-  Q <- dim(mu)[1]
-  H <- dim(mu)[2]
-  A <- dim(mu)[3]
-  # Iterate over arrays
-  for (cg in seq_len(Q)) {
-    for (ct in seq_len(H)) {
-      for (ca in seq_len(A)) {
-        # Compute var
-        var <- sd * sd
-        # Check parameter condition
-        stopifnot(var < mu[cg, ct, ca] * (1 - mu[cg, ct, ca]))
-        # Compute parameters
-        nu <- (mu[cg, ct, ca] * (1 - mu[cg, ct, ca]) / var) - 1
-        alpha[cg, ct, ca] <- mu[cg, ct, ca] * nu
-        beta[cg, ct, ca] <- (1 - mu[cg, ct, ca]) * nu
-      }
-    }
-  }
-  # Return list
-  return(list(alpha = alpha, beta = beta))
-}
-
-#' Create Harvest Rate Step
-#'
-#' @param h_annual [numeric()] annual harvest rate
-#' @param y [integer()] number of time steps in one year
-#'
-#' @return [numeric()]
-#' @export
-#'
-#' @examples
-#' create_h_step(0.05, 1)
-#' create_h_step(0.05, 4)
-#'
-create_h_step <- function (h_annual, y) {
-  return(1 - (1 - h_annual)^(1/y))
-}
-
-#' Create Harvest Rate Annual
-#'
-#' @param h_step [numeric()] step harvest rate
-#' @param y [integer()] number of time steps in one year
-#'
-#' @return [numeric()]
-#' @export
-#'
-#' @examples
-#' create_h_annual(0.05, 1)
-#' create_h_annual(0.01274146, 4)
-#'
-create_h_annual <- function (h_step, y) {
-  return(1 - (1 - h_step)^(y))
-}
-
-
-#' Create Movement Index Matrix
-#'
-#' @param n [integer()] Number of areas.
-#' @param pattern [integer()] One of \code{1}: full movement, or \code{0}:
-#'   direct movement between numerically sequential neighbours only.
-#' @param allow [integer()] [matrix()] Each row indicates directional
-#'   movement between a pair of areas indexed from one.
-#' @param disallow [integer()] [matrix()] As for \code{allow}, but
-#'   specified movement is disallowed.
-#'
-#' @return A square binary matrix
+#' @return [integer()] vector of tag release time steps
 #' @export
 #'
 #' @examples
 #'
-#' # Neighbours (default)
-#' create_index(6)
+#' x <- c("2010-01-01", "2011-01-01", NA, "2020-12-31", "2021-01-01")
+#' d0 <- c("2011-01-01")
+#' d1 <- c("2020-12-31")
+#' create_tag_release_steps(x, d0, d1, "year")
+#' create_tag_release_steps(x, d0, d1, "quarter")
+#' create_tag_release_steps(x, d0, d1, "month")
 #'
-#' # Full movement
-#' create_index(6, 1)
-#'
-#' # Neighbours plus 1-6, 2-5, and 5-2, but not 6-1
-#' allow <- matrix(c(1,6,2,5,5,2), ncol = 2, byrow = TRUE)
-#' create_index(6, 0, allow)
-#'
-#' # Full minus 1-6
-#' disallow <- matrix(c(1,6), ncol = 2, byrow = TRUE)
-#' create_index(6, 1, disallow = disallow)
-#'
-create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
-
+create_tag_release_steps <- function (release_date,
+                                      release_start,
+                                      release_end,
+                                      time_step) {
   # Check arguments
-  # checkmate::assert_integerish(n, lower = 2, len = 1, any.missing = FALSE)
-  # checkmate::assert_integerish(pattern, len = 1, null.ok = TRUE)
-  # checkmate::assert_integerish(pattern, lower = 0, upper = 1, null.ok = TRUE)
-  # checkmate::assert_integerish(pattern, any.missing = FALSE, null.ok = TRUE)
-  # checkmate::assert_matrix(allow, mode = "integerish", null.ok = TRUE)
-  # checkmate::assert_matrix(allow, any.missing = FALSE, null.ok = TRUE)
-  # checkmate::assert_matrix(allow, ncols = 2, null.ok = TRUE)
-  # Initialize matrix
-  z <- matrix(0L, nrow = n, ncol = n)
-  diag(z) <- 1L
-  # Default
-  if (is.null(pattern) & is.null(allow)) {
-    # Immediate neighbours only
-    for (i in seq_len(n - 1L)) {
-      z[i, i + 1L] <- 1L
-      z[i + 1L, i] <- 1L
-    }
-  }
-  # Add pattern
-  if (!is.null(pattern)) {
-    if (pattern) {
-      z <- matrix(1L, nrow = n, ncol = n)
-    } else {
-      for (i in seq_len(n - 1L)) {
-        z[i, i + 1L] <- 1L
-        z[i + 1L, i] <- 1L
-      }
-    }
-  }
-  # Allow indexes
-  if (!is.null(allow)) {
-    z[allow] <- 1L
-  }
-  # Disallow indexes
-  if (!is.null(disallow)) {
-    z[disallow] <- 0L
-  }
-  # Return
-  return(z)
-}
 
-#' Create MCMC Sample Tibble
-#'
-#' @param fit [mmmfit()] object
-#' @param pars [character()] [vector()] parameter names (\code{p}, \code{h},
-#'   and/or \code{phi})
-#'
-#' @return [tibble::tibble()]
-#' @export
-#'
-create_sample_tibble <- function (fit, pars = c("p", "h", "phi")) {
-
-  # Check arguments ------------------------------------------------------------
-
-
-  # Extract samples ------------------------------------------------------------
-
-  # Movement rates
-  if (is.element("p", pars)) {
-    p_tbl <- rstan::extract(fit$samples)$p %>%
-      reshape2::melt(
-        varnames = c("iteration", "pa", "area", "step", "group")) %>%
-      tibble::as_tibble() %>%
-      dplyr::filter(.data$pa == .data$area) %>%
-      dplyr::mutate(parameter = "p") %>%
-      dplyr::select(
-        .data$parameter,
-        .data$area,
-        .data$group,
-        .data$step,
-        .data$iteration,
-        .data$value) %>%
-      dplyr::arrange(
-        .data$area,
-        .data$group,
-        .data$step,
-        .data$iteration)
+  # Convert to dates
+  release_date <- lubridate::as_date(release_date)
+  release_start <- lubridate::as_date(release_start)
+  release_end <- lubridate::as_date(release_end)
+  # Replace disallowed dates by NAs
+  release_date[which(release_date < release_start)] <- NA
+  release_date[which(release_date > release_end)] <- NA
+  # Define year and months
+  release_year <- lubridate::year(release_date)
+  release_month <- lubridate::month(release_date)
+  release_quart <- lubridate::quarter(release_date)
+  start_year <- lubridate::year(release_start)
+  start_quart <- lubridate::quarter(release_start)
+  start_month <- lubridate::month(release_start)
+  # Create time step
+  if (time_step == "year") {
+    s <- release_year - start_year + 1
+  } else if (time_step == "quarter") {
+    s <- 4 * (release_year - start_year) + (release_quart - start_quart) + 1
+  } else if (time_step == "month") {
+    s <- 12 * (release_year - start_year) + (release_month - start_month) + 1
   } else {
-    p_tbl <- NULL
+    stop("time_step must be 'year', 'quarter', or 'month'")
   }
-
-  # Harvest rates
-  if (is.element("h", pars)) {
-    h_tbl <- rstan::extract(fit$samples)$h %>%
-      reshape2::melt(varnames = c("iteration", "group", "step", "area")) %>%
-      tibble::as_tibble() %>%
-      dplyr::mutate(parameter = "h") %>%
-      dplyr::select(
-        .data$parameter,
-        .data$area,
-        .data$group,
-        .data$step,
-        .data$iteration,
-        .data$value) %>%
-      dplyr::arrange(
-        .data$area,
-        .data$group,
-        .data$step,
-        .data$iteration)
-  } else {
-    h_tbl <- NULL
-  }
-
-  # Dispersion parameter
-  if (is.element("phi", pars)) {
-    phi_tbl <- rstan::extract(fit$samples)$phi %>%
-      reshape2::melt(varnames = c("iteration")) %>%
-      tibble::as_tibble() %>%
-      dplyr::mutate(
-        parameter = "phi",
-        area = 1,
-        group = 1,
-        step = 1) %>%
-      dplyr::select(
-        .data$parameter,
-        .data$area,
-        .data$group,
-        .data$step,
-        .data$iteration,
-        .data$value) %>%
-      dplyr::arrange(
-        .data$area,
-        .data$group,
-        .data$step,
-        .data$iteration)
-  } else {
-    phi_tbl <- NULL
-  }
-
-  # Create tibble --------------------------------------------------------------
-
-  par_tbl <- dplyr::bind_rows(p_tbl, h_tbl, phi_tbl)
-
-  # Return tibble --------------------------------------------------------------
-
-  return(par_tbl)
-}
-
-#' Create MCMC Sample Summary
-#'
-#' @param x [tibble::tibble()] sample tibble (see [create_sample_tibble()])
-#' @param ci [numeric()] [vector()] of credible interval levels
-#'
-#' @return [tibble::tibble()]
-#'
-#' @importFrom magrittr `%>%`
-#' @importFrom rlang .data
-#'
-create_sample_summary <- function (x, ci = c(0.8, 0.95)) {
-
-  # Check arguments ------------------------------------------------------------
-
-
-  # Compute ci probs -----------------------------------------------------------
-
-  inner_lower <- (1 - ci[1]) / 2
-  inner_upper <- ci[1] + inner_lower
-  outer_lower <- (1 - ci[2]) / 2
-  outer_upper <- ci[2] + outer_lower
-
-  # Compute sample summary -----------------------------------------------------
-
-  s <- x %>%
-    dplyr::group_by(.data$parameter, .data$area, .data$step, .data$group) %>%
-    dplyr::mutate(
-      a_mean = mean(.data$value),
-      a_inner = stats::quantile(.data$value, probs = inner_lower),
-      b_inner = stats::quantile(.data$value, probs = inner_upper),
-      a_outer = stats::quantile(.data$value, probs = outer_lower),
-      b_outer = stats::quantile(.data$value, probs = outer_upper)
-    ) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(-.data$iteration, -.data$value) %>%
-    dplyr::distinct(
-      .data$parameter,
-      .data$area,
-      .data$step,
-      .data$group,
-      .keep_all = TRUE) %>%
-    tidyr::pivot_longer(
-      cols = .data$a_mean:.data$b_outer,
-      names_to = "type",
-      names_prefix = "..",
-      values_to = "value"
-    )
-
-  # Return summary -------------------------------------------------------------
-
-  return(s)
+  # Return release step
+  return(as.integer(s))
 }

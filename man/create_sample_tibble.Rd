@@ -10,7 +10,7 @@ create_sample_tibble(fit, pars = c("p", "h", "phi"))
 \item{fit}{\code{\link[=mmmfit]{mmmfit()}} object}
 
 \item{pars}{\code{\link[=character]{character()}} \code{\link[=vector]{vector()}} parameter names (\code{p}, \code{h},
-and/or \code{phi})}
+\code{phi}, and/or \code{sigma})}
 }
 \value{
 \code{\link[tibble:tibble]{tibble::tibble()}}
