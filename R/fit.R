@@ -13,6 +13,7 @@
 #'
 mmmfit <- function (data,
                     chains = 1,
+                    step_size = 0.1,
                     iter_warmup = 250,
                     iter_sampling = 750,
                     use_reduce_sum = FALSE,
@@ -40,7 +41,7 @@ mmmfit <- function (data,
   cmdfit <- mod$sample(
     data = data,
     chains = chains,
-    step_size = 0.1,
+    step_size = step_size,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     threads_per_chain = threads_per_chain,
