@@ -2,6 +2,7 @@
 #'
 #' @param data [list()]
 #' @param chains [integer()] number of chains
+#' @param step_size [numeric()] initial step size
 #' @param iter_warmup [integer()] number of warmup iterations
 #' @param iter_sampling [integer()] number of sampling iterations
 #' @param use_reduce_sum [logical()] use within chain parallel threading
