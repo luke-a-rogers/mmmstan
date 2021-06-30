@@ -7,6 +7,7 @@
 mmmfit(
   data,
   chains = 1,
+  step_size = 0.1,
   iter_warmup = 250,
   iter_sampling = 750,
   use_reduce_sum = FALSE,
@@ -18,6 +19,8 @@ mmmfit(
 \item{data}{\code{\link[=list]{list()}}}
 
 \item{chains}{\code{\link[=integer]{integer()}} number of chains}
+
+\item{step_size}{\code{\link[=numeric]{numeric()}} initial step size}
 
 \item{iter_warmup}{\code{\link[=integer]{integer()}} number of warmup iterations}
 

@@ -53,9 +53,12 @@ knitr::opts_chunk$set(
 <!-- # # Compute quarterly harvest rate -->
 <!-- # h_step <- create_h_step(0.05, 4) -->
 
-<!-- # Compute beta parameters -->
+<!-- # Compute h beta parameters -->
 <!-- mu <- array(0.05, dim = c(1, 1, 3)) # mu[Q, H, A] -->
 <!-- h_pars <- create_beta_parameters(mu = mu, sd = 0.001) -->
+
+<!-- # Compute phi gamma parameters -->
+<!-- phi_pars <- create_gamma_parameters(mu = 0.6, sd = 0.2) -->
 
 <!-- # Tag reporting array w[W, A] -->
 <!-- tag_reporting_array <- array(1, dim = c(1, 3)) -->
@@ -91,6 +94,8 @@ knitr::opts_chunk$set(
 <!--   rw = 0, -->
 <!--   h_alpha = h_pars$alpha, -->
 <!--   h_beta = h_pars$beta, -->
+<!--   phi_alpha = phi_pars$alpha, -->
+<!--   phi_beta = phi_pars$beta, -->
 <!--   sigma_alpha = numeric(0), -->
 <!--   sigma_beta = numeric(0), -->
 <!--   p_fudge = 1e-12, -->

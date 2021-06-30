@@ -37,6 +37,8 @@ data {
   // Prior parameters
   real<lower=0> h_alpha[Q, H, A];
   real<lower=0> h_beta[Q, H, A];
+  real<lower=0> phi_alpha[1];
+  real<lower=0> phi_beta[1];
   real<lower=0> sigma_alpha[(rw == 1 && P > 1) ? A : 0]; // dim A or 0
   real<lower=0> sigma_beta[(rw == 1 && P > 1) ? A : 0]; // dim A or 0
   // Fudge constants
@@ -75,7 +77,7 @@ parameters {
   // Random walk standard deviation
   real<lower=0> sigma[(rw == 1 && P > 1) ? A : 0]; // Conditional dim A or 0
   // Negative binomial dispersion var = mu + mu^2 / phi
-  real<lower=0.1,upper=10> phi;
+  real<lower=0> phi;
 }
 
 transformed parameters {
@@ -176,6 +178,9 @@ model {
       } // End for mg
     } // End for ma
   } // End for mt
+
+  // Dispersion prior
+  phi ~ gamma(phi_alpha, phi_beta);
 
   // Harvest rate priors
   for (cg in 1:Q) {
