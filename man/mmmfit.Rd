@@ -2,7 +2,7 @@
 % Please edit documentation in R/fit.R
 \name{mmmfit}
 \alias{mmmfit}
-\title{Fit Markov Movement Model via RStan}
+\title{Fit Markov Movement Model via CmdStanR}
 \usage{
 mmmfit(
   data,
@@ -36,5 +36,5 @@ mmmfit(
 \code{\link[=mmmfit]{mmmfit()}}
 }
 \description{
-Fit Markov Movement Model via RStan
+Fit Markov Movement Model via CmdStanR
 }

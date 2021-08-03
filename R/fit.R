@@ -65,11 +65,8 @@ mmmfit <- function (data,
 
   # Return mmmfit object -------------------------------------------------------
 
-  # structure(list(
-  #   data = data,
-  #   samples = samples,
-  #   cmdfit = cmdfit),
-  #   class = "mmmfit")
-
-  structure(samples, class = "mmmfit")
+  structure(list(
+    data = data,
+    samples = samples),
+    class = "mmmfit")
 }
