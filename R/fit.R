@@ -1,4 +1,4 @@
-#' Fit Markov Movement Model via RStan
+#' Fit Markov Movement Model via CmdStanR
 #'
 #' @param data [list()]
 #' @param chains [integer()] number of chains
@@ -65,9 +65,11 @@ mmmfit <- function (data,
 
   # Return mmmfit object -------------------------------------------------------
 
-  structure(list(
-    data = data,
-    samples = samples,
-    cmdfit = cmdfit),
-    class = "mmmfit")
+  # structure(list(
+  #   data = data,
+  #   samples = samples,
+  #   cmdfit = cmdfit),
+  #   class = "mmmfit")
+
+  structure(samples, class = "mmmfit")
 }
