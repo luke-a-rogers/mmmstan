@@ -48,25 +48,13 @@ mmmfit <- function (data,
     threads_per_chain = threads_per_chain,
     ...
   )
-  # Convert to stanfit
-  samples <- rstan::read_stan_csv(cmdfit$output_files())
-
-  # Fit the model --------------------------------------------------------------
-
-  # samples <- rstan::sampling(
-  #   object = stanmodels$mmm,
-  #   data = data,
-  #   iter = iter,
-  #   chains = chains,
-  #   warmup = warmup,
-  #   cores = parallel::detectCores(),
-  #   ...
-  # )
 
   # Return mmmfit object -------------------------------------------------------
 
   structure(list(
     data = data,
-    samples = samples),
+    output = cmdfit$output_files(),
+    summary = cmdfit$summary(),
+    parameters = summary_to_tibbles(cmdfit$summary())),
     class = "mmmfit")
 }

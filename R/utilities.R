@@ -719,3 +719,124 @@ create_tag_release_steps <- function (release_date,
   # Return release step
   return(as.integer(s))
 }
+
+#' Extract Indices From A Character String
+#'
+#' @param x [character()]
+#' @param index [numeric()]
+#'
+#' @return [numeric()] [vector()]
+#' @export
+#'
+#' @examples
+#' x <- c("h[1,1,1]", "h[1,1,2]")
+#' strings_to_indices(x)
+#' strings_to_indices(x, index = 3)
+#'
+#' x <- list("h[1,1,1]", "h[1,1,2]")
+#' strings_to_indices(x)
+#' strings_to_indices(x, index = 3)
+#'
+strings_to_indices <- function (x, index = NULL) {
+
+  # Check arguments
+  # index must be NULL or numeric length 1
+
+  if (is.null(index)) {
+    l <- list()
+    for (i in seq_along(x)) {
+      l[[i]] <- as.numeric(
+        strsplit(
+          stringr::str_extract_all(
+            x[[i]],
+            "(?<=\\[).+?(?=\\])"
+          )[[1]],
+          ","
+        )[[1]]
+      )
+    }
+  } else {
+    l <- list()
+    for (i in seq_along(x)) {
+      l[[i]] <- as.numeric(
+        strsplit(
+          stringr::str_extract_all(
+            x[[i]],
+            "(?<=\\[).+?(?=\\])"
+          )[[1]],
+          ","
+        )[[1]]
+      )[[index]]
+    }
+  }
+  return(l)
+}
+
+#' Convert Movement Model Summary To List Of Tibbles
+#'
+#' @param x [cmdstanr::summary()] from [mmmfit()] object
+#'
+#' @return [list()] of [tibble::tibble()]
+#' @export
+#'
+summary_to_tibbles <- function (x) {
+
+  # Movement probabilities
+  p <- x %>%
+    dplyr::filter(startsWith(.data$variable, "p[")) %>%
+    dplyr::mutate(
+      name = "p",
+      previous_area = as.numeric(strings_to_indices(.data$variable, 1L)),
+      current_area  = as.numeric(strings_to_indices(.data$variable, 2L)),
+      movement_time  = as.numeric(strings_to_indices(.data$variable, 3L)),
+      released_group = as.numeric(strings_to_indices(.data$variable, 4L))
+    ) %>%
+    dplyr::select(
+      .data$name,
+      .data$variable,
+      .data$previous_area,
+      .data$current_area,
+      .data$movement_time,
+      .data$released_group,
+      .data$mean:.data$ess_tail
+    )
+  # Harvest rates
+  h <- x %>%
+    dplyr::filter(startsWith(.data$variable, "h[")) %>%
+    dplyr::mutate(
+      name = "h",
+      harvest_group = as.numeric(strings_to_indices(.data$variable, 1L)),
+      harvest_time = as.numeric(strings_to_indices(.data$variable, 2L)),
+      current_area = as.numeric(strings_to_indices(.data$variable, 3L))
+    ) %>%
+    dplyr::select(
+      .data$name,
+      .data$variable,
+      .data$harvest_group,
+      .data$harvest_time,
+      .data$current_area,
+      .data$mean:.data$ess_tail
+    )
+  # Negative binomial dispersion parameter
+  phi <- x %>%
+    dplyr::filter(startsWith(.data$variable, "phi")) %>%
+    dplyr::mutate(name = "phi") %>%
+    dplyr::select(
+      .data$name,
+      .data$variable:.data$ess_tail
+    )
+  # Random walk standard deviation
+  sigma <- x %>%
+    dplyr::filter(startsWith(.data$variable, "sigma")) %>%
+    dplyr::mutate(
+      name = "sigma",
+      current_area = as.numeric(strings_to_indices(.data$variable, 1L)),
+    )
+  # Return list
+  return(list(
+    p = p,
+    h = h,
+    phi = phi,
+    sigma = sigma)
+  )
+}

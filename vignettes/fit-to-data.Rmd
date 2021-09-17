@@ -66,17 +66,15 @@ knitr::opts_chunk$set(
 <!-- # Define data -->
 <!-- data_list <- list( -->
 <!--   A = 3, -->
-<!--   G = 1, -->
-<!--   L = 12, # 160, -->
-<!--   T = 148, -->
-<!--   H = 1, # 40, # Number of harvest rate time steps -->
-<!--   # H = 148 + 12 - 1, # Number of harvest rate time steps -->
-<!--   # I = 160, # Number of study time steps L -->
-<!--   S = 148 + 12 - 1, # Number of study time steps (T + L - 1) -->
-<!--   P = 1, -->
-<!--   Q = 1, # Number of harvest rate groups -->
-<!--   W = 1, # Number of tag reporting rate time steps -->
-<!--   Y = 4, -->
+<!--   G_released = 1, -->
+<!--   G_harvest = 1, -->
+<!--   T_released = 148, -->
+<!--   T_liberty = 12, # 160, -->
+<!--   T_study = 148 + 12 - 1, # T_released + T_liberty - 1 -->
+<!--   T_movement = 1, -->
+<!--   T_harvest = 1, -->
+<!--   T_reporting = 1, -->
+<!--   T_year = 4, -->
 <!--   x = tag_array_quarter, -->
 <!--   w = tag_reporting_array, -->
 <!--   z = matrix(c(1, 1, 0, -->
@@ -85,12 +83,12 @@ knitr::opts_chunk$set(
 <!--   u = 0.9, -->
 <!--   v = 0.02, -->
 <!--   m = 0.1, -->
-<!--   h_index = rep(1, 159), #   rep(1:40, each = 4)[1:(160)], -->
-<!--   # h_index = c(1:(148 + 12 - 1)), -->
-<!--   p_index = rep(1, 159), -->
-<!--   # p_index = rep(1, 160), -->
-<!--   q_index = array(rep(1, 1), dim = c(1)), # Harvest rate group index -->
-<!--   w_index = rep(1, 159), # Reporting rate time step index -->
+<!--   p_time_index = rep(1, 159), -->
+<!--   # p_time_index = rep(1, 160), -->
+<!--   h_time_index = rep(1, 159), #   rep(1:40, each = 4)[1:(160)], -->
+<!--   # h_time_index = c(1:(148 + 12 - 1)), -->
+<!--   h_group_index = array(rep(1, 1), dim = c(1)), # Harvest rate group index -->
+<!--   w_time_index = rep(1, 159), # Reporting rate time step index -->
 <!--   rw = 0, -->
 <!--   h_alpha = h_pars$alpha, -->
 <!--   h_beta = h_pars$beta, -->
@@ -104,16 +102,5 @@ knitr::opts_chunk$set(
 
 <!-- # m1 <- mmmfit(data = data_list, threads_per_chain = 1) -->
 <!-- # m2 <- mmmfit(data = data_list, threads_per_chain = 8, use_reduce_sum = TRUE) -->
-<!-- # time_1 <- system.time(m1 <- mmmfit(data = data_list, threads_per_chain = 1)) -->
-<!-- # time_1 -->
-<!-- # time_8 <- system.time(m1 <- mmmfit(data = data_list, threads_per_chain = 8)) -->
-<!-- # time_8 -->
-
-<!-- # rstan::plot(m1$samples, pars = "p") -->
-<!-- # s1 <- shinystan::as.shinystan(m1$samples) -->
-<!-- # shinystan::launch_shinystan(s1) -->
-
-<!-- # s2 <- shinystan::as.shinystan(m2$samples) -->
-<!-- # shinystan::launch_shinystan(s2) -->
 
 <!-- ``` -->

@@ -4,77 +4,78 @@ real partial_sum_lpmf(
   int[] release_steps_slice,
   int start,
   int end,
-  int S,
   int A,
-  int G,
-  int L,
-  real u,
-  real phi,
-  real y_fudge,
-  int[] h_index,
-  int[] p_index,
-  int[] q_index,
-  int[] w_index,
+  int G_released,
+  int T_liberty,
+  int T_study,
+  int[,,,,] x,
   real[,] w,
+  real u,
+  int[] p_time_index,
+  int[] h_time_index,
+  int[] h_group_index,
+  int[] w_time_index,
+  real y_fudge,
   real[,,] f_step,
   real[,,] s_step,
   real[,,,] p_step,
-  int[,,,,] x
+  real phi
 ) {
   // Instantiate objects
   int N = end - start + 1; // Number of release steps for this slice
-  int obs_count[N] = create_obs_count(start, end, S, A, G, L, x);
-  int R = sum(obs_count);
+  int obs_count[N] =
+    create_obs_count(start, end, A, G_released, T_liberty, T_study, x);
+  int Y = sum(obs_count);
   int E = 0; // Number of realized steps at libery
   int y_ind = 1;
-  int y_obs[R];
-  real y_hat[R];
-  real n[N, A, G, L, A]; // Predicted abundance
+  int y_obs[Y];
+  real y_hat[Y];
+  real n[N, A, G_released, T_liberty, A]; // Predicted abundance
 
   // Initialize objects
-  n = rep_array(rep_array(0, L, A), N, A, G);
-  y_obs = rep_array(0, R);
-  y_hat = rep_array(0, R);
+  n = rep_array(rep_array(0, T_liberty, A), N, A, G_released);
+  y_obs = rep_array(0, Y);
+  y_hat = rep_array(0, Y);
 
 	// Populate initial abundances
-	for (mt in start:end) {
-	  for (ma in 1:A) {
-	    for (mg in 1:G) {
-	      n[mt - start + 1, ma, mg, 1, ma] = u * x[mt, ma, mg, 1, ma];
+	for (rt in start:end) {
+	  for (ra in 1:A) {
+	    for (rg in 1:G_released) {
+	      n[rt - start + 1, ra, rg, 1, ra] = u * x[rt, ra, rg, 1, ra];
 	    }
 	  }
 	}
 
   // Compute predicted recoveries
-  for (mt in start:end) {
-  	for (ma in 1:A) {
-	  	for (mg in 1:G) {
-	  	  if (x[mt, ma, mg, 1, ma] > 0) {
-			    E = min(L, S - mt);
-  				for (cl in 2:E) { // Populate abundance array n
+  for (rt in start:end) {
+  	for (ra in 1:A) {
+	  	for (rg in 1:G_released) {
+	  	  if (x[rt, ra, rg, 1, ra] > 0) {
+			    E = min(T_liberty, T_study - rt);
+  				for (lt in 2:E) { // Populate abundance array n
     				for (ca in 1:A) {
 	    		  	for (pa in 1:A) {
-		  		  	  n[mt - start + 1, ma, mg, cl, ca]
-		  		  	  += n[mt - start + 1, ma, mg, cl - 1, pa]
-	  				    * s_step[mg, mt + cl - 2, pa]
-		  				  * p_step[mg, p_index[mt + cl - 2], ca, pa];
+		  		  	  n[rt - start + 1, ra, rg, lt, ca]
+		  		  	  += n[rt - start + 1, ra, rg, lt - 1, pa]
+	  				    * s_step[rg, rt + lt - 2, pa]
+		  				  * p_step[rg, p_time_index[rt + lt - 2], ca, pa];
     				  } // End for pa
   				  } // End for ca
-  			  } // End for cl
-  				for (cl in 2:E) { // Compute recoveries and predicted recoveries
+  			  } // End for lt
+  				for (lt in 2:E) { // Compute recoveries and predicted recoveries
 				    for (ca in 1:A) {
-				      y_obs[y_ind] = x[mt, ma, mg, cl, ca];
-  						y_hat[y_ind] = n[mt - start + 1, ma, mg, cl, ca]
-  						* (1 - exp(-f_step[q_index[mg], h_index[mt + cl - 1], ca]))
-  						* w[w_index[mt + cl - 1], ca]
+				      y_obs[y_ind] = x[rt, ra, rg, lt, ca];
+  						y_hat[y_ind] = n[rt - start + 1, ra, rg, lt, ca]
+  						* (1 - exp(-f_step[h_group_index[rg], h_time_index[rt + lt - 1], ca]))
+  						* w[w_time_index[rt + lt - 1], ca]
   						+ y_fudge;
   						y_ind += 1;
-  					} // End for ra
-  				} // End for cl
+  					} // End for ca
+  				} // End for lt
 			  } // End if
-			} // End for mg
-		} // End for ma
-	} // End for mt
+			} // End for rg
+		} // End for ra
+	} // End for rt
 
   // Return partial sum
   // return poisson_lupmf(y_obs | y_hat);
