@@ -9,20 +9,20 @@ functions {
 data {
   // Index limits
   int<lower=2> A; // Number of release and recovery areas
-  int<lower=1> G; // Number of release groups
-  int<lower=2> L; // Maximum number of time steps at liberty
-  int<lower=1> T; // Number of release time steps
-  int<lower=1> H; // Number of harvest rate time steps
-  int<lower=2> S; // Number of study time steps L + (T - 1) or L + 1
-  int<lower=1> P; // Number of movement time steps
-  int<lower=1> Q; // Number of harvest rate groups
-  int<lower=1> W; // Number of tag reporting rate time steps
+  int<lower=1> G_released; // Number of release groups
+  int<lower=1> G_harvest; // Number of harvest rate groups
+  int<lower=1> T_released; // Number of release time steps
+  int<lower=2> T_liberty; // Maximum number of time steps at liberty
+  int<lower=2> T_study; // Number of study time steps T_liberty + (T_released - 1) or T_liberty + 1
+  int<lower=1> T_movement; // Number of movement time steps
+  int<lower=1> T_harvest; // Number of harvest rate time steps
+  int<lower=1> T_reporting; // Number of tag reporting rate time steps
   // Constants
-  int<lower=1> Y; // Number of time steps per year
+  int<lower=1> T_year; // Number of time steps per year
   // Tag data
-  int<lower=0> x[T, A, G, L, A]; // Tag array
+  int<lower=0> x[T_released, A, G_released, T_liberty, A]; // Tag array
   // Reporting rate
-  real<lower=0, upper=1> w[W, A]; // Tag reporting rate array
+  real<lower=0, upper=1> w[T_reporting, A]; // Tag reporting rate array
   // Movement index array
   int<lower=0, upper=1> z[A, A]; // Movement index array
   // Input rates
@@ -30,19 +30,19 @@ data {
   real<lower=0> v; // Tag loss rate
   real<lower=0> m; // Natural mortality rate
   // Index vectors
-  int<lower=1> h_index[S]; // Harvest rate time step index
-  int<lower=1> p_index[S]; // Movement rate time step index
-  int<lower=1> q_index[G]; // Harvest rate group index
-  int<lower=1> w_index[S]; // Reporting rate time step index
+  int<lower=1> p_time_index[T_study]; // Movement rate time step index
+  int<lower=1> h_time_index[T_study]; // Harvest rate time step index
+  int<lower=1> h_group_index[G_released]; // Harvest rate group index
+  int<lower=1> w_time_index[T_study]; // Reporting rate time step index
   // Option constants
   int<lower=0, upper=1> rw; // Include random walk on retention rates
   // Prior parameters
-  real<lower=0> h_alpha[Q, H, A];
-  real<lower=0> h_beta[Q, H, A];
+  real<lower=0> h_alpha[G_harvest, T_harvest, A];
+  real<lower=0> h_beta[G_harvest, T_harvest, A];
   real<lower=0> phi_alpha[1];
   real<lower=0> phi_beta[1];
-  real<lower=0> sigma_alpha[(rw == 1 && P > 1) ? A : 0]; // dim A or 0
-  real<lower=0> sigma_beta[(rw == 1 && P > 1) ? A : 0]; // dim A or 0
+  real<lower=0> sigma_alpha[(rw == 1 && T_movement > 1) ? A : 0]; // dim A or 0
+  real<lower=0> sigma_beta[(rw == 1 && T_movement > 1) ? A : 0]; // dim A or 0
   // Fudge constants
   real<lower=0> p_fudge;
   real<lower=0> y_fudge;
@@ -50,15 +50,16 @@ data {
 
 transformed data {
   // Initialize
-  int simplex_dimensions[6] = create_simplex_dimensions(P, A, G, z);
+  int simplex_dimensions[6] =
+    create_simplex_dimensions(A, G_released, T_movement, z);
   // Transformed indexes
-  real v_step = v / Y;
-  real m_step = m / Y;
+  real v_step = v / T_year;
+  real m_step = m / T_year;
 }
 
 parameters {
   // Harvest rate
-  real<lower=0, upper=1> h[Q, H, A];
+  real<lower=0, upper=1> h[G_harvest, T_harvest, A];
   // Movement simplexes
   simplex[1] s1[simplex_dimensions[1]]; // Not used
   simplex[2] s2[simplex_dimensions[2]];
@@ -67,7 +68,7 @@ parameters {
   simplex[5] s5[simplex_dimensions[5]];
   simplex[6] s6[simplex_dimensions[6]];
   // Random walk standard deviation
-  real<lower=0> sigma[(rw == 1 && P > 1) ? A : 0]; // Conditional dim A or 0
+  real<lower=0> sigma[(rw == 1 && T_movement > 1) ? A : 0]; // Conditional dim A or 0
   // Negative binomial dispersion var = mu + mu^2 / phi
   real<lower=0> phi;
 }
@@ -81,8 +82,8 @@ transformed parameters {
   real p5[simplex_dimensions[5], 5];
   real p6[simplex_dimensions[6], 6];
   // Initialize fishing mortality rates
-  real f[Q, H, A];
-  real f_step[Q, H, A];
+  real f[G_harvest, T_harvest, A];
+  real f_step[G_harvest, T_harvest, A];
   // Populate array version of movement simplexes
   for (i in 1:simplex_dimensions[1]) {for (j in 1:1) {p1[i, j] = s1[i, j]; } }
   for (i in 1:simplex_dimensions[2]) {for (j in 1:2) {p2[i, j] = s2[i, j]; } }
@@ -91,11 +92,11 @@ transformed parameters {
   for (i in 1:simplex_dimensions[5]) {for (j in 1:5) {p5[i, j] = s5[i, j]; } }
   for (i in 1:simplex_dimensions[6]) {for (j in 1:6) {p6[i, j] = s6[i, j]; } }
   // Populate fishing mortality rates
-  for (cg in 1:Q) {
-    for (ct in 1:H) {
+  for (hg in 1:G_harvest) {
+    for (ht in 1:T_harvest) {
       for (ca in 1:A) {
-        f[cg, ct, ca] = -log(1 - h[cg, ct, ca]);
-        f_step[cg, ct, ca] = f[cg, ct, ca] / Y;
+        f[hg, ht, ca] = -log(1 - h[hg, ht, ca]);
+        f_step[hg, ht, ca] = f[hg, ht, ca] / T_year;
       }
     }
   }
@@ -103,26 +104,32 @@ transformed parameters {
 
 model {
   // Initialize values
-  real p_step[G, P, A, A]; // [ , , ca, pa] Movement rates
-  real s_step[G, S, A]; // Survival rate
-  int release_steps[T];
+  real p_step[G_released, T_movement, A, A]; // [ , , ca, pa] Movement rates
+  real s_step[G_released, T_study, A]; // Survival rate
+  int release_steps[T_released];
   int grainsize = 1;
-  s_step = rep_array(0, G, S, A);
+  s_step = rep_array(0, G_released, T_study, A);
 
   // Create stepwise movement rates
-  p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+  p_step = create_p_step(
+    A,
+    G_released,
+    T_movement,
+    z,
+    p1, p2, p3, p4, p5, p6,
+    p_fudge);
 
   // Populate release steps
-  for (mt in 1:T) {
-    release_steps[mt] = mt;
+  for (rt in 1:T_released) {
+    release_steps[rt] = rt;
   }
 
   // Compute survival
-  for (mg in 1:G) {
-    for (ct in 1:S) {
+  for (rg in 1:G_released) {
+    for (ct in 1:T_study) {
       for (ca in 1:A) {
-        s_step[mg, ct, ca] = exp(
-          -f_step[q_index[mg], h_index[ct], ca]
+        s_step[rg, ct, ca] = exp(
+          -f_step[h_group_index[rg], h_time_index[ct], ca]
           - m_step
           - v_step);
       }
@@ -133,26 +140,26 @@ model {
   phi ~ gamma(phi_alpha, phi_beta);
 
   // Harvest rate priors
-  for (cg in 1:Q) {
-    for (ct in 1:H) {
+  for (hg in 1:G_harvest) {
+    for (ht in 1:T_harvest) {
       for (ca in 1:A) {
-        h[cg, ct, ca] ~ beta(h_alpha[cg, ct, ca], h_beta[cg, ct, ca]);
+        h[hg, ht, ca] ~ beta(h_alpha[hg, ht, ca], h_beta[hg, ht, ca]);
       }
     }
   }
 
   // Random walk priors
-  if (rw == 1 && P > 1) {
+  if (rw == 1 && T_movement > 1) {
     sigma ~ gamma(sigma_alpha, sigma_beta);
   }
 
   // Random walk on retention rates (self-movement rates)
-  if (rw == 1 && P > 1) {
-    for (mg in 1:G) {
-      for (ct in 2:P) {
+  if (rw == 1 && T_movement > 1) {
+    for (rg in 1:G_released) {
+      for (mt in 2:T_movement) {
         for (ca in 1:A) {
-          p_step[mg, ct, ca, ca] ~ normal(
-            p_step[mg, ct - 1, ca, ca],
+          p_step[rg, mt, ca, ca] ~ normal(
+            p_step[rg, mt - 1, ca, ca],
             sigma[ca]);
         }
       }
@@ -164,49 +171,55 @@ model {
     partial_sum_lupmf,
     release_steps,
     grainsize,
-    S,
     A,
-    G,
-    L,
-    u,
-    phi,
-    y_fudge,
-    h_index,
-    p_index,
-    q_index,
-    w_index,
+    G_released,
+    T_liberty,
+    T_study,
+    x,
     w,
+    u,
+    p_time_index,
+    h_time_index,
+    h_group_index,
+    w_time_index,
+    y_fudge,
     f_step,
     s_step,
     p_step,
-    x);
+    phi);
 }
 
 generated quantities {
   // Initialize
-  real p_step[G, P, A, A]; // Stepwise model version [ , , ca, pa]
-  matrix[A, A] p_step_matrix[G, P]; // Stepwise intermediary
-  matrix[A, A] p_matrix[G, P]; // Annual intermediary
-  real p[A, A, P, G]; // Annual user version [pa, ca, , ,]
+  real p_step[G_released, T_movement, A, A]; // Stepwise model version [ , , ca, pa]
+  matrix[A, A] p_step_matrix[G_released, T_movement]; // Stepwise intermediary
+  matrix[A, A] p_matrix[G_released, T_movement]; // Annual intermediary
+  real p[A, A, T_movement, G_released]; // Annual user version [pa, ca, , ,]
 
   // Create stepwise movement rates
-  p_step = create_p_step(p_fudge, P, A, G, p1, p2, p3, p4, p5, p6, z);
+  p_step = create_p_step(
+    A,
+    G_released,
+    T_movement,
+    z,
+    p1, p2, p3, p4, p5, p6,
+    p_fudge);
 
   // Populate annual movement rate array
-  for (mg in 1:G) {
-    for (ct in 1:P) {
+  for (rg in 1:G_released) {
+    for (mt in 1:T_movement) {
       // Populate p_matrix
       for (pa in 1:A) {
         for (ca in 1:A) {
-          p_step_matrix[mg, ct, pa, ca] = p_step[mg, ct, ca, pa];
+          p_step_matrix[rg, mt, pa, ca] = p_step[rg, mt, ca, pa];
         }
       }
       // Populate annual p_matrix
-      p_matrix[mg, ct] = matrix_power(p_step_matrix[mg, ct], Y);
+      p_matrix[rg, mt] = matrix_power(p_step_matrix[rg, mt], T_year);
       // Populate annual array p
       for (pa in 1:A) {
         for (ca in 1:A) {
-          p[pa, ca, ct, mg] = p_matrix[mg, ct, pa, ca];
+          p[pa, ca, mt, rg] = p_matrix[rg, mt, pa, ca];
         }
       }
     }
