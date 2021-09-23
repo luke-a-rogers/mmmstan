@@ -116,3 +116,159 @@ gamma_parameters <- function (mu = NULL,
   # Return list
   return(list(mu = mu, sigma = sigma, alpha = alpha, beta = beta))
 }
+
+#' Tag Arrays
+#'
+#' @param released [data.frame()] released tags. See details.
+#' @param recovered [data.frame()] recovered tags. See details.
+#' @param released_time_unit [character()] one of \code{year}, \code{quarter},
+#'   or \code{month}.
+#' @param released_time_max [numeric()] equivalent to \code{T_released}.
+#' @param liberty_time_max [numeric()] equivalent to \code{T_liberty}.
+#' @param liberty_days_min [numeric()] (not currently implemented).
+#' @param colname_released_date [character()] released date column name.
+#' @param colname_released_area [character()] released area column name.
+#' @param colname_group [character()] released group column name.
+#' @param colname_recovered_date [character()] recovered date column name.
+#' @param colname_recovered_area [character()] recovered area column name.
+#' @param colname_id [character()] tag identifier column name.
+#' @param area_list [list()] of named atomic vectors. See details.
+#' @param group_list [list()] of named atomic vectors. See details.
+#' @param released_date_start [character()] earliest released date.
+#' @param released_date_end [character()] latest released date.
+#'
+#' @details TBD
+#'
+#' @importFrom rlang .data
+#'
+#' @return [list()] of released and recovered [array()]s
+#' @export
+#'
+tag_arrays <- function (released,
+                        recovered,
+                        released_time_unit,
+                        released_time_max,
+                        liberty_time_max,
+                        liberty_days_min,
+                        colname_released_date,
+                        colname_released_area,
+                        colname_group,
+                        colname_recovered_date,
+                        colname_recovered_area,
+                        colname_id,
+                        area_list,
+                        group_list,
+                        released_date_start,
+                        released_date_end) {
+
+  # Check arguments ------------------------------------------------------------
+
+
+  # Released tibble ------------------------------------------------------------
+
+  xt <- released %>%
+    dplyr::rename(
+      released_date = .data[[colname_released_date]],
+      released_area = .data[[colname_released_area]],
+      group_raw = .data[[colname_group]],
+      id = .data[[colname_id]]
+    ) %>%
+    # TODO: filter disallowed values
+    dplyr::mutate(
+      rt = create_tag_release_steps(
+        .data$released_date,
+        released_date_start,
+        released_date_end,
+        released_time_unit
+      ),
+      ra = create_tag_areas(
+        .data$released_area,
+        area_list
+      ),
+      rg = create_tag_groups(
+        .data$group_raw,
+        group_list
+      )
+    ) %>%
+    dplyr::select(.data$rt, .data$ra, .data$rg) %>%
+    dplyr::group_by(.data$rt, .data$ra, .data$rg) %>%
+    dplyr::mutate(count = dplyr::n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::distinct(.keep_all = TRUE) %>%
+    dplyr::arrange(.data$rt, .data$ra, .data$rg) %>%
+    tidyr::drop_na()
+
+  # Recovered tibble -----------------------------------------------------------
+
+  yt <- recovered %>%
+    dplyr::rename(
+      released_date = .data[[colname_released_date]],
+      released_area = .data[[colname_released_area]],
+      group_raw = .data[[colname_group]],
+      recovered_date = .data[[colname_recovered_date]],
+      recovered_area = .data[[colname_recovered_area]],
+      id = .data[[colname_id]]
+    ) %>%
+    # TODO: filter disallowed values
+    dplyr::mutate(
+      rt = create_tag_release_steps(
+        .data$released_date,
+        released_date_start,
+        released_date_end,
+        released_time_unit
+      ),
+      ra = create_tag_areas(
+        .data$released_area,
+        area_list
+      ),
+      rg = create_tag_groups(
+        .data$group_raw,
+        group_list
+      ),
+      lt = create_tag_liberty_steps(
+        .data$released_date,
+        .data$recovered_date,
+        released_date_start,
+        released_date_end,
+        released_time_unit,
+        liberty_time_max
+      ),
+      ca = create_tag_areas(
+        .data$recovered_area,
+        area_list
+      )
+    ) %>%
+    dplyr::select(.data$rt, .data$ra, .data$rg, .data$lt, .data$ca) %>%
+    dplyr::group_by(.data$rt, .data$ra, .data$rg, .data$lt, .data$ca) %>%
+    dplyr::mutate(count = dplyr::n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::distinct(.keep_all = TRUE) %>%
+    dplyr::arrange(.data$rt, .data$ra, .data$rg, .data$lt, .data$ca) %>%
+    tidyr::drop_na()
+
+  # Compute array dimensions ---------------------------------------------------
+
+  nt <- released_time_max
+  na <- length(area_list)
+  ng <- length(group_list)
+  nl <- liberty_time_max
+
+  # Populate arrays ------------------------------------------------------------
+
+  # Initialize
+  x <- array(0, dim = c(nt, na, ng))
+  y <- array(0, dim = c(nt, na, ng, nl, na))
+
+  # Populate from xt
+  for (i in seq_len(nrow(xt))) {
+    x[xt$rt[i], xt$ra[i], xt$rg[i]] <- xt$count[i]
+  }
+  # Populate from yt
+  for (i in seq_len(nrow(yt))) {
+    y[yt$rt[i], yt$ra[i], yt$rg[i], yt$lt[i], yt$ca[i]] <- yt$count[i]
+  }
+
+  # Return tag array -----------------------------------------------------------
+
+  return(list(x = x, y = y))
+}

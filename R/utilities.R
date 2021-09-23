@@ -30,7 +30,7 @@ create_h_step <- function (h_annual, y) {
   return(1 - (1 - h_annual)^(1/y))
 }
 
-#' Create Movement Index Matrix
+#' Movement Index Matrix
 #'
 #' @param n [integer()] Number of areas.
 #' @param pattern [integer()] One of \code{1}: full movement, or \code{0}:
@@ -46,20 +46,20 @@ create_h_step <- function (h_annual, y) {
 #' @examples
 #'
 #' # Neighbours (default)
-#' create_index(6)
+#' movement_index(6)
 #'
 #' # Full movement
-#' create_index(6, 1)
+#' movement_index(6, 1)
 #'
 #' # Neighbours plus 1-6, 2-5, and 5-2, but not 6-1
 #' allow <- matrix(c(1,6,2,5,5,2), ncol = 2, byrow = TRUE)
-#' create_index(6, 0, allow)
+#' movement_index(6, 0, allow)
 #'
 #' # Full minus 1-6
 #' disallow <- matrix(c(1,6), ncol = 2, byrow = TRUE)
-#' create_index(6, 1, disallow = disallow)
+#' movement_index(6, 1, disallow = disallow)
 #'
-create_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
+movement_index <- function (n, pattern = NULL, allow = NULL, disallow = NULL) {
 
   # Check arguments
   # checkmate::assert_integerish(n, lower = 2, len = 1, any.missing = FALSE)
@@ -137,155 +137,6 @@ create_tag_areas <- function (x, area_list) {
   y <- data.frame(val = unlist(area_list), ind = rep(s, lengths(area_list)))
   # Return group vector
   return(as.integer(dplyr::left_join(x, y, by = "val")$ind))
-}
-
-#' Create Tag Array
-#'
-#' @param x [data.frame()] tag release observation data. See details
-#' @param y [data.frame()] tag recovery observation data. See details
-#' @param time_step [character()] desired time step for tag array. One of
-#'    \code{c("year", "quarter", "month")}
-#' @param max_steps_liberty [integer()] maximum time steps at liberty
-#' @param release_date_colname [character()] column name of the release date
-#'   in \code{x} and \code{y}
-#' @param release_area_colname [character()] column name of the release area
-#'   in \code{x} and \code{y}
-#' @param group_colname [character()] column name of the group indicator
-#'   in \code{x} and \code{y}
-#' @param recovery_date_colname [character()] column name of the recovery date
-#'   in \code{y}
-#' @param recovery_area_colname [character()] column name of the recovery area
-#'   in \code{y}
-#' @param id_colname [character()] column name of the tag identifier
-#'   in \code{x} and \code{y}
-#' @param area_list [list()] named atomic vectors. See details
-#' @param group_list [list()] named atomic vectors. See details
-#' @param release_date_start [character()] release start date
-#' @param release_date_end [character()] release end date
-#'
-#' @details TBD
-#'
-#' @importFrom magrittr `%>%`
-#' @importFrom rlang .data
-#'
-#' @return [array()] aggregated tag observation data.
-#' @export
-#'
-create_tag_array <- function (x,
-                              y,
-                              time_step,
-                              max_steps_liberty,
-                              release_date_colname,
-                              release_area_colname,
-                              group_colname,
-                              recovery_date_colname,
-                              recovery_area_colname,
-                              id_colname,
-                              area_list,
-                              group_list,
-                              release_date_start,
-                              release_date_end) {
-
-  # Check arguments ------------------------------------------------------------
-
-
-  # Rename release columns -----------------------------------------------------
-
-  colnames(x)[which(colnames(x) == release_date_colname)] <- "rel_date"
-  colnames(x)[which(colnames(x) == release_area_colname)] <- "rel_area"
-  colnames(x)[which(colnames(x) == group_colname)] <- "raw_group"
-  colnames(x)[which(colnames(x) == id_colname)] <- "id"
-
-  # Rename recovery columns ----------------------------------------------------
-
-  colnames(y)[which(colnames(y) == release_date_colname)] <- "rel_date"
-  colnames(y)[which(colnames(y) == release_area_colname)] <- "rel_area"
-  colnames(y)[which(colnames(y) == group_colname)] <- "raw_group"
-  colnames(y)[which(colnames(y) == recovery_date_colname)] <- "rec_date"
-  colnames(y)[which(colnames(y) == recovery_area_colname)] <- "rec_area"
-  colnames(y)[which(colnames(y) == id_colname)] <- "id"
-
-  # Filter disallowed release values -------------------------------------------
-  # TODO: filter disallowed values
-  x0 <- x
-
-  # Filter disallowed recovery values ------------------------------------------
-  # TODO: filter disallowed values
-
-  y0 <- y
-
-  # Aggregate release data -----------------------------------------------------
-
-  x1 <- x0 %>%
-    dplyr::mutate(
-      mt = create_tag_release_steps(
-        .data$rel_date,
-        release_date_start,
-        release_date_end,
-        time_step),
-      ma = create_tag_areas(.data$rel_area, area_list),
-      mg = create_tag_groups(.data$raw_group, group_list)) %>%
-    dplyr::select(.data$mt, .data$ma, .data$mg) %>%
-    dplyr::group_by(.data$mt, .data$ma, .data$mg) %>%
-    dplyr::mutate(count = dplyr::n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(.data$mt, .data$ma, .data$mg) %>%
-    tidyr::drop_na()
-
-  # Aggregate recovery data ----------------------------------------------------
-
-  y1 <- y0 %>%
-    dplyr::mutate(
-      mt = create_tag_release_steps(
-        .data$rel_date,
-        release_date_start,
-        release_date_end,
-        time_step),
-      ma = create_tag_areas(.data$rel_area, area_list),
-      mg = create_tag_groups(.data$raw_group, group_list),
-      cl = create_tag_liberty_steps(
-        .data$rel_date,
-        .data$rec_date,
-        release_date_start,
-        release_date_end,
-        time_step,
-        max_steps_liberty),
-      ca = create_tag_areas(.data$rec_area, area_list)) %>%
-    dplyr::select(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
-    dplyr::group_by(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
-    dplyr::mutate(count = dplyr::n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(.data$mt, .data$ma, .data$mg, .data$cl, .data$ca) %>%
-    tidyr::drop_na()
-
-  # Compute array dimensions ---------------------------------------------------
-
-  nt <- max(x1$mt, y1$mt, na.rm = TRUE)
-  na <- length(area_list)
-  ng <- length(group_list)
-  nl <- max_steps_liberty
-
-  # Populate array -------------------------------------------------------------
-
-  # Initialize
-  a1 <- array(0, dim = c(nt, na, ng))
-  a2 <- array(0, dim = c(nt, na, ng, nl, na))
-
-  # Populate from y1
-  for (i in seq_len(nrow(y1))) {
-    a2[y1$mt[i], y1$ma[i], y1$mg[i], y1$cl[i], y1$ca[i]] <- y1$count[i]
-  }
-
-  # Populate from x1
-  for (i in seq_len(nrow(x1))) {
-    a1[x1$mt[i], x1$ma[i], x1$mg[i]] <- x1$count[i]
-  }
-
-  # Return tag array -----------------------------------------------------------
-
-  return(list(x = a1, y = a2))
 }
 
 #' Create Tag Groups
@@ -532,11 +383,25 @@ strings_to_indices <- function (x, index = NULL) {
 #' Convert Movement Model Summary To List Of Tibbles
 #'
 #' @param x [cmdstanr::summary()] from [mmmfit()] object
+#' @param h_mean [numeric()] [array()] of harvest prior mean values
+#' @param h_sd [numeric()] [array()] of harvest prior standard deviations
+#' @param phi_mean [numeric()] dispersion prior mean value
+#' @param phi_sd [numeric()] dispersion prior standard deviation
+#' @param sigma_mean [numeric()] [vector()] of random walk standard deviation
+#'   prior mean values
+#' @param sigma_sd [numeric()] [vector()] of random walk standard deviation
+#'   prior standard deviations
 #'
 #' @return [list()] of [tibble::tibble()]
 #' @export
 #'
-summary_to_tibbles <- function (x) {
+summary_to_tibbles <- function (x,
+                                h_mean,
+                                h_sd,
+                                phi_mean,
+                                phi_sd,
+                                sigma_mean,
+                                sigma_sd) {
 
   # Movement probabilities
   p <- x %>%
@@ -546,7 +411,9 @@ summary_to_tibbles <- function (x) {
       previous_area = as.numeric(strings_to_indices(.data$variable, 1L)),
       current_area  = as.numeric(strings_to_indices(.data$variable, 2L)),
       movement_time  = as.numeric(strings_to_indices(.data$variable, 3L)),
-      released_group = as.numeric(strings_to_indices(.data$variable, 4L))
+      released_group = as.numeric(strings_to_indices(.data$variable, 4L)),
+      prior_lower = 0,
+      prior_upper = 1
     ) %>%
     dplyr::select(
       .data$name,
@@ -555,6 +422,8 @@ summary_to_tibbles <- function (x) {
       .data$current_area,
       .data$movement_time,
       .data$released_group,
+      .data$prior_lower,
+      .data$prior_upper,
       .data$mean:.data$ess_tail
     )
   # Harvest rates
@@ -564,7 +433,9 @@ summary_to_tibbles <- function (x) {
       name = "h",
       harvest_group = as.numeric(strings_to_indices(.data$variable, 1L)),
       harvest_time = as.numeric(strings_to_indices(.data$variable, 2L)),
-      current_area = as.numeric(strings_to_indices(.data$variable, 3L))
+      current_area = as.numeric(strings_to_indices(.data$variable, 3L)),
+      prior_mean = NA_real_,
+      prior_sd = NA_real_
     ) %>%
     dplyr::select(
       .data$name,
@@ -572,15 +443,35 @@ summary_to_tibbles <- function (x) {
       .data$harvest_group,
       .data$harvest_time,
       .data$current_area,
+      .data$prior_mean,
+      .data$prior_sd,
       .data$mean:.data$ess_tail
     )
+  for(i in seq_len(nrow(h))) {
+    h$prior_mean[i] <- h_mean[
+      h$harvest_group[i],
+      h$harvest_time[i],
+      h$current_area[i]]
+    h$prior_sd[i] <- h_sd[
+      h$harvest_group[i],
+      h$harvest_time[i],
+      h$current_area[i]]
+  }
+
   # Negative binomial dispersion parameter
   phi <- x %>%
     dplyr::filter(startsWith(.data$variable, "phi")) %>%
-    dplyr::mutate(name = "phi") %>%
+    dplyr::mutate(
+      name = "phi",
+      prior_mean = phi_mean,
+      prior_sd = phi_sd
+    ) %>%
     dplyr::select(
       .data$name,
-      .data$variable:.data$ess_tail
+      .data$variable,
+      .data$prior_mean,
+      .data$prior_sd,
+      .data$mean:.data$ess_tail
     )
   # Random walk standard deviation
   sigma <- x %>%
@@ -588,7 +479,28 @@ summary_to_tibbles <- function (x) {
     dplyr::mutate(
       name = "sigma",
       current_area = as.numeric(strings_to_indices(.data$variable, 1L)),
+      prior_mean = NA_real_,
+      prior_sd = NA_real_
+    ) %>%
+    dplyr::select(
+      .data$name,
+      .data$variable,
+      .data$current_area,
+      .data$prior_mean,
+      .data$prior_sd,
+      .data$mean:.data$ess_tail
     )
+  for(i in seq_len(nrow(sigma))) {
+    sigma$prior_mean[i] <- sigma_mean[
+      sigma$harvest_group[i],
+      sigma$harvest_time[i],
+      sigma$current_area[i]]
+    sigma$prior_sd[i] <- sigma_sd[
+      sigma$harvest_group[i],
+      sigma$harvest_time[i],
+      sigma$current_area[i]]
+  }
+
   # Return list
   return(list(
     p = p,

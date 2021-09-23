@@ -30,7 +30,27 @@ knitr::opts_chunk$set(
 <!-- ```{r prepare-data} -->
 
 <!-- # Quarterly -->
-<!-- tags <- create_tag_array( -->
+<!-- tags <- tag_arrays( -->
+<!--   released = sable_released, -->
+<!--   recovered = sable_recovered, -->
+<!--   released_time_unit = "quarter", -->
+<!--   released_time_max = 148, -->
+<!--   liberty_time_max = 12, -->
+<!--   liberty_days_min = 30, # Not implemented -->
+<!--   colname_released_date = "Release_Date", -->
+<!--   colname_released_area = "Release_Region", -->
+<!--   colname_group = "Release_Size", -->
+<!--   colname_recovered_date = "Recovery_Date", -->
+<!--   colname_recovered_area = "Recovery_Region", -->
+<!--   colname_id = "Tag_ID", -->
+<!--   area_list = list(ak = 1, bc = 2, cc = 3), -->
+<!--   group_list = list(pooled = 400:799), -->
+<!--   released_date_start = "1979-01-01", -->
+<!--   released_date_end = "2015-12-31" -->
+<!-- ) -->
+
+<!-- # Quarterly -->
+<!-- tags2 <- create_tag_array( -->
 <!--   x = sable_released, -->
 <!--   y = sable_recovered, -->
 <!--   time_step = "quarter", -->
