@@ -8,7 +8,8 @@ real partial_sum_lpmf(
   int G_released,
   int T_liberty,
   int T_study,
-  int[,,,,] x,
+  int[,,] x,
+  int[,,,,] y,
   real[,] w,
   real u,
   int[] p_time_index,
@@ -16,16 +17,15 @@ real partial_sum_lpmf(
   int[] h_group_index,
   int[] w_time_index,
   real y_fudge,
-  real[,,] f_step,
-  real[,,] s_step,
-  real[,,,] p_step,
+  real[,,] fs,
+  real[,,] ss,
+  real[,,,] ps,
   real phi
 ) {
   // Instantiate objects
   int N = end - start + 1; // Number of release steps for this slice
-  int obs_count[N] =
-    create_obs_count(start, end, A, G_released, T_liberty, T_study, x);
-  int Y = sum(obs_count);
+  int obs[N] = obs_count(start, end, A, G_released, T_liberty, T_study, x);
+  int Y = sum(obs);
   int E = 0; // Number of realized steps at libery
   int y_ind = 1;
   int y_obs[Y];
@@ -41,7 +41,7 @@ real partial_sum_lpmf(
 	for (rt in start:end) {
 	  for (ra in 1:A) {
 	    for (rg in 1:G_released) {
-	      n[rt - start + 1, ra, rg, 1, ra] = u * x[rt, ra, rg, 1, ra];
+	      n[rt - start + 1, ra, rg, 1, ra] = u * x[rt, ra, rg];
 	    }
 	  }
 	}
@@ -50,23 +50,23 @@ real partial_sum_lpmf(
   for (rt in start:end) {
   	for (ra in 1:A) {
 	  	for (rg in 1:G_released) {
-	  	  if (x[rt, ra, rg, 1, ra] > 0) {
+	  	  if (x[rt, ra, rg] > 0) {
 			    E = min(T_liberty, T_study - rt);
   				for (lt in 2:E) { // Populate abundance array n
     				for (ca in 1:A) {
 	    		  	for (pa in 1:A) {
 		  		  	  n[rt - start + 1, ra, rg, lt, ca]
 		  		  	  += n[rt - start + 1, ra, rg, lt - 1, pa]
-	  				    * s_step[rg, rt + lt - 2, pa]
-		  				  * p_step[rg, p_time_index[rt + lt - 2], ca, pa];
+	  				    * ss[rg, rt + lt - 2, pa]
+		  				  * ps[rg, p_time_index[rt + lt - 2], ca, pa];
     				  } // End for pa
   				  } // End for ca
   			  } // End for lt
   				for (lt in 2:E) { // Compute recoveries and predicted recoveries
 				    for (ca in 1:A) {
-				      y_obs[y_ind] = x[rt, ra, rg, lt, ca];
+				      y_obs[y_ind] = y[rt, ra, rg, lt, ca];
   						y_hat[y_ind] = n[rt - start + 1, ra, rg, lt, ca]
-  						* (1 - exp(-f_step[h_group_index[rg], h_time_index[rt + lt - 1], ca]))
+  						* (1 - exp(-fs[h_group_index[rg], h_time_index[rt + lt - 1], ca]))
   						* w[w_time_index[rt + lt - 1], ca]
   						+ y_fudge;
   						y_ind += 1;
