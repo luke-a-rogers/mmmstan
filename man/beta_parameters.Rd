@@ -4,12 +4,12 @@
 \alias{beta_parameters}
 \title{Beta Distribution Parameters}
 \usage{
-beta_parameters(mu = NULL, sd = NULL, alpha = NULL, beta = NULL)
+beta_parameters(mu = NULL, sigma = NULL, alpha = NULL, beta = NULL)
 }
 \arguments{
 \item{mu}{\code{\link[=numeric]{numeric()}} mean values}
 
-\item{sd}{\code{\link[=numeric]{numeric()}} standard deviations}
+\item{sigma}{\code{\link[=numeric]{numeric()}} standard deviations}
 
 \item{alpha}{\code{\link[=numeric]{numeric()}} alpha parameters}
 

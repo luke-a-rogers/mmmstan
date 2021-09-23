@@ -5,7 +5,7 @@
 #' parameters.
 #'
 #' @param mu [numeric()] mean values
-#' @param sd [numeric()] standard deviations
+#' @param sigma [numeric()] standard deviations
 #' @param alpha [numeric()] alpha parameters
 #' @param beta [numeric()] beta parameters
 #'
@@ -24,30 +24,30 @@
 #' hist(rbeta(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
 #'
 beta_parameters <- function(mu = NULL,
-                            sd = NULL,
+                            sigma = NULL,
                             alpha = NULL,
                             beta = NULL) {
 
   # Check arguments
   checkmate::assert_numeric(mu, lower = 0, upper = 1, null.ok = TRUE)
-  checkmate::assert_numeric(sd, lower = 0, finite = TRUE, null.ok = TRUE)
+  checkmate::assert_numeric(sigma, lower = 0, finite = TRUE, null.ok = TRUE)
   checkmate::assert_numeric(alpha, lower = 0, finite = TRUE, null.ok = TRUE)
   checkmate::assert_numeric(beta, lower = 0, finite = TRUE, null.ok = TRUE)
 
   # Compute parameters
-  if ((is.null(mu) | is.null(sd)) & (is.null(alpha) | is.null(beta))) {
+  if ((is.null(mu) | is.null(sigma)) & (is.null(alpha) | is.null(beta))) {
     mu <- NULL
-    sd <- NULL
+    sigma <- NULL
     alpha <- NULL
     beta <- NULL
-  } else if (!is.null(mu) & !is.null(sd)) {
+  } else if (!is.null(mu) & !is.null(sigma)) {
     # Handle scalar mu
     if (is.null(dim(mu))) dim(mu) <- 1
     # Compute variance
-    var <- sd * sd
+    var <- sigma * sigma
     # Check parameter condition
     if (!all(var < (mu * (1 - mu)))) {
-      stop("all((sd * sd) < (mu * (1 - mu))) must be true")
+      stop("all((sigma * sigma) < (mu * (1 - mu))) must be true")
     }
     # Compute parameters
     nu <- (mu * (1 - mu) / var) - 1
@@ -55,10 +55,10 @@ beta_parameters <- function(mu = NULL,
     beta <- (1 - mu) * nu
   } else if (!is.null(alpha) & !is.null(beta)) {
     mu <- alpha / (alpha + beta)
-    sd <- sqrt(alpha * beta / ((alpha + beta)^2 * (alpha + beta + 1)))
+    sigma <- sqrt(alpha * beta / ((alpha + beta)^2 * (alpha + beta + 1)))
   }
   # Return list
-  return(list(mu = mu, sd = sd, alpha = alpha, beta = beta))
+  return(list(mu = mu, sigma = sigma, alpha = alpha, beta = beta))
 }
 
 #' Gamma Distribution Parameters
@@ -68,7 +68,7 @@ beta_parameters <- function(mu = NULL,
 #' parameters.
 #'
 #' @param mu [numeric()] mean values
-#' @param sd [numeric()] standard deviations
+#' @param sigma [numeric()] standard deviations
 #' @param alpha [numeric()] alpha parameters
 #' @param beta [numeric()] beta parameters
 #'
@@ -87,32 +87,32 @@ beta_parameters <- function(mu = NULL,
 #' hist(rgamma(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
 #'
 gamma_parameters <- function (mu = NULL,
-                              sd = NULL,
+                              sigma = NULL,
                               alpha = NULL,
                               beta = NULL) {
 
   # Check arguments
   checkmate::assert_numeric(mu, lower = 0, upper = 1, null.ok = TRUE)
-  checkmate::assert_numeric(sd, lower = 0, finite = TRUE, null.ok = TRUE)
+  checkmate::assert_numeric(sigma, lower = 0, finite = TRUE, null.ok = TRUE)
   checkmate::assert_numeric(alpha, lower = 0, finite = TRUE, null.ok = TRUE)
   checkmate::assert_numeric(beta, lower = 0, finite = TRUE, null.ok = TRUE)
 
   # Compute parameters
-  if ((is.null(mu) | is.null(sd)) & (is.null(alpha) | is.null(beta))) {
+  if ((is.null(mu) | is.null(sigma)) & (is.null(alpha) | is.null(beta))) {
     mu <- NULL
-    sd <- NULL
+    sigma <- NULL
     alpha <- NULL
     beta <- NULL
-  } else if (!is.null(mu) & !is.null(sd)) {
+  } else if (!is.null(mu) & !is.null(sigma)) {
     # Handle scalar mu
     if (is.null(dim(mu))) dim(mu) <- 1
     # Compute parameters
-    alpha <- mu^2 / sd^2
-    beta <- mu / sd^2
+    alpha <- mu^2 / sigma^2
+    beta <- mu / sigma^2
   } else if (!is.null(alpha) & !is.null(beta)) {
     mu <- alpha / beta
-    sd <- sqrt(alpha/beta^2)
+    sigma <- sqrt(alpha/beta^2)
   }
   # Return list
-  return(list(mu = mu, sd = sd, alpha = alpha, beta = beta))
+  return(list(mu = mu, sigma = sigma, alpha = alpha, beta = beta))
 }
