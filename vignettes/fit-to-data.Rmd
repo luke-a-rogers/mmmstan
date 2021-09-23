@@ -49,24 +49,6 @@ knitr::opts_chunk$set(
 <!--   released_date_end = "2015-12-31" -->
 <!-- ) -->
 
-<!-- # Quarterly -->
-<!-- tags2 <- create_tag_array( -->
-<!--   x = sable_released, -->
-<!--   y = sable_recovered, -->
-<!--   time_step = "quarter", -->
-<!--   max_steps_liberty = 12, # 160, # 12 -->
-<!--   release_date_colname = "Release_Date", -->
-<!--   release_area_colname = "Release_Region", -->
-<!--   group_colname = "Release_Size", -->
-<!--   recovery_date_colname = "Recovery_Date", -->
-<!--   recovery_area_colname = "Recovery_Region", -->
-<!--   id_colname = "Tag_ID", -->
-<!--   area_list = list(ak = 1, bc = 2, wc = 3), -->
-<!--   group_list = list(pooled = 400:799), -->
-<!--   release_date_start = "1979-01-01", -->
-<!--   release_date_end = "2015-12-31") -->
-
-
 <!-- ``` -->
 
 <!-- # Quarterly fit three F -->
