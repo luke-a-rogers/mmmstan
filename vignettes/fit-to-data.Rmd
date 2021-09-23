@@ -30,7 +30,7 @@ knitr::opts_chunk$set(
 <!-- ```{r prepare-data} -->
 
 <!-- # Quarterly -->
-<!-- tag_array_quarter <- create_tag_array( -->
+<!-- tags <- create_tag_array( -->
 <!--   x = sable_released, -->
 <!--   y = sable_recovered, -->
 <!--   time_step = "quarter", -->
@@ -46,23 +46,11 @@ knitr::opts_chunk$set(
 <!--   release_date_start = "1979-01-01", -->
 <!--   release_date_end = "2015-12-31") -->
 
+
 <!-- ``` -->
 
 <!-- # Quarterly fit three F -->
 <!-- ```{r quarterly-fit-three-f} -->
-<!-- # # Compute quarterly harvest rate -->
-<!-- # h_step <- create_h_step(0.05, 4) -->
-
-<!-- # Compute h beta parameters -->
-<!-- mu <- array(0.05, dim = c(1, 1, 3)) # mu[Q, H, A] -->
-<!-- h_pars <- create_beta_parameters(mu = mu, sd = 0.001) -->
-
-<!-- # Compute phi gamma parameters -->
-<!-- phi_pars <- create_gamma_parameters(mu = 0.6, sd = 0.2) -->
-
-<!-- # Tag reporting array w[W, A] -->
-<!-- tag_reporting_array <- array(1, dim = c(1, 3)) -->
-
 <!-- # Define data -->
 <!-- data_list <- list( -->
 <!--   A = 3, -->
@@ -75,8 +63,9 @@ knitr::opts_chunk$set(
 <!--   T_harvest = 1, -->
 <!--   T_reporting = 1, -->
 <!--   T_year = 4, -->
-<!--   x = tag_array_quarter, -->
-<!--   w = tag_reporting_array, -->
+<!--   x = tags$x, -->
+<!--   y = tags$y, -->
+<!--   w = array(1, dim = c(1, 3)), -->
 <!--   z = matrix(c(1, 1, 0, -->
 <!--                1, 1, 1, -->
 <!--                0, 1, 1), nrow = 3, byrow = TRUE), -->
@@ -89,13 +78,13 @@ knitr::opts_chunk$set(
 <!--   # h_time_index = c(1:(148 + 12 - 1)), -->
 <!--   h_group_index = array(rep(1, 1), dim = c(1)), # Harvest rate group index -->
 <!--   w_time_index = rep(1, 159), # Reporting rate time step index -->
-<!--   rw = 0, -->
-<!--   h_alpha = h_pars$alpha, -->
-<!--   h_beta = h_pars$beta, -->
-<!--   phi_alpha = phi_pars$alpha, -->
-<!--   phi_beta = phi_pars$beta, -->
-<!--   sigma_alpha = numeric(0), -->
-<!--   sigma_beta = numeric(0), -->
+<!--   random_walk = 0, -->
+<!--   h_prior_mean = array(0.05, dim = c(1, 1, 3)), -->
+<!--   h_prior_sd = array(0.001, dim = c(1, 1, 3)), -->
+<!--   phi_prior_mean = 0.6, -->
+<!--   phi_prior_sd = 0.2, -->
+<!--   sigma_prior_mean = numeric(0), -->
+<!--   sigma_prior_sd = numeric(0), -->
 <!--   p_fudge = 1e-12, -->
 <!--   y_fudge = 1e-12 -->
 <!-- ) -->

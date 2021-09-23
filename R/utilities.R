@@ -1,71 +1,3 @@
-#' Create Beta Parameters
-#'
-#' @param mu [numeric()] [array()] giving the mean(s). For harvest rates use
-#'   an array with \code{dim = c(Q, H, A)} giving the harvest rate means.
-#' @param sd [numeric()] shared standard deviation
-#'
-#' @return [list()] of two arrays
-#' @export
-#'
-#' @examples
-#' # Scalar mu
-#' mu <- 0.05
-#' l <- create_beta_parameters(mu, 0.01)
-#' hist(rbeta(10000, l$alpha, l$beta), breaks = 100)
-#'
-#' # Array mu
-#' mu <- array(0.05, dim = c(2, 10, 3))
-#' l <- create_beta_parameters(mu, 0.001)
-#' hist(rbeta(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
-#'
-create_beta_parameters <- function (mu, sd) {
-  # Check arguments
-
-  # Handle scalar mu
-  if (is.null(dim(mu))) dim(mu) <- 1
-  # Compute variance
-  v <- sd * sd
-  # Check parameter condition
-  stopifnot(all(v < mu * (1 - mu)))
-  # Compute parameters
-  nu <- (mu * (1 - mu) / v) - 1
-  alpha <- mu * nu
-  beta <- (1 - mu) * nu
-  # Return list
-  return(list(alpha = alpha, beta = beta))
-}
-
-#' Create Gamma Parameters
-#'
-#' @param mu [numeric()] [array()] giving the mean(s).
-#' @param sd [numeric()] shared standard deviation.
-#'
-#' @return [list()] of two arrays
-#' @export
-#'
-#' @examples
-#' # Scalar mu
-#' mu <- 0.05
-#' l <- create_gamma_parameters(mu, 0.01)
-#' hist(rgamma(10000, l$alpha, l$beta), breaks = 100)
-#'
-#' # Array mu
-#' mu <- array(0.05, dim = c(2, 10, 3))
-#' l <- create_gamma_parameters(mu, 0.001)
-#' hist(rgamma(10000, l$alpha[1,1,1], l$beta[1,1,1]), breaks = 100)
-#'
-create_gamma_parameters <- function (mu, sd) {
-  # Check arguments
-
-  # Handle scalar mu
-  if (is.null(dim(mu))) dim(mu) <- 1
-  # Compute parameters
-  alpha <- mu^2 / sd^2
-  beta <- mu / sd^2
-  # Return list
-  return(list(alpha = alpha, beta = beta))
-}
-
 #' Create Harvest Rate Annual
 #'
 #' @param h_step [numeric()] step harvest rate
@@ -338,21 +270,22 @@ create_tag_array <- function (x,
   # Populate array -------------------------------------------------------------
 
   # Initialize
-  a <- array(0, dim = c(nt, na, ng, nl, na))
+  a1 <- array(0, dim = c(nt, na, ng))
+  a2 <- array(0, dim = c(nt, na, ng, nl, na))
 
   # Populate from y1
   for (i in seq_len(nrow(y1))) {
-    a[y1$mt[i], y1$ma[i], y1$mg[i], y1$cl[i], y1$ca[i]] <- y1$count[i]
+    a2[y1$mt[i], y1$ma[i], y1$mg[i], y1$cl[i], y1$ca[i]] <- y1$count[i]
   }
 
   # Populate from x1
   for (i in seq_len(nrow(x1))) {
-    a[x1$mt[i], x1$ma[i], x1$mg[i], 1, x1$ma[i]] <- x1$count[i]
+    a1[x1$mt[i], x1$ma[i], x1$mg[i]] <- x1$count[i]
   }
 
   # Return tag array -----------------------------------------------------------
 
-  return(a)
+  return(list(x = a1, y = a2))
 }
 
 #' Create Tag Groups
