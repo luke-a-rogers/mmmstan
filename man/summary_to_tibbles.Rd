@@ -4,10 +4,24 @@
 \alias{summary_to_tibbles}
 \title{Convert Movement Model Summary To List Of Tibbles}
 \usage{
-summary_to_tibbles(x)
+summary_to_tibbles(x, h_mean, h_sd, phi_mean, phi_sd, sigma_mean, sigma_sd)
 }
 \arguments{
 \item{x}{\code{\link[cmdstanr:fit-method-summary]{cmdstanr::summary()}} from \code{\link[=mmmfit]{mmmfit()}} object}
+
+\item{h_mean}{\code{\link[=numeric]{numeric()}} \code{\link[=array]{array()}} of harvest prior mean values}
+
+\item{h_sd}{\code{\link[=numeric]{numeric()}} \code{\link[=array]{array()}} of harvest prior standard deviations}
+
+\item{phi_mean}{\code{\link[=numeric]{numeric()}} dispersion prior mean value}
+
+\item{phi_sd}{\code{\link[=numeric]{numeric()}} dispersion prior standard deviation}
+
+\item{sigma_mean}{\code{\link[=numeric]{numeric()}} \code{\link[=vector]{vector()}} of random walk standard deviation
+prior mean values}
+
+\item{sigma_sd}{\code{\link[=numeric]{numeric()}} \code{\link[=vector]{vector()}} of random walk standard deviation
+prior standard deviations}
 }
 \value{
 \code{\link[=list]{list()}} of \code{\link[tibble:tibble]{tibble::tibble()}}

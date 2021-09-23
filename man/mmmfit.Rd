@@ -16,7 +16,7 @@ mmmfit(
 )
 }
 \arguments{
-\item{data}{\code{\link[=list]{list()}}}
+\item{data}{\code{\link[=list]{list()}} See details}
 
 \item{chains}{\code{\link[=integer]{integer()}} number of chains}
 
@@ -37,4 +37,7 @@ mmmfit(
 }
 \description{
 Fit Markov Movement Model via CmdStanR
+}
+\details{
+TBD
 }
