@@ -18,31 +18,23 @@ knitr::opts_chunk$set(
 <!-- library(mmmstan) -->
 <!-- ``` -->
 
-<!-- # Load Data -->
-<!-- ```{r load-data} -->
-<!-- # Use observational data -->
-<!-- load("~/github/sablefishData/data/sable_released.rda") -->
-<!-- load("~/github/sablefishData/data/sable_recovered.rda") -->
-
-<!-- ``` -->
-
 <!-- # Prepare Data -->
 <!-- ```{r prepare-data} -->
 
 <!-- # Quarterly -->
 <!-- tags <- tag_arrays( -->
-<!--   released = sable_released, -->
-<!--   recovered = sable_recovered, -->
+<!--   released = sablefishdata::tags_released, -->
+<!--   recovered = sablefishdata::tags_recovered, -->
 <!--   released_time_unit = "quarter", -->
 <!--   released_time_max = 148, -->
 <!--   liberty_time_max = 12, -->
 <!--   liberty_days_min = 30, # Not implemented -->
-<!--   colname_released_date = "Release_Date", -->
-<!--   colname_released_area = "Release_Region", -->
-<!--   colname_group = "Release_Size", -->
-<!--   colname_recovered_date = "Recovery_Date", -->
-<!--   colname_recovered_area = "Recovery_Region", -->
-<!--   colname_id = "Tag_ID", -->
+<!--   colname_released_date = "released_date", -->
+<!--   colname_released_area = "released_region", -->
+<!--   colname_group = "released_length", -->
+<!--   colname_recovered_date = "recovered_date", -->
+<!--   colname_recovered_area = "recovered_region", -->
+<!--   colname_id = "tag_id", -->
 <!--   area_list = list(ak = 1, bc = 2, cc = 3), -->
 <!--   group_list = list(pooled = 400:799), -->
 <!--   released_date_start = "1979-01-01", -->
@@ -65,15 +57,15 @@ knitr::opts_chunk$set(
 <!--   T_harvest = 1, -->
 <!--   T_reporting = 1, -->
 <!--   T_year = 4, -->
+<!--   m = 0.1, -->
+<!--   u = 0.9, -->
+<!--   v = 0.02, -->
+<!--   w = array(1, dim = c(1, 3)), -->
 <!--   x = tags$x, -->
 <!--   y = tags$y, -->
-<!--   w = array(1, dim = c(1, 3)), -->
 <!--   z = matrix(c(1, 1, 0, -->
 <!--                1, 1, 1, -->
 <!--                0, 1, 1), nrow = 3, byrow = TRUE), -->
-<!--   u = 0.9, -->
-<!--   v = 0.02, -->
-<!--   m = 0.1, -->
 <!--   p_time_index = rep(1, 159), -->
 <!--   # p_time_index = rep(1, 160), -->
 <!--   h_time_index = rep(1, 159), #   rep(1:40, each = 4)[1:(160)], -->

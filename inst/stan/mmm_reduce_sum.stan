@@ -18,17 +18,17 @@ data {
   int<lower=1> T_reporting; // Number of tag reporting rate time steps
   // Constants
   int<lower=1> T_year; // Number of time steps per year
+  // Input rates
+  real<lower=0> m; // Natural mortality rate
+  real<lower=0, upper=1> u; // Initial tag retention rate (proportion)
+  real<lower=0> v; // Tag loss rate
+  // Reporting rate
+  real<lower=0, upper=1> w[T_reporting, A]; // Tag reporting rate array
   // Tag data
   int<lower=0> x[T_released, A, G_released]; // Released array
   int<lower=0> y[T_released, A, G_released, T_liberty, A]; // Recovered array
-  // Reporting rate
-  real<lower=0, upper=1> w[T_reporting, A]; // Tag reporting rate array
   // Movement index array
   int<lower=0, upper=1> z[A, A]; // Movement index array
-  // Input rates
-  real<lower=0, upper=1> u; // Initial tag retention rate (proportion)
-  real<lower=0> v; // Tag loss rate
-  real<lower=0> m; // Natural mortality rate
   // Index vectors
   int<lower=1> p_time_index[T_study]; // Movement rate time step index
   int<lower=1> h_time_index[T_study]; // Harvest rate time step index
