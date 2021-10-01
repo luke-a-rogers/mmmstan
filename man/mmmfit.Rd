@@ -7,7 +7,7 @@
 mmmfit(
   data,
   chains = 1,
-  step_size = 0.1,
+  step_size = 0.01,
   iter_warmup = 250,
   iter_sampling = 750,
   use_reduce_sum = FALSE,
