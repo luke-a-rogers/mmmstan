@@ -31,12 +31,12 @@ mmmfit <- function (data,
   T_study <- data$T_study
   if (T_study == T_liberty) {
     if (T_study > T_released) {
-      cat("\nT_study == T_liberty & T_study > T_released\n")
+      # cat("\nT_study == T_liberty & T_study > T_released\n")
     } else {
       stop("T_study must be greater than T_released\n")
     }
   } else if (T_study == T_liberty + T_released - 1) {
-    cat("T_study == T_liberty + T_released - 1\n")
+    # cat("T_study == T_liberty + T_released - 1\n")
   } else {
     stop("T_study must equal T_liberty or T_liberty + T_released - 1\n")
   }
