@@ -31,8 +31,8 @@ data {
   // Index vectors
   int<lower=1> p_time_index[T_study]; // Movement rate time step index
   int<lower=1> h_time_index[T_study]; // Harvest rate time step index
-  int<lower=1> h_group_index[G_released]; // Harvest rate group index
   int<lower=1> w_time_index[T_study]; // Reporting rate time step index
+  int<lower=1> h_group_index[G_released]; // Harvest rate group index
   // Option constants
   int<lower=0, upper=1> random_walk; // Include random walk on retention rates
   // Prior parameters
