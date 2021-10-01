@@ -491,14 +491,8 @@ summary_to_tibbles <- function (x,
       .data$mean:.data$ess_tail
     )
   for(i in seq_len(nrow(sigma))) {
-    sigma$prior_mean[i] <- sigma_mean[
-      sigma$harvest_group[i],
-      sigma$harvest_time[i],
-      sigma$current_area[i]]
-    sigma$prior_sd[i] <- sigma_sd[
-      sigma$harvest_group[i],
-      sigma$harvest_time[i],
-      sigma$current_area[i]]
+    sigma$prior_mean[i] <- sigma_mean[sigma$current_area[i]]
+    sigma$prior_sd[i] <- sigma_sd[sigma$current_area[i]]
   }
 
   # Return list
