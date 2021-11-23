@@ -66,7 +66,7 @@ mmmfit <- function (data,
     include_path = system.file("stan", package = "mmmstan"),
     cpp_options = list(stan_threads = TRUE))
   # Fit the model
-  cmdfit <- mod$sample(
+  fit <- mod$sample(
     data = data,
     chains = chains,
     step_size = step_size,
@@ -76,24 +76,20 @@ mmmfit <- function (data,
     ...
   )
 
-  # Assemble parameters --------------------------------------------------------
+  # Assemble summaries ---------------------------------------------------------
 
-  parameters <- summary_to_tibbles(
-    cmdfit$summary(),
-    data$h_prior_mean,
-    data$h_prior_sd,
-    data$phi_prior_mean,
-    data$phi_prior_sd,
-    data$sigma_prior_mean,
-    data$sigma_prior_sd
-  )
+  summaries <- summarise_posterior_draws(fit)
+
+  # Assemble priors ------------------------------------------------------------
+
+  priors <- summarise_priors(summaries, data)
 
   # Return mmmfit object -------------------------------------------------------
 
   structure(list(
     data = data,
-    output = cmdfit$output_files(),
-    summary = cmdfit$summary(),
-    parameters = parameters),
+    fit = fit,
+    priors = priors,
+    summaries = summaries),
     class = "mmmfit")
 }

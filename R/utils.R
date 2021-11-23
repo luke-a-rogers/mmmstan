@@ -117,6 +117,125 @@ gamma_parameters <- function (mu = NULL,
   return(list(mu = mu, sigma = sigma, alpha = alpha, beta = beta))
 }
 
+#' Summarise Posterior Draws
+#'
+#' @param x [cmdstanr::sample()] model fit object
+#'
+#' @return [list()]
+#' @export
+#'
+summarise_posterior_draws <- function (x) {
+  # Placate R-CMD-check
+  previous_area <- NULL
+  current_area <- NULL
+  movement_time <- NULL
+  released_group <- NULL
+  harvest_group <- NULL
+  harvest_time <- NULL
+  current_area <- NULL
+  # lp__
+  lp__ <- tidybayes::spread_draws(x, lp__) %>%
+    tidybayes::summarise_draws()
+  # Movement rates
+  p <- tidybayes::spread_draws(
+    x,
+    p[previous_area, current_area, movement_time, released_group]
+  ) %>%
+    tidybayes::summarise_draws()
+  # Harvest rates
+  h <- tidybayes::spread_draws(
+    x,
+    h[harvest_group, harvest_time, current_area]
+  ) %>%
+    tidybayes::summarise_draws()
+  # Negative binomial dispersion
+  phi <- tidybayes::spread_draws(x, phi) %>%
+    tidybayes::summarise_draws()
+  # Random walk standard deviation
+  n <- nrow(dplyr::filter(x$summary(), startsWith(.data$variable, "sigma")))
+  if (n > 0) {
+    sigma <- tidybayes::spread_draws(x, sigma[current_area]) %>%
+      tidybayes::summarise_draws()
+  } else {
+    sigma <- NULL
+  }
+  # Return list
+  list(
+    lp__ = lp__,
+    p = p,
+    h = h,
+    phi = phi,
+    sigma = sigma
+  )
+}
+
+#' Summarise Priors
+#'
+#' @param s [list()] posterior draw summaries
+#' @param d [list()] data
+#'
+#' @return [list()] prior summaries
+#' @export
+#'
+summarise_priors <- function (s, d) {
+  # Movement
+  p <- dplyr::select(
+    s$p,
+    .data$previous_area,
+    .data$current_area,
+    .data$movement_time,
+    .data$released_group
+  ) %>%
+    dplyr::mutate(
+      lower = 0,
+      upper = 1
+    )
+  # Harvest
+  h <- dplyr::select(
+    s$h,
+    .data$harvest_group,
+    .data$harvest_time,
+    .data$current_area
+  ) %>%
+    dplyr::mutate(
+      mean = NA_real_,
+      sd = NA_real_
+    )
+  for(i in seq_len(nrow(h))) {
+    h$mean[i] <- d$h_prior_mean[
+      h$harvest_group[i],
+      h$harvest_time[i],
+      h$current_area[i]]
+    h$sd[i] <- d$h_prior_sd[
+      h$harvest_group[i],
+      h$harvest_time[i],
+      h$current_area[i]]
+  }
+  # Negative binomial dispersion
+  phi <- tibble::tibble(mean = d$phi_prior_mean, sd = d$phi_prior_sd)
+  # Random walk standard deviation
+  if (is.null(s$sigma)) {
+    sigma <- NULL
+  } else {
+    sigma <- dplyr::select(s$sigma, .data$current_area) %>%
+      dplyr::mutate(
+        mean = NA_real_,
+        sd = NA_real_
+      )
+    for(i in seq_len(nrow(sigma))) {
+      sigma$mean[i] <- d$sigma_prior_mean[sigma$current_area[i]]
+      sigma$sd[i] <- d$sigma_prior_sd[sigma$current_area[i]]
+    }
+  }
+  # Return list
+  list(
+    p = p,
+    h = h,
+    phi = phi,
+    sigma = sigma
+  )
+}
+
 #' Tag Arrays
 #'
 #' @param released [data.frame()] released tags. See details.
