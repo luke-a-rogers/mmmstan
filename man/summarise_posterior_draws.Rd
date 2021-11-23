@@ -4,10 +4,12 @@
 \alias{summarise_posterior_draws}
 \title{Summarise Posterior Draws}
 \usage{
-summarise_posterior_draws(x)
+summarise_posterior_draws(x, data)
 }
 \arguments{
 \item{x}{\code{\link[cmdstanr:model-method-sample]{cmdstanr::sample()}} model fit object}
+
+\item{data}{\code{\link[=list]{list()}} model data}
 }
 \value{
 \code{\link[=list]{list()}}

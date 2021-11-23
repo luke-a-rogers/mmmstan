@@ -78,18 +78,13 @@ mmmfit <- function (data,
 
   # Assemble summaries ---------------------------------------------------------
 
-  summaries <- summarise_posterior_draws(fit)
-
-  # Assemble priors ------------------------------------------------------------
-
-  priors <- summarise_priors(summaries, data)
+  summaries <- summarise_posterior_draws(fit, data)
 
   # Return mmmfit object -------------------------------------------------------
 
   structure(list(
     data = data,
     fit = fit,
-    priors = priors,
     summaries = summaries),
     class = "mmmfit")
 }

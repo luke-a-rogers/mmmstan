@@ -120,11 +120,12 @@ gamma_parameters <- function (mu = NULL,
 #' Summarise Posterior Draws
 #'
 #' @param x [cmdstanr::sample()] model fit object
+#' @param data [list()] model data
 #'
 #' @return [list()]
 #' @export
 #'
-summarise_posterior_draws <- function (x) {
+summarise_posterior_draws <- function (x, data) {
   # Placate R-CMD-check
   previous_area <- NULL
   current_area <- NULL
@@ -141,94 +142,57 @@ summarise_posterior_draws <- function (x) {
     x,
     p[previous_area, current_area, movement_time, released_group]
   ) %>%
-    tidybayes::summarise_draws()
+    tidybayes::summarise_draws() %>%
+    dplyr::mutate(
+      prior_lower = 0,
+      prior_upper = 1
+    )
   # Harvest rates
   h <- tidybayes::spread_draws(
     x,
     h[harvest_group, harvest_time, current_area]
   ) %>%
-    tidybayes::summarise_draws()
+    tidybayes::summarise_draws() %>%
+    dplyr::mutate(
+      prior_mean = NA_real_,
+      prior_sd = NA_real_
+    )
+  for(i in seq_len(nrow(h))) {
+    h$prior_mean[i] <- data$h_prior_mean[
+      h$harvest_group[i],
+      h$harvest_time[i],
+      h$current_area[i]]
+    h$prior_sd[i] <- data$h_prior_sd[
+      h$harvest_group[i],
+      h$harvest_time[i],
+      h$current_area[i]]
+  }
   # Negative binomial dispersion
   phi <- tidybayes::spread_draws(x, phi) %>%
-    tidybayes::summarise_draws()
+    tidybayes::summarise_draws() %>%
+    dplyr::mutate(
+      prior_mean = data$phi_prior_mean,
+      prior_sd = data$phi_prior_sd
+    )
   # Random walk standard deviation
   n <- nrow(dplyr::filter(x$summary(), startsWith(.data$variable, "sigma")))
   if (n > 0) {
     sigma <- tidybayes::spread_draws(x, sigma[current_area]) %>%
-      tidybayes::summarise_draws()
+      tidybayes::summarise_draws() %>%
+      dplyr::mutate(
+        prior_mean = NA_real_,
+        prior_sd = NA_real_
+      )
+    for(i in seq_len(nrow(sigma))) {
+      sigma$prior_mean[i] <- data$sigma_prior_mean[sigma$current_area[i]]
+      sigma$prior_sd[i] <- data$sigma_prior_sd[sigma$current_area[i]]
+    }
   } else {
     sigma <- NULL
   }
   # Return list
   list(
     lp__ = lp__,
-    p = p,
-    h = h,
-    phi = phi,
-    sigma = sigma
-  )
-}
-
-#' Summarise Priors
-#'
-#' @param s [list()] posterior draw summaries
-#' @param d [list()] data
-#'
-#' @return [list()] prior summaries
-#' @export
-#'
-summarise_priors <- function (s, d) {
-  # Movement
-  p <- dplyr::select(
-    s$p,
-    .data$previous_area,
-    .data$current_area,
-    .data$movement_time,
-    .data$released_group
-  ) %>%
-    dplyr::mutate(
-      lower = 0,
-      upper = 1
-    )
-  # Harvest
-  h <- dplyr::select(
-    s$h,
-    .data$harvest_group,
-    .data$harvest_time,
-    .data$current_area
-  ) %>%
-    dplyr::mutate(
-      mean = NA_real_,
-      sd = NA_real_
-    )
-  for(i in seq_len(nrow(h))) {
-    h$mean[i] <- d$h_prior_mean[
-      h$harvest_group[i],
-      h$harvest_time[i],
-      h$current_area[i]]
-    h$sd[i] <- d$h_prior_sd[
-      h$harvest_group[i],
-      h$harvest_time[i],
-      h$current_area[i]]
-  }
-  # Negative binomial dispersion
-  phi <- tibble::tibble(mean = d$phi_prior_mean, sd = d$phi_prior_sd)
-  # Random walk standard deviation
-  if (is.null(s$sigma)) {
-    sigma <- NULL
-  } else {
-    sigma <- dplyr::select(s$sigma, .data$current_area) %>%
-      dplyr::mutate(
-        mean = NA_real_,
-        sd = NA_real_
-      )
-    for(i in seq_len(nrow(sigma))) {
-      sigma$mean[i] <- d$sigma_prior_mean[sigma$current_area[i]]
-      sigma$sd[i] <- d$sigma_prior_sd[sigma$current_area[i]]
-    }
-  }
-  # Return list
-  list(
     p = p,
     h = h,
     phi = phi,
