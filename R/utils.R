@@ -136,7 +136,8 @@ summarise_posterior_draws <- function (x, data) {
   current_area <- NULL
   # lp__
   lp__ <- tidybayes::spread_draws(x, lp__) %>%
-    tidybayes::summarise_draws()
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
   # Movement rates
   p <- tidybayes::spread_draws(
     x,
@@ -146,7 +147,8 @@ summarise_posterior_draws <- function (x, data) {
     dplyr::mutate(
       prior_lower = 0,
       prior_upper = 1
-    )
+    ) %>%
+    dplyr::ungroup()
   # Harvest rates
   h <- tidybayes::spread_draws(
     x,
@@ -156,7 +158,8 @@ summarise_posterior_draws <- function (x, data) {
     dplyr::mutate(
       prior_mean = NA_real_,
       prior_sd = NA_real_
-    )
+    ) %>%
+    dplyr::ungroup()
   for(i in seq_len(nrow(h))) {
     h$prior_mean[i] <- data$h_prior_mean[
       h$harvest_group[i],
@@ -173,7 +176,8 @@ summarise_posterior_draws <- function (x, data) {
     dplyr::mutate(
       prior_mean = data$phi_prior_mean,
       prior_sd = data$phi_prior_sd
-    )
+    ) %>%
+    dplyr::ungroup()
   # Random walk standard deviation
   n <- nrow(dplyr::filter(x$summary(), startsWith(.data$variable, "sigma")))
   if (n > 0) {
@@ -182,7 +186,8 @@ summarise_posterior_draws <- function (x, data) {
       dplyr::mutate(
         prior_mean = NA_real_,
         prior_sd = NA_real_
-      )
+      ) %>%
+      dplyr::ungroup()
     for(i in seq_len(nrow(sigma))) {
       sigma$prior_mean[i] <- data$sigma_prior_mean[sigma$current_area[i]]
       sigma$prior_sd[i] <- data$sigma_prior_sd[sigma$current_area[i]]

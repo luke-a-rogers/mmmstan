@@ -14,76 +14,105 @@ knitr::opts_chunk$set(
 )
 ```
 
-<!-- ```{r setup} -->
-<!-- library(mmmstan) -->
-<!-- ``` -->
+```{r setup}
+library(mmmstan)
+```
 
-<!-- # Prepare Data -->
-<!-- ```{r prepare-data} -->
+# Prepare Data
+```{r prepare-data}
 
-<!-- # Quarterly -->
-<!-- tags <- tag_arrays( -->
-<!--   released = sablefishdata::tags_released, -->
-<!--   recovered = sablefishdata::tags_recovered, -->
-<!--   released_time_unit = "quarter", -->
-<!--   released_time_max = 148, -->
-<!--   liberty_time_max = 12, -->
-<!--   liberty_days_min = 30, # Not implemented -->
-<!--   colname_released_date = "released_date", -->
-<!--   colname_released_area = "released_region", -->
-<!--   colname_group = "released_length", -->
-<!--   colname_recovered_date = "recovered_date", -->
-<!--   colname_recovered_area = "recovered_region", -->
-<!--   colname_id = "tag_id", -->
-<!--   area_list = list(ak = 1, bc = 2, cc = 3), -->
-<!--   group_list = list(pooled = 400:799), -->
-<!--   released_date_start = "1979-01-01", -->
-<!--   released_date_end = "2015-12-31" -->
-<!-- ) -->
+if (FALSE) {
+  load("~/github/sablefish-data/data/tags_released.rda")
+  load("~/github/sablefish-data/data/tags_recovered.rda")
+}
 
-<!-- ``` -->
+if (FALSE) {
+  area_list <- list(bs = 1, ai = 2, wg = 3, cg = 4, eg = 5,
+                    se = 6, bc = 7, cc = 8)
+}
 
-<!-- # Quarterly fit three F -->
-<!-- ```{r quarterly-fit-three-f} -->
-<!-- # Define data -->
-<!-- data_list <- list( -->
-<!--   A = 3, -->
-<!--   G_released = 1, -->
-<!--   G_harvest = 1, -->
-<!--   T_released = 148, -->
-<!--   T_liberty = 12, # 160, -->
-<!--   T_study = 148 + 12 - 1, # T_released + T_liberty - 1 -->
-<!--   T_movement = 1, -->
-<!--   T_harvest = 1, -->
-<!--   T_reporting = 1, -->
-<!--   T_year = 4, -->
-<!--   m = 0.1, -->
-<!--   u = 0.9, -->
-<!--   v = 0.02, -->
-<!--   w = array(1, dim = c(1, 3)), -->
-<!--   x = tags$x, -->
-<!--   y = tags$y, -->
-<!--   z = matrix(c(1, 1, 0, -->
-<!--                1, 1, 1, -->
-<!--                0, 1, 1), nrow = 3, byrow = TRUE), -->
-<!--   p_time_index = rep(1, 159), -->
-<!--   # p_time_index = rep(1, 160), -->
-<!--   h_time_index = rep(1, 159), #   rep(1:40, each = 4)[1:(160)], -->
-<!--   # h_time_index = c(1:(148 + 12 - 1)), -->
-<!--   w_time_index = rep(1, 159), # Reporting rate time step index -->
-<!--   h_group_index = array(rep(1, 1), dim = c(1)), # Harvest rate group index -->
-<!--   random_walk = 0, -->
-<!--   h_prior_mean = array(0.05, dim = c(1, 1, 3)), -->
-<!--   h_prior_sd = array(0.001, dim = c(1, 1, 3)), -->
-<!--   phi_prior_mean = 0.6, -->
-<!--   phi_prior_sd = 0.2, -->
-<!--   sigma_prior_mean = numeric(0), -->
-<!--   sigma_prior_sd = numeric(0), -->
-<!--   p_fudge = 1e-12, -->
-<!--   y_fudge = 1e-12 -->
-<!-- ) -->
+if (FALSE) {
+  # Quarterly
+  tags <- tag_arrays(
+    released = tags_released,
+    recovered = tags_recovered,
+    released_time_unit = "quarter",
+    released_time_max = 148,
+    liberty_time_max = 12,
+    liberty_days_min = 30, # Not implemented
+    colname_released_date = "released_date",
+    colname_released_area = "released_region",
+    colname_group = "released_length",
+    colname_recovered_date = "recovered_date",
+    colname_recovered_area = "recovered_region",
+    colname_id = "tag_id",
+    area_list = area_list,
+    group_list = list(pooled = 400:799),
+    released_date_start = "1979-01-01",
+    released_date_end = "2015-12-31"
+  ) 
+}
 
-<!-- # m1 <- mmmfit(data = data_list, threads_per_chain = 1) -->
-<!-- # m2 <- mmmfit(data = data_list, threads_per_chain = 8, use_reduce_sum = TRUE) -->
+```
 
-<!-- ``` -->
+# Quarterly fit three F
+```{r quarterly-fit-three-f}
+
+if (FALSE) {
+  h_prior_mean <- array(0.05, dim = c(1, 1, 8))
+  h_prior_sd <- 0.1 * h_prior_mean
+}
+
+if (FALSE) {
+  # Define data
+  data_list <- list(
+    A = 8,
+    G_released = 1,
+    G_harvest = 1,
+    T_released = 148,
+    T_liberty = 12, # 160,
+    T_study = 148 + 12 - 1, # T_released + T_liberty - 1
+    T_movement = 1,
+    T_harvest = 1,
+    T_reporting = 1,
+    T_year = 4,
+    m = 0.1,
+    u = 0.9,
+    v = 0.02,
+    w = array(1, dim = c(1, 8)),
+    x = tags$x,
+    y = tags$y,
+    z = movement_index(
+      n = 8,
+      pattern = 0,
+      allow = matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
+    ),
+    p_time_index = rep(1, 159),
+    # p_time_index = rep(1, 160),
+    h_time_index = rep(1, 159), #   rep(1:40, each = 4)[1:(160)],
+    # h_time_index = c(1:(148 + 12 - 1)),
+    w_time_index = rep(1, 159), # Reporting rate time step index
+    h_group_index = array(rep(1, 1), dim = c(1)), # Harvest rate group index
+    random_walk = 0,
+    h_prior_mean = h_prior_mean,
+    h_prior_sd = h_prior_sd,
+    phi_prior_mean = 0.6,
+    phi_prior_sd = 0.2,
+    sigma_prior_mean = numeric(0),
+    sigma_prior_sd = numeric(0),
+    p_fudge = 1e-12,
+    y_fudge = 1e-12
+  )  
+}
+
+if (FALSE) {
+  # Fit model
+  m1 <- mmmfit(data = data_list, threads_per_chain = 1)
+}
+
+if (FALSE) {
+  # Fit model
+  m2 <- mmmfit(data = data_list, threads_per_chain = 8, use_reduce_sum = TRUE)
+}
+
+```
