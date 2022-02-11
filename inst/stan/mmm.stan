@@ -1,3 +1,129 @@
+functions {}
+
+data {
+  // Index limits
+  int<lower=0> I; // Number of terms per unit of time
+  int<lower=0> L; // Number of maximum steps at liberty
+  int<lower=0> N; // Number of release steps ((T * I) - 1)
+  int<lower=0> P; // Number of movement rate mean parameters
+  int<lower=0> S; // Number of size classes
+  int<lower=0> T; // Number of times (usually years; release only)
+  int<lower=0> X; // Number of geographic regions
+
+  // Rates
+  real<lower=0, upper=1> initial_tag_loss_rate;
+  real<lower=0, upper=1> ongoing_tag_loss_rate;
+  // Fudge values
+  real<lower=0> expected_fudge;
+}
+
+transformed data {
+
+}
+
+parameters {
+  // Movement parameters
+  array[P] real movement_parameter_mean_step; // Mean across dimensions
+  array[T, P] real movement_parameter_time_step; // Deviation by 'year'
+  array[I, P] real movement_parameter_term_step; // Deviation by 'season'
+  array[S, P] real movement_parameter_size_step; // Deviation by 'size'
+  // Fishing mortality parameters
+  array[X] real fishing_parameter_mean_step; // Mean across dimensions
+  array[T, X] real fishing_parameter_time_step; // Deviation by 'year'
+  array[I, X] real fishing_parameter_term_step; // Deviation by 'season'
+  array[S, X] real fishing_parameter_size_step; // Deviation by 'size'
+  // Natural mortality parameters
+  array[X] real mortality_parameter_mean_step;
+  // Tag reporting parameters
+  array[X] real reporting_parameter_mean_step;
+  // Autoregressive process parameters
+
+
+  // Negative binomial dispersion parameter
+  real<lower=0> dispersion_parameter;
+}
+
+transformed parameters {
+
+
+}
+
+model {
+  // Define values
+
+  // Assemble movement rates [N, S, X, Y]
+
+  // Assemble fishing mortality rates [N, S, X]
+
+  // Compute survival
+  for (s in 1:S) {
+    for (n in 1:N) {
+      for (y in 1:X) {
+        survival_rate_step[s, n, y] = exp(
+          -fishing_rate_step[s, n, y]
+          - mortality_rate_step[y]
+          - ongoing_tag_loss_rate
+        );
+      }
+    }
+  }
+
+  // Populate initial abundances
+  for (n in 1:N) {
+    for (w in 1:X) {
+      for (s in 1:S) {
+        abundance[n, w, s, 1, w] = (1 - initial_tag_loss_rate)
+        * tags_released[n, w, s];
+      }
+    }
+  }
+
+  // Compute expected recoveries
+  for (n in 1:N) { // Released step
+    for (w in 1:X) { // Released region
+      for (s in 1:S) { // Released size
+        if (tags_released[n, w, s] > 0) {
+          for (l in 2:min(L, N - n + 2)) { // Populate abundance
+            for (y in 1:X) { // Current region
+              for (x in 1:X) { // Previous region
+                abundance[n, w, s, l, y] += abundance[n, w, s, l - 1, x]
+                * survival_rate_step[s, n + l - 2] // Previous step
+                * movement_rate_step[s, n + l - 2, y, x] // Previous step
+              } // End x
+            } // End y
+          } // End l
+          for (l in 2:min(L, N - n + 2)) { // Populate 1D arrays
+            for (y in 1:X) { // Current region
+              observed[index] = tags_recovered[n, w, s, l, y];
+              expected[index] = abundance[n, w, s, l, y]
+              * (1 - exp(fishing_rate_step[s, n + l - 1, y]))
+              * reporting_rate_step[y]
+              + expected_fudge;
+              index += 1;
+            } // End y
+          } // End l
+        } // End if
+      } // End s
+    } // End w
+  } // End n
+
+  // Define priors
+
+  // Priors on movement rate deviations (not on parameter deviations)
+  // At time not step
+
+
+  // Sampling statement (var = mu + mu^2 / phi)
+  observed ~ neg_binomial_2(expected, dispersion_parameter);
+}
+
+generated quantities {}
+
+
+
+
+
+
 
 functions {
   #include functions.stan
