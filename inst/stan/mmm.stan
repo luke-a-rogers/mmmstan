@@ -9,7 +9,8 @@ data {
   int<lower=0> S; // Number of size classes
   int<lower=0> T; // Number of times (usually years; release only)
   int<lower=0> X; // Number of geographic regions
-
+  // Movement index array
+  array[X, X] int<lower=0, upper=1> movement_index;
   // Rates
   real<lower=0, upper=1> initial_tag_loss_rate;
   real<lower=0, upper=1> ongoing_tag_loss_rate;
@@ -88,7 +89,7 @@ model {
               for (x in 1:X) { // Previous region
                 abundance[n, w, s, l, y] += abundance[n, w, s, l - 1, x]
                 * survival_rate_step[s, n + l - 2] // Previous step
-                * movement_rate_step[s, n + l - 2, y, x] // Previous step
+                * movement_rate_step[s, n + l - 2, y, x] // Previous step  TODO: update array index order
               } // End x
             } // End y
           } // End l
