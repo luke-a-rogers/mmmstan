@@ -17,29 +17,26 @@ data {
   array[N, S, X] int<lower=0> tags_released;
   array[N, S, X, L, X] int<lower=0> tags_recovered;
   // Rates
-  real<lower=0, upper=1> initial_tag_loss_rate;
-  real<lower=0, upper=1> ongoing_tag_loss_rate;
+  real<lower=0, upper=1> initial_loss_rate; // Fraction
+  real<lower=0, upper=1> ongoing_loss_rate; // Instantaneous
   // Prior means
-  array[X] real<lower=0> mortality_rate_mean;
-  array[X] real<lower=0> reporting_rate_mean;
-  real<lower=0> dispersion_mean;
+  array[X] real<lower=0> mu_mortality_rate;
+  array[X] real<lower=0> mu_reporting_rate;
+  real<lower=0> mu_dispersion;
 
   // Prior standard deviations
-  array[X] real<lower=0> mortality_rate_sd;
-  array[X] real<lower=0> reporting_rate_sd;
-  real<lower=0> dispersion_sd;
+  array[X] real<lower=0> sd_mortality_rate;
+  array[X] real<lower=0> sd_reporting_rate;
+  real<lower=0> sd_dispersion;
 
   // Fudge values
   real<lower=0> expected_fudge;
 }
 
 transformed data {
-  real<lower=0> ongoing_tag_loss_step = ongoing_tag_loss_rate / I;
-  array[X] real<lower=0> reporting_step;
+  real<lower=0> ongoing_loss_step = ongoing_loss_rate / I;
   int<lower=0> C = 0; // Number of observations
 
-  // Reporting step
-  reporting_step = exp(log(reporting_rate) / I);
   // Count observations
   for (n in 1:N) { // Released step
     for (s in 1:S) { // Released size
@@ -64,9 +61,9 @@ parameters {
   array[I, X] real fishing_parameter_term_step; // Deviation by 'season'
   array[S, X] real fishing_parameter_size_step; // Deviation by 'size'
   // Natural mortality parameters
-  array[X] real mortality_parameter_mean_step;
+  array[X] real mortality_step;
   // Tag reporting parameters
-  array[X] real reporting_parameter_mean_step;
+  array[X] real reporting_step;
   // Autoregressive process parameters
 
 
@@ -111,7 +108,7 @@ model {
         survival_step[n, s, x] = exp(
           -fishing_step[n, s, x]
           - mortality_step[x]
-          - ongoing_tag_loss_step
+          - ongoing_loss_step
         );
       }
     }
@@ -120,7 +117,7 @@ model {
   for (n in 1:N) { // Released step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Region
-        abundance[n, s, x, 1, x] = (1 - initial_tag_loss_rate)
+        abundance[n, s, x, 1, x] = (1 - initial_loss_rate)
         * tags_released[n, s, x];
       }
     }
