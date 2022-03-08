@@ -1,4 +1,6 @@
-functions {}
+functions {
+  #include functions.stan
+}
 
 data {
   // Index limits
@@ -11,15 +13,43 @@ data {
   int<lower=0> X; // Number of geographic regions
   // Movement index array
   array[X, X] int<lower=0, upper=1> movement_index;
+  // Tag data
+  array[N, S, X] int<lower=0> tags_released;
+  array[N, S, X, L, X] int<lower=0> tags_recovered;
   // Rates
   real<lower=0, upper=1> initial_tag_loss_rate;
   real<lower=0, upper=1> ongoing_tag_loss_rate;
+  // Prior means
+  array[X] real<lower=0> mortality_rate_mean;
+  array[X] real<lower=0> reporting_rate_mean;
+  real<lower=0> dispersion_mean;
+
+  // Prior standard deviations
+  array[X] real<lower=0> mortality_rate_sd;
+  array[X] real<lower=0> reporting_rate_sd;
+  real<lower=0> dispersion_sd;
+
   // Fudge values
   real<lower=0> expected_fudge;
 }
 
 transformed data {
+  real<lower=0> ongoing_tag_loss_step = ongoing_tag_loss_rate / I;
+  array[X] real<lower=0> reporting_step;
+  int<lower=0> C = 0; // Number of observations
 
+  // Reporting step
+  reporting_step = exp(log(reporting_rate) / I);
+  // Count observations
+  for (n in 1:N) { // Released step
+    for (s in 1:S) { // Released size
+      for (x in 1:X) { // Released region
+        if (tags_released[n, s, x] > 0) {
+          C += (min(N - n + 2, L) - 1) * X; // Realized steps liberty
+        }
+      }
+    }
+  }
 }
 
 parameters {
@@ -41,7 +71,7 @@ parameters {
 
 
   // Negative binomial dispersion parameter
-  real<lower=0> dispersion_parameter;
+  real<lower=0> dispersion;
 }
 
 transformed parameters {
@@ -51,61 +81,77 @@ transformed parameters {
 
 model {
   // Define values
+  array[N, S] matrix[X, X]<lower=0> movement_step;
+  array[N, S, X]<lower=0> fishing_step;
+  array[N, S, X]<lower=0> survival_step;
+  array[N, S, X, L, X]<lower=0> abundance;
+  array[C] int<lower=0> observed;
+  array[C] real<lower=0> expected;
+  int<lower=0> count = 1;
 
-  // Assemble movement rates [N, S, X, Y]
-
-  // Assemble fishing mortality rates [N, S, X]
-
-  // Compute survival
-  for (s in 1:S) {
-    for (n in 1:N) {
-      for (y in 1:X) {
-        survival_rate_step[s, n, y] = exp(
-          -fishing_rate_step[s, n, y]
-          - mortality_rate_step[y]
-          - ongoing_tag_loss_rate
+  // Assemble movement step [N, S, X, X]
+  movement_step = assemble_movement_step(
+    movement_parameter_mean_step,
+    movement_parameter_time_step,
+    movement_parameter_term_step,
+    movement_parameter_size_step,
+    movement_index
+  );
+  // Assemble fishing mortality step [N, S, X]
+  fishing_step = assemble_fishing_step(
+    fishing_parameter_mean_step,
+    fishing_parameter_time_step,
+    fishing_parameter_term_step,
+    fishing_parameter_size_step
+  );
+  // Compute survival step [N, S, X]
+  for (n in 1:N) { // Released step
+    for (s in 1:S) { // Released size
+      for (x in 1:X) { // Region
+        survival_step[n, s, x] = exp(
+          -fishing_step[n, s, x]
+          - mortality_step[x]
+          - ongoing_tag_loss_step
         );
       }
     }
   }
-
-  // Populate initial abundances
-  for (n in 1:N) {
-    for (w in 1:X) {
-      for (s in 1:S) {
-        abundance[n, w, s, 1, w] = (1 - initial_tag_loss_rate)
-        * tags_released[n, w, s];
+  // Populate abundance released [N, S, X]
+  for (n in 1:N) { // Released step
+    for (s in 1:S) { // Released size
+      for (x in 1:X) { // Region
+        abundance[n, s, x, 1, x] = (1 - initial_tag_loss_rate)
+        * tags_released[n, s, x];
       }
     }
   }
-
   // Compute expected recoveries
   for (n in 1:N) { // Released step
-    for (w in 1:X) { // Released region
-      for (s in 1:S) { // Released size
-        if (tags_released[n, w, s] > 0) {
-          for (l in 2:min(L, N - n + 2)) { // Populate abundance
+    for (s in 1:S) { // Released size
+      for (w in 1:X) { // Released region
+        if (tags_released[n, s, w] > 0) {
+          for (l in 2:min(N - n + 2, L)) { // Populate abundance
             for (y in 1:X) { // Current region
               for (x in 1:X) { // Previous region
-                abundance[n, w, s, l, y] += abundance[n, w, s, l - 1, x]
-                * survival_rate_step[s, n + l - 2] // Previous step
-                * movement_rate_step[s, n + l - 2, y, x] // Previous step  TODO: update array index order
+                abundance[n, s, w, l, y] += abundance[n, s, w, l - 1, x]
+                * survival_step[n + l - 2, s, x] // Previous step
+                * movement_step[n + l - 2, s, x, y] // Previous step
               } // End x
             } // End y
           } // End l
-          for (l in 2:min(L, N - n + 2)) { // Populate 1D arrays
+          for (l in 2:min(N - n + 2, L)) { // Populate 1D arrays
             for (y in 1:X) { // Current region
-              observed[index] = tags_recovered[n, w, s, l, y];
-              expected[index] = abundance[n, w, s, l, y]
-              * (1 - exp(fishing_rate_step[s, n + l - 1, y]))
-              * reporting_rate_step[y]
+              observed[count] = tags_recovered[n, s, w, l, y];
+              expected[count] = abundance[n, s, w, l, y]
+              * (1 - exp(fishing_step[n + l - 1, s, y]))
+              * reporting_step[y]
               + expected_fudge;
-              index += 1;
+              count += 1;
             } // End y
           } // End l
         } // End if
-      } // End s
-    } // End w
+      } // End w
+    } // End s
   } // End n
 
   // Define priors
@@ -115,7 +161,7 @@ model {
 
 
   // Sampling statement (var = mu + mu^2 / phi)
-  observed ~ neg_binomial_2(expected, dispersion_parameter);
+  observed ~ neg_binomial_2(expected, dispersion);
 }
 
 generated quantities {}
