@@ -21,7 +21,7 @@ array[,] matrix assemble_movement_step (
   array[,] real psize,
   array[,] real mindex
 );
-matrix assemble_movement_rate(
+matrix assemble_movement_rate (
   array[] real pmean,
   array[,] real mindex,
   int nterm
@@ -34,7 +34,7 @@ array[] matrix assemble_movement_rate (
   array[,] real mindex,
   int nterm
 );
-array[] matrix assemble_movement_deviation(
+array[] matrix assemble_movement_deviation (
   array[] real pmean,
   array[,] real ptime,
   array[,] real pterm,
@@ -42,26 +42,34 @@ array[] matrix assemble_movement_deviation(
   array[,] real mindex,
   int nterm
 );
+array[,,] real assemble_fishing_step (
+  array[] real pmean,
+  array[,] real ptime,
+  array[,] real pterm,
+  array[,] real psize
+);
+real inverse_logit(real arg);
 array[] real inverse_multi_logit (array[] real arg);
 
 /**
 * Assemble a parameter array 'slab'
 *
-* @param pmean, an array of dimension [P]
-* @param ptime, an array of dimension [T, P]
-* @param pterm, an array of dimension [I, P]
-* @param psize, an array of dimension [S, P]
+* @param pmean, an array of dimension [P or X]
+* @param ptime, an array of dimension [T, P or X]
+* @param pterm, an array of dimension [I, P or X]
+* @param psize, an array of dimension [S, P or X]
 *
-* @return an array of dimension [N, S, P]
+* @return an array of dimension [N, S, P or X]
 *
 * The first argument pmean holds the parameters associated with the mean
-* movement rates. The remaining arguments hold the parameter deviations
-* associated with movement rate deviations from the mean for time (ptime),
-* term (pterm), and size (psize).
+* movement (fishing) rates. The remaining arguments hold the parameter
+* deviations  associated with movement (fishing) rate deviations from the
+* mean for time (ptime), term (pterm), and size (psize).
 *
-* Parameter slabs associated with movement rate means only, or movement
-* rates plus certain types of deviations can be assembled by setting the
-* arguments for deviations to exclude to rep_array(0.0, 1, P).
+* Parameter slabs associated with movement (fishing) rate means only,
+* or movement (fishing) rates plus certain types of deviations can be
+* assembled by setting the arguments for deviations to exclude to
+* rep_array(0.0, 1, P) or rep_array(0.0, 1, X) for fishing rates.
 *
 * Note that N = T * I.
 */
@@ -449,6 +457,87 @@ array[] matrix assemble_movement_deviation (
   }
   // Return movement deviation
   return movement_deviation;
+}
+
+/**
+* Assemble a fishing array at timescale 'step'
+*
+* @param pmean, an array of dimension [X]
+* @param ptime, an array of dimension [T, X]
+* @param pterm, an array of dimension [I, X]
+* @param psize, an array of dimension [S, X]
+*
+* @return an array of dimension [N, S, X]
+*
+* The first argument pmean holds the parameters associated with the mean
+* fishing rates. The remaining arguments hold the parameter deviations
+* associated with fishing rate deviations from the mean for time (ptime),
+* term (pterm), and size (psize).
+*
+* Fishing associated with fishing rate means only, or fishing
+* rates plus certain types of deviations can be assembled by setting the
+* arguments for deviations to exclude to rep_array(0.0, 1, X).
+*
+* Note that N = T * I.
+*/
+array[,,] real assemble_fishing_step (
+  array[] real pmean,
+  array[,] real ptime,
+  array[,] real pterm,
+  array[,] real psize
+) {
+  // Get dimensions
+  int X = dims(pmean)[1];
+  int T = dims(ptime)[1];
+  int I = dims(pterm)[1];
+  int S = dims(psize)[1];
+  // Set dimensions
+  int N = T * I;
+  // Initialize arrays
+  array[N, S, X] real parameter_slab = assemble_parameter_slab(
+    pmean,
+    ptime,
+    pterm,
+    psize
+  );
+  array[N, S, X] real fishing_step = rep_array(0.0, N, S, X);
+  // Check dimensions
+  if (N < 1) {reject("N must not be < 1; found N = ", N);}
+  if (S < 1) {reject("S must not be < 1; found S = ", S);}
+  if (X < 1) {reject("X must not be < 1; found X = ", X);}
+  // Populate fishing step
+  for (n in 1:N) {
+    for (s in 1:S) {
+      for (x in 1:X) {
+        fishing_step[n, s, x] = log(
+          exp(parameter_slab[n, s, x]) / (1 + parameter_slab[n, s, x])
+        );
+      }
+    }
+  }
+  // Return fishing step
+  return fishing_step;
+}
+
+/**
+* Inverse logit
+*
+* @ param arg, a real value
+*
+* @return a value in [0, 1]
+*/
+real inverse_logit(real arg) {
+  real value;
+  if (is_inf(arg)) {
+    if (arg > 0) {
+      value = 1;
+    } else {
+      value = 0;
+    }
+  } else {
+    value = exp(arg) / (1 + exp(arg));
+  }
+  return value;
 }
 
 /**
