@@ -48,6 +48,24 @@ array[,,] real assemble_fishing_step (
   array[,] real pterm,
   array[,] real psize
 );
+array[] real assemble_fishing_rate (
+  array[] real pmean,
+  int nterm
+);
+array[,] real assemble_fishing_rate (
+  array[] real pmean,
+  array[,] real ptime,
+  array[,] real pterm,
+  array[,] real psize,
+  int nterm
+);
+array[,] real assemble_fishing_deviation (
+  array[] real pmean,
+  array[,] real ptime,
+  array[,] real pterm,
+  array[,] real psize,
+  int nterm
+);
 real inverse_logit(real arg);
 array[] real inverse_multi_logit (array[] real arg);
 
@@ -288,10 +306,6 @@ array[,] matrix assemble_movement_step (
 * that movement is permitted (one) or not permitted (zero) between a given
 * source region (row) and destination region (column) in one step.
 *
-* Movement rates associated with movement rate means only, or movement
-* rates plus certain types of deviations can be assembled by setting the
-* arguments for deviations to exclude to rep_array(0.0, 1, P).
-*
 * Note that N = T * I.
 */
 matrix assemble_movement_rate (
@@ -415,7 +429,7 @@ array[] matrix assemble_movement_deviation (
   array[,] real pterm,
   array[,] real psize,
   array[,] real mindex,
-  int nterms
+  int nterm
 ) {
   // Get dimensions
   int P = dims(pmean)[1];
@@ -429,15 +443,15 @@ array[] matrix assemble_movement_deviation (
   matrix[X, X] movement_mean = assemble_movement_rate(
     pmean,
     mindex,
-    nterms
+    nterm
   );
   array[Z] matrix[X, X] movement_type = assemble_movement_rate(
-    array[] real pmean,
-    array[,] real ptime,
-    array[,] real pterm,
-    array[,] real psize,
-    array[,] real mindex,
-    int nterm
+    pmean,
+    ptime,
+    pterm,
+    psize,
+    mindex,
+    nterm
   );
   array[Z] matrix[X, X] movement_deviation;
   // Check dimensions
@@ -518,6 +532,159 @@ array[,,] real assemble_fishing_step (
   }
   // Return fishing step
   return fishing_step;
+}
+
+/**
+* Assemble a fishing rate array
+*
+* @param pmean, an array of dimension [X]
+* @param nterm, an integer giving the number of seasons (terms) per year (times)
+*
+* @return an array of dimension [X]
+*
+* The first argument pmean holds the parameters associated with the mean
+* fishing mortality rates.
+*
+*/
+array[] real assemble_fishing_rate (
+  array[] real pmean,
+  int nterm
+) {
+  // Get dimensions
+  int X = dims(pmean)[1];
+  // Initialize arrays
+  array[1, 1, X] real fishing_step = assemble_fishing_step(
+    pmean,
+    rep_array(0.0, 1, X),
+    rep_array(0.0, 1, X),
+    rep_array(0.0, 1, X)
+  );
+  // Initialize array
+  array[X] real fishing_rate = pow(fishing_step[1, 1], nterm)
+  // Return fishing rate
+  return fishing_rate;
+}
+
+/**
+* Assemble a fishing rate array
+*
+* @param pmean, an array of dimension [X]
+* @param ptime, an array of dimension [T, X]
+* @param pterm, an array of dimension [I, X]
+* @param psize, an array of dimension [S, X]
+* @param nterm, an integer giving the number of seasons (terms) per year (times)
+*
+* @return an array of dimension [Z, X] holding fishing mortality rate
+*
+* The first argument pmean holds the parameters associated with the mean
+* fishing rates. The next three arguments hold the parameter deviations
+* associated with fishing rate deviations from the mean for time (ptime),
+* term (pterm), and size (psize). Two of these three should be placeholders
+* rep_array(0.0, 1, X).
+*
+*/
+array[,] real assemble_fishing_rate (
+  array[] real pmean,
+  array[,] real ptime,
+  array[,] real pterm,
+  array[,] real psize,
+  int nterm
+) {
+  // Get dimensions
+  int X = dims(pmean)[1];
+  int T = dims(ptime)[1];
+  int I = dims(pterm)[1];
+  int S = dims(psize)[1];
+  // Set dimensions
+  int N = T * I;
+  int Z = N * S;
+  // Initialize arrays
+  array[N, S, X] real fishing_step = assemble_fishing_step(
+    pmean,
+    ptime,
+    pterm,
+    psize
+  );
+  array[Z, X] real fishing_rate = rep_array(0.0, Z, X);
+  // Initialize count
+  int z;
+  // Check dimensions
+  if (X < 1) {reject("X must not be < 1; found X = ", X);}
+  if (T < 1) {reject("T must not be < 1; found T = ", T);}
+  if (I < 1) {reject("I must not be < 1; found I = ", I);}
+  if (S < 1) {reject("S must not be < 1; found S = ", S);}
+  if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)")}
+  // Populate fishing rates
+  z = 1;
+  for (n in 1:N) {
+    for (s in 1:S) {
+      fishing_rate[z] = pow(fishing_step[N, S], nterm);
+      z += 1;
+    }
+  }
+  // Return fishing rate
+  return fishing_rate;
+}
+
+/**
+* Assemble a fishing rate deviation array
+*
+* @param pmean, an array of dimension [X]
+* @param ptime, an array of dimension [T, X]
+* @param pterm, an array of dimension [I, X]
+* @param psize, an array of dimension [S, X]
+* @param nterm, an integer giving the number of seasons (terms) per year (times)
+*
+* @return an array of dimension [Z, X]
+*
+* The first argument pmean holds the parameters associated with the mean
+* fishing rates. The next three arguments hold the parameter deviations
+* associated with fishing rate deviations from the mean for time (ptime),
+* term (pterm), and size (psize). Two of these three should be placeholders
+* rep_array(0.0, 1, X).
+*
+*/
+array[,] real assemble_fishing_deviation (
+  array[] real pmean,
+  array[,] real ptime,
+  array[,] real pterm,
+  array[,] real psize,
+  int nterm
+) {
+  // Get dimensions
+  int X = dims(pmean)[1];
+  int T = dims(ptime)[1];
+  int I = dims(pterm)[1];
+  int S = dims(psize)[1];
+  // Set dimensions
+  Z = T * I * S;
+  // Initialize movement rates
+  array[X] real fishing_mean = assemble_fishing_rate(
+    pmean,
+    nterm
+  );
+  array[Z, X] real fishing_type = assemble_fishing_rate(
+    pmean,
+    ptime,
+    pterm,
+    psize,
+    nterm
+  );
+  array[Z, X] real fishing_deviation;
+  // Check dimensions
+  if (X < 1) {reject("X must not be < 1; found X = ", X);}
+  if (T < 1) {reject("T must not be < 1; found T = ", T);}
+  if (I < 1) {reject("I must not be < 1; found I = ", I);}
+  if (S < 1) {reject("S must not be < 1; found S = ", S);}
+  if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)")}
+  // Populate movement deviation
+  for (z in 1:Z) {
+    for (x in 1:X) {
+      fishing_deviation[z,x,y] = fishing_type[z,x] - fishing_mean[x];
+    }
+  }
+  // Return movement deviation
+  return fishing_deviation;
 }
 
 /**
