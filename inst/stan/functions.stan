@@ -509,9 +509,10 @@ array[,,] real assemble_fishing_step (
   for (n in 1:N) {
     for (s in 1:S) {
       for (x in 1:X) {
-        fishing_step[n, s, x] = log(
-          exp(parameter_slab[n, s, x]) / (1 + exp(parameter_slab[n, s, x]))
-        );
+        # Maps values in parameter_slab (-Inf, Inf) to values in (-Inf, 0)
+        # for fishing_step by log(exp(a) / (1 + exp(a))) = a - log(1 + exp(a))
+        fishing_step[n, s, x] = parameter_slab[n, s, x]
+        - log(1 + exp(parameter_slab[n, s, x]));
       }
     }
   }
