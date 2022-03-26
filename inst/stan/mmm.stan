@@ -28,16 +28,15 @@ data {
   array[X] real<lower=0> sd_mortality_rate;
   array[X] real<lower=0> sd_reporting_rate;
   array[X] real<lower=0> sd_fishing_mean_rate;
-  // Autoregressive movement process parameters
-  real<lower=0> sd_movement_deviation_time_rate;
-  real<lower=0> sd_movement_deviation_term_rate;
-  real<lower=0> sd_movement_deviation_size_rate;
-  // Autoregressive fishing process parameters
-  real<lower=0> sd_fishing_deviation_time_rate;
-  real<lower=0> sd_fishing_deviation_term_rate;
-  real<lower=0> sd_fishing_deviation_size_rate;
-  // Prior standard deviation dispersion
   real<lower=0> sd_dispersion;
+  // Autoregressive movement process parameters
+  real<lower=0> cv_movement_deviation_time_rate;
+  real<lower=0> cv_movement_deviation_term_rate;
+  real<lower=0> cv_movement_deviation_size_rate;
+  // Autoregressive fishing process parameters
+  real<lower=0> cv_fishing_deviation_time_rate;
+  real<lower=0> cv_fishing_deviation_term_rate;
+  real<lower=0> cv_fishing_deviation_size_rate;
   // Fudge values
   real<lower=0> expected_fudge;
 }
@@ -234,7 +233,7 @@ model {
       for (x in 1:X) {
         movement_deviation_time_rate[t, x, y] ~ normal(
           movement_deviation_time_rate[t - 1, x, y],
-          sd_movement_deviation_time_rate / movement_mean_rate[x, y]
+          cv_movement_deviation_time_rate * movement_mean_rate[x, y]
         );
       }
     }
@@ -245,7 +244,7 @@ model {
       for (x in 1:X) {
         movement_deviation_term_rate[i, x, y] ~ normal(
           movement_deviation_term_rate[i - 1, x, y],
-          sd_movement_deviation_term_rate / movement_mean_rate[x, y]
+          cv_movement_deviation_term_rate * movement_mean_rate[x, y]
         );
       }
     }
@@ -254,7 +253,7 @@ model {
     for (x in 1:X) {
       movement_deviation_term_rate[1, x, y] ~ normal(
         movement_deviation_term_rate[I, x, y],
-        sd_movement_deviation_term_rate / movement_mean_rate[x, y]
+        cv_movement_deviation_term_rate * movement_mean_rate[x, y]
       );
     }
   }
@@ -264,7 +263,7 @@ model {
       for (x in 1:X) {
         movement_deviation_size_rate[s, x, y] ~ normal(
           movement_deviation_size_rate[s - 1, x, y],
-          sd_movement_deviation_size_rate / movement_mean_rate[x, y]
+          cv_movement_deviation_size_rate * movement_mean_rate[x, y]
         );
       }
     }
@@ -276,7 +275,7 @@ model {
     for (x in 1:X) {
       fishing_deviation_time_rate[t, x] ~ normal(
         fishing_deviation_time_rate[t - 1, x],
-        sd_fishing_deviation_time_rate / fishing_mean_rate[x]
+        cv_fishing_deviation_time_rate * fishing_mean_rate[x]
       );
     }
   }
@@ -285,14 +284,14 @@ model {
     for (x in 1:X) {
       fishing_deviation_term_rate[i, x] ~ normal(
         fishing_deviation_term_rate[i - 1, x],
-        sd_fishing_deviation_term_rate / fishing_mean_rate[x]
+        cv_fishing_deviation_term_rate * fishing_mean_rate[x]
       );
     }
   }
   for (x in 1:X) {
     fishing_deviation_term_rate[1, x] ~ normal(
       fishing_deviation_term_rate[I, x],
-      sd_fishing_deviation_term_rate / fishing_mean_rate[x]
+      cv_fishing_deviation_term_rate * fishing_mean_rate[x]
     )
   }
   // Fishing deviation size rate prior
@@ -300,7 +299,7 @@ model {
     for (x in 1:X) {
       fishing_deviation_size_rate[s, x] ~ normal(
         fishing_deviation_size_rate[s - 1, x],
-        sd_fishing_deviation_size_rate / fishing_mean_rate[x]
+        cv_fishing_deviation_size_rate * fishing_mean_rate[x]
       );
     }
   }
