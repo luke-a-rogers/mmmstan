@@ -21,6 +21,5 @@ Compute The Number of Terms Per Year
 compute_n_terms("year")
 compute_n_terms("quarter")
 compute_n_terms("month")
-compute_n_terms(2) # Errors correctly
 
 }

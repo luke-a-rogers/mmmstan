@@ -2,9 +2,44 @@
 % Please edit documentation in R/functions.R
 \name{fit}
 \alias{fit}
-\title{Fit Markov Movement Model via CmdStanR}
+\title{Fit A Markov Movement Model via CmdStanR}
 \usage{
 fit(
+  tag_data,
+  list_regions,
+  list_sizes,
+  date_released_start,
+  date_released_end,
+  step_liberty_max = NULL,
+  term_released = "quarter",
+  colname_date_released = "date_released",
+  colname_date_recovered = "date_recovered",
+  colname_region_released = "region_released",
+  colname_region_recovered = "region_recovered",
+  colname_size_released = "size_released",
+  movement_pattern = 2,
+  movement_allow = NULL,
+  movement_disallow = NULL,
+  mu_mortality_rate = rep(0.1, length(list_regions)),
+  mu_reporting_rate = rep(1, length(list_regions)),
+  mu_fishing_mean_rate = rep(0.1, length(list_regions)),
+  mu_initial_loss_rate = 0.1,
+  mu_ongoing_loss_rate = 0.02,
+  mu_dispersion = 1,
+  mu_fishing_deviation_time_rate = NULL,
+  sd_mortality_rate = 0.1 * mu_mortality_rate,
+  sd_reporting_rate = 0.1 * mu_reporting_rate,
+  sd_fishing_mean_rate = 0.1 * mu_fishing_mean_rate,
+  sd_initial_loss_rate = 0.1 * mu_initial_loss_rate,
+  sd_ongoing_loss_rate = 0.1 * mu_ongoing_loss_rate,
+  sd_dispersion = 0.25 * mu_dispersion,
+  cv_movement_deviation_time_rate = 0.1,
+  cv_movement_deviation_term_rate = 0.1,
+  cv_movement_deviation_size_rate = 0.1,
+  cv_fishing_deviation_time_rate = 0.1,
+  cv_fishing_deviation_term_rate = 0.1,
+  cv_fishing_deviation_size_rate = 0.1,
+  expected_fudge = 1e-12,
   data = NULL,
   chains = 1,
   step_size = 0.01,
@@ -16,6 +51,83 @@ fit(
 )
 }
 \arguments{
+\item{tag_data}{\code{\link[=data.frame]{data.frame()}}}
+
+\item{list_regions}{\code{\link[=list]{list()}}}
+
+\item{list_sizes}{\code{\link[=list]{list()}}}
+
+\item{date_released_start}{\code{\link[=character]{character()}} amenable to
+\code{lubridate::as_date()}}
+
+\item{date_released_end}{\code{\link[=character]{character()}} amenable to
+\code{lubridate::as_date()}}
+
+\item{step_liberty_max}{\code{\link[=integer]{integer()}}}
+
+\item{term_released}{\code{\link[=character]{character()}} in \code{c("year", "month", "quarter")}}
+
+\item{colname_date_released}{\code{\link[=character]{character()}}}
+
+\item{colname_date_recovered}{\code{\link[=character]{character()}}}
+
+\item{colname_region_released}{\code{\link[=character]{character()}}}
+
+\item{colname_region_recovered}{\code{\link[=character]{character()}}}
+
+\item{colname_size_released}{\code{\link[=character]{character()}}}
+
+\item{movement_pattern}{\code{\link[=integer]{integer()}} One of \code{1}: movement between
+all pairs of regions at each step, or \code{2}:
+movement between numerically sequential regions (the default)}
+
+\item{movement_allow}{\code{\link[=integer]{integer()}} \code{\link[=matrix]{matrix()}} Adjusts the movement pattern
+to allow additional movement between regions. Each row indicates
+directional movement between a pair of regions}
+
+\item{movement_disallow}{\code{\link[=integer]{integer()}} \code{\link[=matrix]{matrix()}} As for
+\code{movement_allow}, but specified movement is disallowed}
+
+\item{mu_mortality_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_reporting_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_fishing_mean_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_dispersion}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_fishing_deviation_time_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_mortality_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_reporting_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_fishing_mean_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_dispersion}{\code{\link[=numeric]{numeric()}}}
+
+\item{cv_movement_deviation_time_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{cv_movement_deviation_term_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{cv_movement_deviation_size_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{cv_fishing_deviation_time_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{cv_fishing_deviation_term_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{cv_fishing_deviation_size_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{expected_fudge}{\code{\link[=numeric]{numeric()}}}
+
 \item{data}{\code{\link[=list]{list()}} See details}
 
 \item{chains}{\code{\link[=integer]{integer()}} number of chains}
@@ -36,8 +148,20 @@ fit(
 \code{\link[=fit]{fit()}}
 }
 \description{
-Fit Markov Movement Model via CmdStanR
+Stan model data may be specified in two ways: via arguments \code{tag_data}
+through \code{expected_fudge} several of which take advantage of helper
+functions and many of which have sensible defaults, xor via the \code{data}
+argument which takes precedent when present and must be compatible with the
+Stan model directly.
 }
 \details{
+The \code{data} argument can offer greater flexibility, for example
+the times and terms that define the step size used in the model
+are currently constrained to times = years and terms in
+\code{c("year", "month", "quarter")} by the helper functions. By specifying
+\code{tags_released} and \code{tags_recovered} manually in the \code{data}
+argument and adjusting the corresponding index limits, arbitrary time and
+step units are possible.
+
 TBD
 }

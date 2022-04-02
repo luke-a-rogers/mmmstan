@@ -4,36 +4,39 @@ functions {
 
 data {
   // Index limits
-  int<lower=0> I; // Number of terms per unit of time
-  int<lower=0> L; // Number of maximum steps at liberty
-  int<lower=0> N; // Number of release steps ((T * I) - 1)
-  int<lower=0> P; // Number of movement rate mean parameters
-  int<lower=0> S; // Number of size classes
-  int<lower=0> T; // Number of times (usually years; release only)
   int<lower=0> X; // Number of geographic regions
-  // Movement index array
-  array[X, X] int<lower=0, upper=1> movement_index;
+  int<lower=0> T; // Number of times (usually years; release only)
+  int<lower=0> I; // Number of terms per unit of time
+  int<lower=0> S; // Number of size classes
+  int<lower=0> N; // Number of release steps ((T * I) - 1)
+  int<lower=0> L; // Number of maximum steps at liberty
+  int<lower=0> P; // Number of movement rate mean parameters
   // Tag data
   array[N, S, X] int<lower=0> tags_released;
   array[N, S, X, L, X] int<lower=0> tags_recovered;
-  // Rates
-  real<lower=0, upper=1> initial_loss_rate; // Fraction
-  real<lower=0, upper=1> ongoing_loss_rate; // Instantaneous
+  // Movement index array
+  array[X, X] int<lower=0, upper=1> movement_index;
   // Prior means
   array[X] real<lower=0> mu_mortality_rate;
   array[X] real<lower=0> mu_reporting_rate;
   array[X] real<lower=0> mu_fishing_mean_rate;
+  real<lower=0, upper=1> mu_initial_loss_rate; // Fraction
+  real<lower=0> mu_ongoing_loss_rate; // Instantaneous
   real<lower=0> mu_dispersion;
+  // Fishing prior mean deviations by time
+  array[T, X] real mu_fishing_deviation_time_rate;
   // Prior standard deviations
   array[X] real<lower=0> sd_mortality_rate;
   array[X] real<lower=0> sd_reporting_rate;
   array[X] real<lower=0> sd_fishing_mean_rate;
+  real<lower=0> sd_initial_loss_rate;
+  real<lower=0> sd_ongoing_loss_rate;
   real<lower=0> sd_dispersion;
-  // Autoregressive movement process parameters
+  // Movement prior coefficients of variation
   real<lower=0> cv_movement_deviation_time_rate;
   real<lower=0> cv_movement_deviation_term_rate;
   real<lower=0> cv_movement_deviation_size_rate;
-  // Autoregressive fishing process parameters
+  // Fishing prior coefficients of variation
   real<lower=0> cv_fishing_deviation_time_rate;
   real<lower=0> cv_fishing_deviation_term_rate;
   real<lower=0> cv_fishing_deviation_size_rate;
@@ -42,9 +45,7 @@ data {
 }
 
 transformed data {
-  real<lower=0> ongoing_loss_step = ongoing_loss_rate / I;
   int<lower=0> C = 0; // Number of observations
-
   // Count observations
   for (n in 1:N) { // Released step
     for (s in 1:S) { // Released size
@@ -72,6 +73,9 @@ parameters {
   array[X] real<lower=0> mortality_step; // Instantaneous
   // Tag reporting parameters
   array[X] real<lower=0, upper=1> reporting_rate; // Fraction
+  // Tag loss parameters
+  real<lower=0, upper=1> initial_loss_rate; // Fraction
+  real<lower=0> ongoing_loss_step; // Instantaneous
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -79,6 +83,8 @@ parameters {
 transformed parameters {
   // Natural mortality rate
   array[X] real<lower=0> mortality_rate = mortality_step * I;
+  // Ongoing tag loss rate
+  real<lower=0> ongoing_loss_rate = ongoing_loss_step * I;
 }
 
 model {
@@ -271,10 +277,10 @@ model {
   // Fishing mean rate prior
   fishing_mean_rate ~ normal(mu_fishing_mean_rate, sd_fishing_mean_rate);
   // Fishing deviation time rate prior
-  for (t in 2:T) {
+  for (t in 1:T) {
     for (x in 1:X) {
       fishing_deviation_time_rate[t, x] ~ normal(
-        fishing_deviation_time_rate[t - 1, x],
+        mu_fishing_deviation_time_rate[t, x],
         cv_fishing_deviation_time_rate * fishing_mean_rate[x]
       );
     }
@@ -307,9 +313,12 @@ model {
   mortality_rate ~ normal(mu_mortality_rate, sd_mortality_rate);
   // Reporting rate prior
   reporting_rate ~ normal(mu_reporting_rate, sd_reporting_rate);
+  // Tag loss rate priors
+  initial_loss_rate ~ normal(mu_initial_loss_rate, sd_initial_loss_rate);
+  ongoing_loss_rate ~ normal(mu_ongoing_loss_rate, sd_ongoing_loss_rate);
   // Dispersion prior
   dispersion ~ normal(mu_dispersion, sd_dispersion);
-  // Sampling statement (var = mu + mu^2 / phi)
+  // Sampling statement (var = mu + mu^2 / dispersion)
   observed ~ neg_binomial_2(expected, dispersion);
 }
 

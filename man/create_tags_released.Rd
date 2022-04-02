@@ -6,8 +6,8 @@
 \usage{
 create_tags_released(
   tags,
-  list_sizes,
   list_regions,
+  list_sizes,
   date_released_start,
   date_released_end,
   term_released = "quarter",
@@ -19,9 +19,9 @@ create_tags_released(
 \arguments{
 \item{tags}{\code{\link[=data.frame]{data.frame()}}}
 
-\item{list_sizes}{\code{\link[=list]{list()}}}
-
 \item{list_regions}{\code{\link[=list]{list()}}}
+
+\item{list_sizes}{\code{\link[=list]{list()}}}
 
 \item{date_released_start}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
 

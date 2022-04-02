@@ -1,6 +1,6 @@
 Package: mmmstan
 Title: Fit Markov Movement Models (MMM) via CmdStan
-Version: 0.0.3
+Version: 0.0.4
 Authors@R: person(given = c("Luke", "A."),
                   family = "Rogers",
                   role = c("aut", "cre"),
@@ -19,7 +19,6 @@ Imports:
     tidyr,
     parallel,
     cmdstanr,
-    rstan,
     markdown,
     stats,
     tibble,

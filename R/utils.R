@@ -11,7 +11,6 @@
 #' compute_n_terms("year")
 #' compute_n_terms("quarter")
 #' compute_n_terms("month")
-#' compute_n_terms(2) # Errors correctly
 #'
 compute_n_terms <- function (x) {
 
@@ -376,8 +375,8 @@ create_step_released <- function (date_released,
 #' Create Tags Recovered
 #'
 #' @param tags [data.frame()]
-#' @param list_sizes [list()]
 #' @param list_regions [list()]
+#' @param list_sizes [list()]
 #' @param date_released_start [character()] date as \code{"\%Y-\%m-\%d"}
 #' @param date_released_end [character()] date as \code{"\%Y-\%m-\%d"}
 #' @param step_liberty_max [integer()]
@@ -389,12 +388,14 @@ create_step_released <- function (date_released,
 #' @param colname_region_recovered [character()]
 #' @param colname_size_released [character()]
 #'
+#' @importFrom rlang .data
+#'
 #' @return [tibble::tibble()]
 #' @export
 #'
 create_tags_recovered <- function (tags,
-                                   list_sizes,
                                    list_regions,
+                                   list_sizes,
                                    date_released_start,
                                    date_released_end,
                                    step_liberty_max,
@@ -442,6 +443,14 @@ create_tags_recovered <- function (tags,
     x = colname_size_released,
     choices = colnames(tags)
   )
+
+  # Placate R-CMD-check --------------------------------------------------------
+
+  date_released <- NULL
+  date_recovered <- NULL
+  region_released <- NULL
+  region_recovered <- NULL
+  size_released <- NULL
 
   # Compute index limits -------------------------------------------------------
 
@@ -543,8 +552,8 @@ create_tags_recovered <- function (tags,
 #' Create Tags Released
 #'
 #' @param tags [data.frame()]
-#' @param list_sizes [list()]
 #' @param list_regions [list()]
+#' @param list_sizes [list()]
 #' @param date_released_start [character()] date as \code{"\%Y-\%m-\%d"}
 #' @param date_released_end [character()] date as \code{"\%Y-\%m-\%d"}
 #' @param term_released [character()] one of \code{"year"}, \code{"quarter"}
@@ -553,12 +562,14 @@ create_tags_recovered <- function (tags,
 #' @param colname_region_released [character()]
 #' @param colname_size_released [character()]
 #'
+#' @importFrom rlang .data
+#'
 #' @return [tibble::tibble()]
 #' @export
 #'
 create_tags_released <- function (tags,
-                                  list_sizes,
                                   list_regions,
+                                  list_sizes,
                                   date_released_start,
                                   date_released_end,
                                   # step_liberty_max,
@@ -576,12 +587,12 @@ create_tags_released <- function (tags,
   checkmate::assert_list(list_regions)
   checkmate::assert_date(lubridate::date(date_released_start))
   checkmate::assert_date(lubridate::date(date_released_end))
-  checkmate::assert_integerish(
-    step_liberty_max,
-    lower = 2,
-    len = 1,
-    any.missing = FALSE
-  )
+  # checkmate::assert_integerish(
+  #   step_liberty_max,
+  #   lower = 2,
+  #   len = 1,
+  #   any.missing = FALSE
+  # )
   checkmate::assert_choice(
     x = term_released,
     choices = c("year", "quarter", "month")
@@ -606,6 +617,14 @@ create_tags_released <- function (tags,
     x = colname_size_released,
     choices = colnames(tags)
   )
+
+  # Placate R-CMD-check --------------------------------------------------------
+
+  date_released <- NULL
+  # date_recovered <- NULL
+  region_released <- NULL
+  # region_recovered <- NULL
+  size_released <- NULL
 
   # Compute index limits -------------------------------------------------------
 
