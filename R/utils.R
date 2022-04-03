@@ -720,3 +720,16 @@ create_tags_released <- function (tags,
 
   return(tags_released)
 }
+
+#' Read File From Path
+#'
+#' @param path [character()] file path
+#'
+#' @return the object at the file path
+#' @export
+#'
+read_from_path <- function (path) {
+  envir <- environment()
+  data_name <- load(path, envir = envir)
+  get(data_name)
+}

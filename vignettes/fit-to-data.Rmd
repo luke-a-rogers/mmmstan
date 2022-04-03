@@ -20,6 +20,117 @@ library(mmmstan)
 
 # Prepare Data
 ```{r prepare-data}
+
+if (FALSE) {
+  # Define tag paths
+  path_released <- "~/github/sablefish-data/data/tags_released.rda"
+  path_recovered <- "~/github/sablefish-data/data/tags_recovered.rda"
+  # Assign values
+  tags_released <- read_from_path(path = path_released)
+  tags_recovered <- read_from_path(path = path_recovered)
+  # Tags
+  tag_data <- tags_released %>%
+    dplyr::left_join(
+      tags_recovered,
+      by = c(
+        "tag_id", 
+        "released_date", 
+        "released_length", 
+        "released_region", 
+        "released_omregion", 
+        "source"
+      )
+    )
+  # Arguments
+    tag_data <- tag_data
+    list_regions <- list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8)
+    list_sizes <- list(s = 400:499, m = 500:599, l = 600:699, xl = 700:799)
+    date_released_start <- "1979-01-01"
+    date_released_end <- "2015-12-31"
+    step_liberty_max <- NULL
+    term_released <- "quarter"
+    colname_date_released <- "released_date" # "date_released"
+    colname_date_recovered <- "recovered_date" # "date_recovered"
+    colname_region_released <- "released_region" # "region_released"
+    colname_region_recovered <- "recovered_region" # "region_recovered"
+    colname_size_released <- "released_length" # "size_released"
+    movement_pattern <- 2
+    movement_allow <- matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
+    movement_disallow <- NULL
+    mu_mortality_rate <- rep(0.1, length(list_regions))
+    mu_reporting_rate <- rep(1, length(list_regions))
+    mu_fishing_mean_rate <- rep(0.1, length(list_regions))
+    mu_initial_loss_rate <- 0.1
+    mu_ongoing_loss_rate <- 0.02
+    mu_dispersion <- 1
+    mu_fishing_deviation_time_rate <- NULL
+    sd_mortality_rate <- 0.1 * mu_mortality_rate
+    sd_reporting_rate <- 0.1 * mu_reporting_rate
+    sd_fishing_mean_rate <- 0.1 * mu_fishing_mean_rate
+    sd_initial_loss_rate <- 0.1 * mu_initial_loss_rate
+    sd_ongoing_loss_rate <- 0.1 * mu_ongoing_loss_rate
+    sd_dispersion <- 0.25 * mu_dispersion
+    cv_movement_deviation_time_rate <- 0.1
+    cv_movement_deviation_term_rate <- 0.1
+    cv_movement_deviation_size_rate <- 0.1
+    cv_fishing_deviation_time_rate <- 0.1
+    cv_fishing_deviation_term_rate <- 0.1
+    cv_fishing_deviation_size_rate <- 0.1
+    expected_fudge <- 1e-12
+    data <- NULL
+    chains <- 1
+    step_size <- 0.01
+    iter_warmup <- 250
+    iter_sampling <- 750
+    use_reduce_sum <- FALSE
+    threads_per_chain <- 8  
+  # Fit
+  m1 <- fit(
+    tag_data = tag_data,
+    list_regions = list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8),
+    list_sizes = list(s = 400:499, m = 500:599, l = 600:699, xl = 700:799),
+    date_released_start = "1979-01-01",
+    date_released_end = "2015-12-31",
+    step_liberty_max = NULL,
+    term_released = "quarter",
+    colname_date_released = "released_date", # "date_released",
+    colname_date_recovered = "recovered_date", # "date_recovered",
+    colname_region_released = "released_region", # "region_released",
+    colname_region_recovered = "recovered_region", # "region_recovered",
+    colname_size_released = "released_length", # "size_released",
+    movement_pattern = 2,
+    movement_allow = matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE),
+    movement_disallow = NULL,
+    mu_mortality_rate = rep(0.1, length(list_regions)),
+    mu_reporting_rate = rep(1, length(list_regions)),
+    mu_fishing_mean_rate = rep(0.1, length(list_regions)),
+    mu_initial_loss_rate = 0.1,
+    mu_ongoing_loss_rate = 0.02,
+    mu_dispersion = 1,
+    mu_fishing_deviation_time_rate = NULL,
+    sd_mortality_rate = 0.1 * mu_mortality_rate,
+    sd_reporting_rate = 0.1 * mu_reporting_rate,
+    sd_fishing_mean_rate = 0.1 * mu_fishing_mean_rate,
+    sd_initial_loss_rate = 0.1 * mu_initial_loss_rate,
+    sd_ongoing_loss_rate = 0.1 * mu_ongoing_loss_rate,
+    sd_dispersion = 0.25 * mu_dispersion,
+    cv_movement_deviation_time_rate = 0.1,
+    cv_movement_deviation_term_rate = 0.1,
+    cv_movement_deviation_size_rate = 0.1,
+    cv_fishing_deviation_time_rate = 0.1,
+    cv_fishing_deviation_term_rate = 0.1,
+    cv_fishing_deviation_size_rate = 0.1,
+    expected_fudge = 1e-12,
+    data = NULL,
+    chains = 1,
+    step_size = 0.01,
+    iter_warmup = 250,
+    iter_sampling = 750,
+    use_reduce_sum = FALSE,
+    threads_per_chain = 8)
+  }
+
+
 # 
 # if (FALSE) {
 #   load("~/github/sablefish-data/data/tags_released.rda")

@@ -215,21 +215,21 @@ fit <- function (tag_data,
     lower = 0,
     finite = TRUE,
     any.missing = FALSE,
-    len = length(list_regions)
+    null.ok = has_data
   )
   checkmate::assert_numeric(
     mu_reporting_rate,
     lower = 0,
     upper = 1,
     any.missing = FALSE,
-    len = length(list_regions)
+    null.ok = has_data
   )
   checkmate::assert_numeric(
     mu_fishing_mean_rate,
     lower = 0,
     finite = TRUE,
     any.missing = FALSE,
-    len = length(list_regions)
+    null.ok = has_data
   )
   checkmate::assert_number(
     mu_initial_loss_rate,
@@ -237,11 +237,13 @@ fit <- function (tag_data,
   )
   checkmate::assert_number(
     mu_ongoing_loss_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   checkmate::assert_number(
     mu_dispersion,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   # Fishing prior mean deviations by time
   checkmate::assert_array(
@@ -257,21 +259,21 @@ fit <- function (tag_data,
     lower = 0,
     finite = TRUE,
     any.missing = FALSE,
-    len = length(list_regions)
+    null.ok = has_data
   )
   checkmate::assert_numeric(
     sd_reporting_rate,
     lower = 0,
     finite = TRUE,
     any.missing = FALSE,
-    len = length(list_regions)
+    null.ok = has_data
   )
   checkmate::assert_numeric(
     sd_fishing_mean_rate,
     lower = 0,
     finite = TRUE,
     any.missing = FALSE,
-    len = length(list_regions)
+    null.ok = has_data
   )
   checkmate::assert_number(
     sd_initial_loss_rate,
@@ -283,20 +285,24 @@ fit <- function (tag_data,
   )
   checkmate::assert_number(
     sd_dispersion,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   # Movement prior coefficients of variation
   checkmate::assert_number(
     cv_movement_deviation_time_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   checkmate::assert_number(
     cv_movement_deviation_term_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   checkmate::assert_number(
     cv_movement_deviation_size_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   # Fishing prior coefficients of variation
   checkmate::assert_number(
@@ -305,16 +311,19 @@ fit <- function (tag_data,
   )
   checkmate::assert_number(
     cv_fishing_deviation_term_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   checkmate::assert_number(
     cv_fishing_deviation_size_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   # Fudge value
   checkmate::assert_number(
     expected_fudge,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   # Data
   checkmate::assert_list(
@@ -473,6 +482,8 @@ fit <- function (tag_data,
       expected_fudge = expected_fudge
     )
   }
+
+  # Check dimensions data elements ---------------------------------------------
 
   # Initialize the model -------------------------------------------------------
 
