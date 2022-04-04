@@ -451,6 +451,7 @@ create_tags_recovered <- function (tags,
   region_released <- NULL
   region_recovered <- NULL
   size_released <- NULL
+  count <- NULL
 
   # Compute index limits -------------------------------------------------------
 
@@ -498,6 +499,9 @@ create_tags_recovered <- function (tags,
       ),
       y = create_group(x = .data$region_recovered, list_x = list_regions)
     ) %>%
+    tidyr::drop_na() %>%
+    dplyr::filter(.data$n <= n_steps) %>% # Stop releases one step earlier
+    dplyr::filter(.data$l <= n_liberty) %>%
     dplyr::filter(.data$n + .data$l - 1L <= n_times * n_terms) %>%
     dplyr::select(
       .data$n,
