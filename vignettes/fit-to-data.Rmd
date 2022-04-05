@@ -84,6 +84,50 @@ if (FALSE) {
     iter_sampling <- 750
     use_reduce_sum <- FALSE
     threads_per_chain <- 8  
+    # # Get tag functions working
+    # n_regions <- length(list_regions)
+    # n_times <- compute_n_times(date_released_start, date_released_end)
+    # n_terms <- compute_n_terms(term_released)
+    # n_sizes <- length(list_sizes)
+    # n_steps <- (n_times * n_terms) - 1
+    # n_liberty <- ifelse(is.null(step_liberty_max), n_steps, step_liberty_max)
+    # # Create_tags arguments
+    # tags <- tag_data
+    # step_liberty_max <- n_liberty
+    # # Released
+    # if (is.null(data)) {
+    #   tags_released <- create_tags_released(
+    #     tags = tag_data,
+    #     list_regions = list_regions,
+    #     list_sizes = list_sizes,
+    #     date_released_start = date_released_start,
+    #     date_released_end = date_released_end,
+    #     # step_liberty_max = step_liberty_max,
+    #     term_released = term_released,
+    #     colname_date_released = colname_date_released,
+    #     # colname_date_recovered = colname_date_recovered,
+    #     colname_region_released = colname_region_released,
+    #     # colname_region_recovered = colname_region_recovered,
+    #     colname_size_released = colname_size_released
+    #   )
+    # }
+    # # Recovered
+    # if (is.null(data)) {
+    #   tags_recovered <- create_tags_recovered(
+    #     tags = tag_data,
+    #     list_regions = list_regions,
+    #     list_sizes = list_sizes,
+    #     date_released_start = date_released_start,
+    #     date_released_end = date_released_end,
+    #     step_liberty_max = n_liberty,
+    #     term_released = term_released,
+    #     colname_date_released = colname_date_released,
+    #     colname_date_recovered = colname_date_recovered,
+    #     colname_region_released = colname_region_released,
+    #     colname_region_recovered = colname_region_recovered,
+    #     colname_size_released = colname_size_released
+    #   )
+    # }
   # Fit
   m1 <- fit(
     tag_data = tag_data,

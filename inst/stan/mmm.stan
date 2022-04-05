@@ -72,7 +72,7 @@ parameters {
   // Natural mortality parameters
   array[X] real<lower=0> mortality_step; // Instantaneous
   // Tag reporting parameters
-  array[X] real<lower=0, upper=1> reporting_rate; // Fraction
+  array[X] real<lower=0, upper=1> reporting_step; // Fraction
   // Tag loss parameters
   real<lower=0, upper=1> initial_loss_rate; // Fraction
   real<lower=0> ongoing_loss_step; // Instantaneous
@@ -81,32 +81,42 @@ parameters {
 }
 
 transformed parameters {
-  // Natural mortality rate
-  array[X] real<lower=0> mortality_rate = mortality_step * I;
   // Ongoing tag loss rate
   real<lower=0> ongoing_loss_rate = ongoing_loss_step * I;
+  // Natural mortality rate
+  array[X] real<lower=0> mortality_rate;
+  // Tag reporting rate
+  array[X] real<lower=0, upper=1> reporting_rate; // Fraction
+  // Populate natural mortality rate
+  for (x in 1:X) {
+    mortality_rate[x] = mortality_step[x] * I;
+  }
+  // Populate tag reporting rate
+  for (x in 1:X) {
+    reporting_rate[x] = reporting_step[x]; // Fraction
+  }
 }
 
 model {
   // Define step values (for computation)
-  array[N, S] matrix[X, X]<lower=0> movement_step;
-  array[N, S, X] real<lower=0> fishing_step;
-  array[N, S, X]<lower=0> survival_step;
+  array[N, S] matrix[X, X] movement_step;
+  array[N, S, X] real fishing_step;
+  array[N, S, X] real survival_step;
   // Define movement rate values (for priors)
   matrix[X, X] movement_mean_rate;
   array[T] matrix[X, X] movement_deviation_time_rate;
   array[I] matrix[X, X] movement_deviation_term_rate;
   array[S] matrix[X, X] movement_deviation_size_rate;
   // Define fishing rate values (for priors)
-  array[X] real<lower=0> fishing_mean_rate;
+  array[X] real fishing_mean_rate;
   array[T, X] real fishing_deviation_time_rate;
   array[I, X] real fishing_deviation_term_rate;
   array[S, X] real fishing_deviation_size_rate;
   // Define remaining values
-  array[N, S, X, L, X]<lower=0> abundance;
-  array[C] int<lower=0> observed;
-  array[C] real<lower=0> expected;
-  int<lower=0> count = 1;
+  array[N, S, X, L, X] real abundance;
+  array[C] int  observed;
+  array[C] real expected;
+  int count = 1;
   // Assemble movement step [N, S] [X, X]
   movement_step = assemble_movement_step(
     movement_parameter_mean_step,
@@ -215,7 +225,7 @@ model {
               for (x in 1:X) { // Previous region
                 abundance[n, s, w, l, y] += abundance[n, s, w, l - 1, x]
                 * survival_step[n + l - 2, s, x] // Previous step
-                * movement_step[n + l - 2, s, x, y] // Previous step
+                * movement_step[n + l - 2, s, x, y]; // Previous step
               } // End x
             } // End y
           } // End l
@@ -298,7 +308,7 @@ model {
     fishing_deviation_term_rate[1, x] ~ normal(
       fishing_deviation_term_rate[I, x],
       cv_fishing_deviation_term_rate * fishing_mean_rate[x]
-    )
+    );
   }
   // Fishing deviation size rate prior
   for (s in 2:S) {
@@ -328,9 +338,9 @@ generated quantities {
   array[I] matrix[X,X] movement_term_rate = rep_array(rep_matrix(0.0,X,X),I);
   array[S] matrix[X,X] movement_size_rate = rep_array(rep_matrix(0.0,X,X),S);
   // Define fishing values
-  array[T] real fishing_time_rate = rep_array(0.0, T, X);
-  array[I] real fishing_term_rate = rep_array(0.0, I, X);
-  array[S] real fishing_size_rate = rep_array(0.0, S, X);
+  array[T, X] real fishing_time_rate = rep_array(0.0, T, X);
+  array[I, X] real fishing_term_rate = rep_array(0.0, I, X);
+  array[S, X] real fishing_size_rate = rep_array(0.0, S, X);
   // Assemble movement time rate
   movement_time_rate = assemble_movement_rate(
     movement_parameter_mean_step,

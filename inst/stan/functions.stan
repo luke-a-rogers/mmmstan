@@ -1,6 +1,7 @@
 /**
 * Forward declarations. Allows function definitions in alphabetical-ish order.
 */
+/**
 array[,,] real assemble_parameter_slab (
   array[] real pmean,
   array[,] real ptime,
@@ -68,6 +69,59 @@ array[,] real assemble_fishing_deviation (
 );
 real inverse_logit(real arg);
 array[] real inverse_multi_logit (array[] real arg);
+*/
+
+/**
+* Inverse logit
+*
+* @ param arg, a real value
+*
+* @return a value in [0, 1]
+*/
+real inverse_logit(real arg) {
+  real value;
+  if (is_inf(arg)) {
+    if (arg > 0) {
+      value = 1;
+    } else {
+      value = 0;
+    }
+  } else {
+    value = exp(arg) / (1 + exp(arg));
+  }
+  return value;
+}
+
+/**
+* Inverse multi-logit
+*
+* @param arg, an array of dimension [P]
+*
+* @return an array of dimension [P + 1] that sums to one
+*/
+array[] real inverse_multi_logit (array[] real arg) {
+  // Get dimensions
+  int P = size(arg);
+  // Instantiate sums
+  real sum_exp_arg = 0;
+  real sum_value = 0;
+  // Instantiate value
+  array[P + 1] real value;
+  // Check dimensions
+  if (P < 1) {reject("P must not be < 1; found P = ", P);}
+  // Get sum of exponential
+  for (p in 1:P) {
+    sum_exp_arg += exp(arg[p]);
+  }
+  // Populate value
+  for (p in 1:P) {
+    value[p] = exp(arg[p]) / (1 + sum_exp_arg);
+    sum_value += value[p];
+  }
+  value[P + 1] = 1 - sum_value;
+  // Return value
+  return value;
+}
 
 /**
 * Assemble a parameter array 'slab'
@@ -162,7 +216,7 @@ array[,,] real assemble_movement_slab (
   array[,] real ptime,
   array[,] real pterm,
   array[,] real psize,
-  array[,] real mindex
+  array[,] int mindex
 ) {
   // Get dimensions
   int P = dims(pmean)[1];
@@ -242,7 +296,7 @@ array[,] matrix assemble_movement_step (
   array[,] real ptime,
   array[,] real pterm,
   array[,] real psize,
-  array[,] real mindex
+  array[,] int mindex
 ) {
   // Get dimensions
   int P = dims(pmean)[1];
@@ -310,14 +364,14 @@ array[,] matrix assemble_movement_step (
 */
 matrix assemble_movement_rate (
   array[] real pmean,
-  array[,] real mindex,
+  array[,] int mindex,
   int nterm
 ) {
   // Get dimensions
   int P = dims(pmean)[1];
   int X = dims(mindex)[1];
   // Initialize arrays
-  array[1, 1] matrix[X, X] real movement_step = assemble_movement_step(
+  array[1, 1] matrix[X, X] movement_step = assemble_movement_step(
     pmean,
     rep_array(0.0, 1, P),
     rep_array(0.0, 1, P),
@@ -325,7 +379,7 @@ matrix assemble_movement_rate (
     mindex
   );
   // Initialize matrix
-  matrix[X, X] movement_rate = matrix_power(movement_step[1, 1], nterm)
+  matrix[X, X] movement_rate = matrix_power(movement_step[1, 1], nterm);
   // Return movement rate
   return movement_rate;
 }
@@ -358,7 +412,7 @@ array[] matrix assemble_movement_rate (
   array[,] real ptime,
   array[,] real pterm,
   array[,] real psize,
-  array[,] real mindex,
+  array[,] int mindex,
   int nterm
 ) {
   // Get dimensions
@@ -371,7 +425,7 @@ array[] matrix assemble_movement_rate (
   int N = T * I;
   int Z = N * S;
   // Initialize arrays
-  array[N, S] matrix[X, X] real movement_step = assemble_movement_step(
+  array[N, S] matrix[X, X] movement_step = assemble_movement_step(
     pmean,
     ptime,
     pterm,
@@ -387,7 +441,7 @@ array[] matrix assemble_movement_rate (
   if (I < 1) {reject("I must not be < 1; found I = ", I);}
   if (S < 1) {reject("S must not be < 1; found S = ", S);}
   if (X < 1) {reject("X must not be < 1; found X = ", X);}
-  if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)")}
+  // if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)");}
   // Populate movement rates
   z = 1;
   for (n in 1:N) {
@@ -428,7 +482,7 @@ array[] matrix assemble_movement_deviation (
   array[,] real ptime,
   array[,] real pterm,
   array[,] real psize,
-  array[,] real mindex,
+  array[,] int mindex,
   int nterm
 ) {
   // Get dimensions
@@ -438,7 +492,7 @@ array[] matrix assemble_movement_deviation (
   int S = dims(psize)[1];
   int X = dims(mindex)[1];
   // Set dimensions
-  Z = T * I * S;
+  int Z = T * I * S;
   // Initialize movement rates
   matrix[X, X] movement_mean = assemble_movement_rate(
     pmean,
@@ -460,7 +514,7 @@ array[] matrix assemble_movement_deviation (
   if (I < 1) {reject("I must not be < 1; found I = ", I);}
   if (S < 1) {reject("S must not be < 1; found S = ", S);}
   if (X < 1) {reject("X must not be < 1; found X = ", X);}
-  if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)")}
+  // if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)");}
   // Populate movement deviation
   for (z in 1:Z) {
     for (y in 1:X) {
@@ -523,8 +577,8 @@ array[,,] real assemble_fishing_step (
   for (n in 1:N) {
     for (s in 1:S) {
       for (x in 1:X) {
-        # Maps values in parameter_slab (-Inf, Inf) to values in (-Inf, 0)
-        # for fishing_step by log(exp(a) / (1 + exp(a))) = a - log(1 + exp(a))
+        // Maps values in parameter_slab (-Inf, Inf) to values in (-Inf, 0)
+        // for fishing_step by log(exp(a) / (1 + exp(a))) = a - log(1 + exp(a))
         fishing_step[n, s, x] = parameter_slab[n, s, x]
         - log(1 + exp(parameter_slab[n, s, x]));
       }
@@ -560,7 +614,7 @@ array[] real assemble_fishing_rate (
     rep_array(0.0, 1, X)
   );
   // Initialize array
-  array[X] real fishing_rate = pow(fishing_step[1, 1], nterm)
+  array[X] real fishing_rate = pow(fishing_step[1, 1], nterm);
   // Return fishing rate
   return fishing_rate;
 }
@@ -613,7 +667,7 @@ array[,] real assemble_fishing_rate (
   if (T < 1) {reject("T must not be < 1; found T = ", T);}
   if (I < 1) {reject("I must not be < 1; found I = ", I);}
   if (S < 1) {reject("S must not be < 1; found S = ", S);}
-  if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)")}
+  // if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)");}
   // Populate fishing rates
   z = 1;
   for (n in 1:N) {
@@ -657,7 +711,7 @@ array[,] real assemble_fishing_deviation (
   int I = dims(pterm)[1];
   int S = dims(psize)[1];
   // Set dimensions
-  Z = T * I * S;
+  int Z = T * I * S;
   // Initialize movement rates
   array[X] real fishing_mean = assemble_fishing_rate(
     pmean,
@@ -676,65 +730,13 @@ array[,] real assemble_fishing_deviation (
   if (T < 1) {reject("T must not be < 1; found T = ", T);}
   if (I < 1) {reject("I must not be < 1; found I = ", I);}
   if (S < 1) {reject("S must not be < 1; found S = ", S);}
-  if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)")}
+  // if (Z > max(T, max(I, S))) {reject("T * I * S must not be > max(T, I, S)");}
   // Populate movement deviation
   for (z in 1:Z) {
     for (x in 1:X) {
-      fishing_deviation[z,x,y] = fishing_type[z,x] - fishing_mean[x];
+      fishing_deviation[z, x] = fishing_type[z, x] - fishing_mean[x];
     }
   }
   // Return movement deviation
   return fishing_deviation;
-}
-
-/**
-* Inverse logit
-*
-* @ param arg, a real value
-*
-* @return a value in [0, 1]
-*/
-real inverse_logit(real arg) {
-  real value;
-  if (is_inf(arg)) {
-    if (arg > 0) {
-      value = 1;
-    } else {
-      value = 0;
-    }
-  } else {
-    value = exp(arg) / (1 + exp(arg));
-  }
-  return value;
-}
-
-/**
-* Inverse multi-logit
-*
-* @param arg, an array of dimension [P]
-*
-* @return an array of dimension [P + 1] that sums to one
-*/
-array[] real inverse_multi_logit (array[] real arg) {
-  // Get dimensions
-  int P = size(arg);
-  // Instantiate sums
-  real sum_exp_arg = 0;
-  real sum_value = 0;
-  // Instantiate value
-  array[P + 1] real value;
-  // Check dimensions
-  if (P < 1) {reject("P must not be < 1; found P = ", P);}
-  // Get sum of exponential
-  for (p in 1:P) {
-    sum_exp_arg += exp(arg[p]);
-  }
-  // Populate value
-  for (p in 1:P) {
-    value[p] = exp(arg[p]) / (1 + sum_exp_arg);
-    sum_value += value[p];
-  }
-  value[P + 1] = 1 - sum_value;
-  // Return value
-  return value;
 }

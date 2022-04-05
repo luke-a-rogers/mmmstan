@@ -374,6 +374,15 @@ fit <- function (tag_data,
     cat("\nfit(): data argument present--ignoring most other arguments\n")
   }
 
+  # Assemble index limits ------------------------------------------------------
+
+  n_regions <- length(list_regions)
+  n_times <- compute_n_times(date_released_start, date_released_end)
+  n_terms <- compute_n_terms(term_released)
+  n_sizes <- length(list_sizes)
+  n_steps <- (n_times * n_terms) - 1
+  n_liberty <- ifelse(is.null(step_liberty_max), n_steps, step_liberty_max)
+
   # Assemble tag data ----------------------------------------------------------
 
   # Released
@@ -401,7 +410,7 @@ fit <- function (tag_data,
       list_sizes = list_sizes,
       date_released_start = date_released_start,
       date_released_end = date_released_end,
-      step_liberty_max = step_liberty_max,
+      step_liberty_max = n_liberty,
       term_released = term_released,
       colname_date_released = colname_date_released,
       colname_date_recovered = colname_date_recovered,
@@ -410,15 +419,6 @@ fit <- function (tag_data,
       colname_size_released = colname_size_released
     )
   }
-
-  # Assemble index limits ------------------------------------------------------
-
-  n_regions <- length(list_regions)
-  n_times <- compute_n_times(date_released_start, date_released_end)
-  n_terms <- compute_n_terms(term_released)
-  n_sizes <- length(list_sizes)
-  n_steps <- (n_times * n_terms) - 1
-  n_liberty <- ifelse(is.null(step_liberty_max), n_steps, step_liberty_max)
 
   # Assemble movement index ----------------------------------------------------
 
