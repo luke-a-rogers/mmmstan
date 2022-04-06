@@ -768,17 +768,20 @@ array[,,] real assemble_fishing_step (
   for (n in 1:N) {
     for (s in 1:S) {
       for (x in 1:X) {
-        // Fix this:
-        // Maps values in parameter_slab (-Inf, Inf) to values in (-Inf, 0)
-        // for fishing_step by log(exp(a) / (1 + exp(a))) = a - log(1 + exp(a))
-        fishing_step[n, s, x] = parameter_slab[n, s, x]
-        - log(1 + exp(parameter_slab[n, s, x]));
+        /**
+        * We have values from parameter_slab in (-Inf, Inf). We want values
+        * for fishing step in (0, Inf). The exp function maps (-Inf, Inf) to
+        * (0, Inf) as desired.
+        */
+        fishing_step[n, s, x] = exp(parameter_slab[n, s, x]);
       }
     }
   }
   // Return fishing step
   return fishing_step;
 }
+
+
 
 
 
