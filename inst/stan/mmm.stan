@@ -8,12 +8,12 @@ data {
   int<lower=0> T; // Number of times (usually years; release only)
   int<lower=0> I; // Number of terms per unit of time
   int<lower=0> S; // Number of size classes
-  int<lower=0> N; // Number of release steps ((T * I) - 1)
+  int<lower=0> N; // Number of study steps (T * I)
   int<lower=0> L; // Number of maximum steps at liberty
   int<lower=0> P; // Number of movement rate mean parameters
   // Tag data
-  array[N, S, X] int<lower=0> tags_released;
-  array[N, S, X, L, X] int<lower=0> tags_recovered;
+  array[N - 1, S, X] int<lower=0> tags_released;
+  array[N - 1, S, X, L, X] int<lower=0> tags_recovered;
   // Movement index array
   array[X, X] int<lower=0, upper=1> movement_index;
   // Prior means
@@ -47,11 +47,11 @@ data {
 transformed data {
   int<lower=0> C = 0; // Number of observations
   // Count observations
-  for (n in 1:N) { // Released step
+  for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Released region
         if (tags_released[n, s, x] > 0) {
-          C += (min(N - n + 2, L) - 1) * X; // Realized steps liberty
+          C += (min(N - n + 1, L) - 1) * X; // Realized steps liberty
         }
       }
     }
@@ -113,7 +113,7 @@ model {
   array[I, X] real fishing_deviation_term_rate;
   array[S, X] real fishing_deviation_size_rate;
   // Define remaining values
-  array[N, S, X, L, X] real abundance;
+  array[N - 1, S, X, L, X] real abundance;
   array[C] int  observed;
   array[C] real expected;
   int count = 1;
@@ -125,7 +125,7 @@ model {
     movement_parameter_size_step,
     movement_index
   );
-  // Assemble movement mean rate
+  // Assemble movement mean rate [X, X]
   movement_mean_rate = assemble_movement_rate(
     movement_parameter_mean_step,
     movement_index,
@@ -165,7 +165,7 @@ model {
     fishing_parameter_term_step,
     fishing_parameter_size_step
   );
-  // Assemble fishing mean rate
+  // Assemble fishing mean rate [X]
   fishing_mean_rate = assemble_fishing_rate(
     fishing_parameter_mean_step,
     I
@@ -195,7 +195,7 @@ model {
     I
   );
   // Compute survival step [N, S, X]
-  for (n in 1:N) { // Released step
+  for (n in 1:N) { // Study step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Region
         survival_step[n, s, x] = exp(
@@ -206,8 +206,8 @@ model {
       }
     }
   }
-  // Populate abundance released [N, S, X]
-  for (n in 1:N) { // Released step
+  // Populate abundance released [N - 1, S, X]
+  for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Region
         abundance[n, s, x, 1, x] = (1 - initial_loss_rate)
@@ -216,11 +216,11 @@ model {
     }
   }
   // Compute expected recoveries
-  for (n in 1:N) { // Released step
+  for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
       for (w in 1:X) { // Released region
         if (tags_released[n, s, w] > 0) {
-          for (l in 2:min(N - n + 2, L)) { // Populate abundance
+          for (l in 2:min(N - n + 1, L)) { // Populate abundance
             for (y in 1:X) { // Current region
               for (x in 1:X) { // Previous region
                 abundance[n, s, w, l, y] += abundance[n, s, w, l - 1, x]
@@ -229,7 +229,7 @@ model {
               } // End x
             } // End y
           } // End l
-          for (l in 2:min(N - n + 2, L)) { // Populate 1D arrays
+          for (l in 2:min(N - n + 1, L)) { // Populate 1D arrays
             for (y in 1:X) { // Current region
               observed[count] = tags_recovered[n, s, w, l, y];
               expected[count] = abundance[n, s, w, l, y]
@@ -341,7 +341,7 @@ generated quantities {
   array[T, X] real fishing_time_rate = rep_array(0.0, T, X);
   array[I, X] real fishing_term_rate = rep_array(0.0, I, X);
   array[S, X] real fishing_size_rate = rep_array(0.0, S, X);
-  // Assemble movement time rate
+  // Assemble movement time rate [T] [X, X]
   movement_time_rate = assemble_movement_rate(
     movement_parameter_mean_step,
     movement_parameter_time_step,
@@ -350,7 +350,7 @@ generated quantities {
     movement_index,
     I
   );
-  // Assemble movement term rate
+  // Assemble movement term rate [I] [X, X]
   movement_term_rate = assemble_movement_rate(
     movement_parameter_mean_step,
     rep_array(0.0, 1, P),
@@ -359,7 +359,7 @@ generated quantities {
     movement_index,
     I
   );
-  // Assemble movement size rate
+  // Assemble movement size rate [S] [X, X]
   movement_size_rate = assemble_movement_rate(
     movement_parameter_mean_step,
     rep_array(0.0, 1, P),
@@ -368,7 +368,7 @@ generated quantities {
     movement_index,
     I
   );
-  // Assemble fishing time rate
+  // Assemble fishing time rate [T, X]
   fishing_time_rate = assemble_fishing_rate(
     fishing_parameter_mean_step,
     fishing_parameter_time_step,
@@ -376,7 +376,7 @@ generated quantities {
     rep_array(0.0, 1, X),
     I
   );
-  // Assemble fishing term rate
+  // Assemble fishing term rate [I, X]
   fishing_term_rate = assemble_fishing_rate(
     fishing_parameter_mean_step,
     rep_array(0.0, 1, X),
@@ -384,7 +384,7 @@ generated quantities {
     rep_array(0.0, 1, X),
     I
   );
-  // Assemble fishing size rate
+  // Assemble fishing size rate [S, X]
   fishing_size_rate = assemble_fishing_rate(
     fishing_parameter_mean_step,
     rep_array(0.0, 1, X),

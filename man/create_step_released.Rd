@@ -7,8 +7,8 @@
 create_step_released(
   date_released,
   date_released_start,
-  date_released_end,
-  term_released
+  date_recovered_end,
+  term_interval
 )
 }
 \arguments{
@@ -16,9 +16,9 @@ create_step_released(
 
 \item{date_released_start}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
 
-\item{date_released_end}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
+\item{date_recovered_end}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
 
-\item{term_released}{\code{\link[=character]{character()}} one of \code{"year"}, \code{"quarter"}
+\item{term_interval}{\code{\link[=character]{character()}} one of \code{"year"}, \code{"quarter"}
 or \code{"month"}}
 }
 \value{

@@ -8,8 +8,8 @@ create_step_liberty(
   date_released,
   date_recovered,
   date_released_start,
-  date_released_end,
-  term_released,
+  date_recovered_end,
+  term_interval,
   step_liberty_max
 )
 }
@@ -20,9 +20,9 @@ create_step_liberty(
 
 \item{date_released_start}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
 
-\item{date_released_end}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
+\item{date_recovered_end}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
 
-\item{term_released}{\code{\link[=character]{character()}} one of \code{"year"}, \code{"quarter"}
+\item{term_interval}{\code{\link[=character]{character()}} one of \code{"year"}, \code{"quarter"}
 or \code{"month"}}
 
 \item{step_liberty_max}{\code{\link[=integer]{integer()}} maximum steps at liberty}

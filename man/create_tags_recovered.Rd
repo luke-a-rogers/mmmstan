@@ -8,10 +8,10 @@ create_tags_recovered(
   tags,
   list_regions,
   list_sizes,
-  date_released_start,
-  date_released_end,
-  step_liberty_max,
-  term_released = "quarter",
+  year_released_start,
+  year_recovered_end,
+  step_liberty_max = NULL,
+  term_interval = "quarter",
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
@@ -26,13 +26,14 @@ create_tags_recovered(
 
 \item{list_sizes}{\code{\link[=list]{list()}}}
 
-\item{date_released_start}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
+\item{year_released_start}{\code{\link[=integer]{integer()}} year that the first tag was released}
 
-\item{date_released_end}{\code{\link[=character]{character()}} date as \code{"\%Y-\%m-\%d"}}
+\item{year_recovered_end}{\code{\link[=integer]{integer()}} year the last tag was recovered}
 
-\item{step_liberty_max}{\code{\link[=integer]{integer()}}}
+\item{step_liberty_max}{\code{\link[=integer]{integer()}} optional constraint on the maximum
+steps at liberty}
 
-\item{term_released}{\code{\link[=character]{character()}} one of \code{"year"}, \code{"quarter"}
+\item{term_interval}{\code{\link[=character]{character()}} one of \code{"year"}, \code{"quarter"}
 or \code{"month"}}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}

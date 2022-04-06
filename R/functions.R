@@ -17,12 +17,10 @@
 #' @param tag_data [data.frame()]
 #' @param list_regions [list()]
 #' @param list_sizes [list()]
-#' @param date_released_start [character()] amenable to
-#'   \code{lubridate::as_date()}
-#' @param date_released_end [character()] amenable to
-#'   \code{lubridate::as_date()}
+#' @param year_released_start [integer()] year that the first tag was released
+#' @param year_recovered_end [integer()] year that the last tag was recovered
 #' @param step_liberty_max [integer()]
-#' @param term_released [character()] in \code{c("year", "month", "quarter")}
+#' @param term_interval [character()] in \code{c("year", "month", "quarter")}
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
@@ -74,10 +72,10 @@ fit <- function (tag_data,
                  # Tag arguments
                  list_regions,
                  list_sizes,
-                 date_released_start,
-                 date_released_end,
+                 year_released_start,
+                 year_recovered_end,
                  step_liberty_max = NULL,
-                 term_released = "quarter",
+                 term_interval = "quarter",
                  colname_date_released = "date_released",
                  colname_date_recovered = "date_recovered",
                  colname_region_released = "region_released",
@@ -144,15 +142,16 @@ fit <- function (tag_data,
     any.missing = FALSE,
     min.len = 4
   )
-  checkmate::assert_date(
-    lubridate::as_date(date_released_start),
+  checkmate::assert_integerish(
+    year_released_start,
     any.missing = FALSE,
-    len = 1
+    len = 1L
   )
-  checkmate::assert_date(
-    lubridate::as_date(date_released_end),
+  checkmate::assert_integerish(
+    year_recovered_end,
+    lower = year_released_start + 1L,
     any.missing = FALSE,
-    len = 1
+    len = 1L
   )
   checkmate::assert_integerish(
     step_liberty_max,
@@ -162,7 +161,7 @@ fit <- function (tag_data,
     null.ok = TRUE
   )
   checkmate::assert_choice(
-    term_released,
+    term_interval,
     choices = c("year", "quarter", "month")
   )
   checkmate::assert_character(
@@ -248,7 +247,7 @@ fit <- function (tag_data,
   # Fishing prior mean deviations by time
   checkmate::assert_array(
     mu_fishing_deviation_time_rate,
-    mode = double,
+    mode = "double",
     any.missing = FALSE,
     d = 2,
     null.ok = TRUE
@@ -374,14 +373,29 @@ fit <- function (tag_data,
     cat("\nfit(): data argument present--ignoring most other arguments\n")
   }
 
+  # Compute dates --------------------------------------------------------------
+
+  if (is.null(data)) {
+    # Initial date of the first released step
+    date_released_start <- lubridate::as_date(
+      paste0(year_released_start, "-01-01")
+    )
+    # Final date of the last released step
+    date_recovered_end <- lubridate::as_date(
+      paste0(year_recovered_end, "-12-31")
+    )
+  }
+
   # Assemble index limits ------------------------------------------------------
 
-  n_regions <- length(list_regions)
-  n_times <- compute_n_times(date_released_start, date_released_end)
-  n_terms <- compute_n_terms(term_released)
-  n_sizes <- length(list_sizes)
-  n_steps <- (n_times * n_terms) - 1
-  n_liberty <- ifelse(is.null(step_liberty_max), n_steps, step_liberty_max)
+  if (is.null(data)) {
+    n_regions <- length(list_regions)
+    n_times <- compute_n_times(date_released_start, date_recovered_end)
+    n_terms <- compute_n_terms(term_interval)
+    n_sizes <- length(list_sizes)
+    n_steps <- n_times * n_terms
+    n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
+  }
 
   # Assemble tag data ----------------------------------------------------------
 
@@ -391,10 +405,10 @@ fit <- function (tag_data,
       tags = tag_data,
       list_regions = list_regions,
       list_sizes = list_sizes,
-      date_released_start = date_released_start,
-      date_released_end = date_released_end,
+      year_released_start = year_released_start,
+      year_recovered_end = year_recovered_end,
       # step_liberty_max = step_liberty_max,
-      term_released = term_released,
+      term_interval = term_interval,
       colname_date_released = colname_date_released,
       # colname_date_recovered = colname_date_recovered,
       colname_region_released = colname_region_released,
@@ -408,10 +422,10 @@ fit <- function (tag_data,
       tags = tag_data,
       list_regions = list_regions,
       list_sizes = list_sizes,
-      date_released_start = date_released_start,
-      date_released_end = date_released_end,
+      year_released_start = year_released_start,
+      year_recovered_end = year_recovered_end,
       step_liberty_max = n_liberty,
-      term_released = term_released,
+      term_interval = term_interval,
       colname_date_released = colname_date_released,
       colname_date_recovered = colname_date_recovered,
       colname_region_released = colname_region_released,
@@ -422,12 +436,14 @@ fit <- function (tag_data,
 
   # Assemble movement index ----------------------------------------------------
 
-  movement_index <- create_movement_index(
-    n_regions = n_regions,
-    movement_pattern = movement_pattern,
-    movement_allow = movement_allow,
-    movement_disallow = movement_disallow
-  )
+  if (is.null(data)) {
+    movement_index <- create_movement_index(
+      n_regions = n_regions,
+      movement_pattern = movement_pattern,
+      movement_allow = movement_allow,
+      movement_disallow = movement_disallow
+    )
+  }
 
   # Assemble prior mean fishing deviation time rate ----------------------------
 
@@ -446,7 +462,7 @@ fit <- function (tag_data,
       T = n_times, # Number of times (usually years; release only)
       I = n_terms, # Number of terms per unit of time
       S = n_sizes, # Number of size classes
-      N = n_steps, # Number of release steps ((T * I) - 1)
+      N = n_steps, # Number of release steps (T * I)
       L = n_liberty, # Number of maximum steps at liberty
       P = sum(movement_index), # Number of movement rate mean parameters
       # Tag data
@@ -485,6 +501,8 @@ fit <- function (tag_data,
 
   # Check dimensions data elements ---------------------------------------------
 
+  # Check N = T * I
+
   # Initialize the model -------------------------------------------------------
 
   mod <- cmdstanr::cmdstan_model(
@@ -505,8 +523,8 @@ fit <- function (tag_data,
     step_size = step_size,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
-    threads_per_chain = threads_per_chain,
-    ...
+    threads_per_chain = threads_per_chain # ,
+    # ...
   )
 
   # Return values --------------------------------------------------------------

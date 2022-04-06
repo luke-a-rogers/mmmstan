@@ -8,10 +8,10 @@ fit(
   tag_data,
   list_regions,
   list_sizes,
-  date_released_start,
-  date_released_end,
+  year_released_start,
+  year_recovered_end,
   step_liberty_max = NULL,
-  term_released = "quarter",
+  term_interval = "quarter",
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
@@ -57,15 +57,13 @@ fit(
 
 \item{list_sizes}{\code{\link[=list]{list()}}}
 
-\item{date_released_start}{\code{\link[=character]{character()}} amenable to
-\code{lubridate::as_date()}}
+\item{year_released_start}{\code{\link[=integer]{integer()}} year that the first tag was released}
 
-\item{date_released_end}{\code{\link[=character]{character()}} amenable to
-\code{lubridate::as_date()}}
+\item{year_recovered_end}{\code{\link[=integer]{integer()}} year that the last tag was recovered}
 
 \item{step_liberty_max}{\code{\link[=integer]{integer()}}}
 
-\item{term_released}{\code{\link[=character]{character()}} in \code{c("year", "month", "quarter")}}
+\item{term_interval}{\code{\link[=character]{character()}} in \code{c("year", "month", "quarter")}}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
 
