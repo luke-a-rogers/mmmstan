@@ -40,19 +40,19 @@
 #' @param mu_initial_loss_rate [numeric()]
 #' @param mu_ongoing_loss_rate [numeric()]
 #' @param mu_dispersion [numeric()]
-#' @param mu_fishing_deviation_time_rate [numeric()]
+#' @param mu_fishing_time_deviation [numeric()]
 #' @param sd_mortality_rate [numeric()]
 #' @param sd_reporting_rate [numeric()]
 #' @param sd_fishing_mean_rate [numeric()]
 #' @param sd_initial_loss_rate [numeric()]
 #' @param sd_ongoing_loss_rate [numeric()]
 #' @param sd_dispersion [numeric()]
-#' @param cv_movement_deviation_time_rate [numeric()]
-#' @param cv_movement_deviation_term_rate [numeric()]
-#' @param cv_movement_deviation_size_rate [numeric()]
-#' @param cv_fishing_deviation_time_rate [numeric()]
-#' @param cv_fishing_deviation_term_rate [numeric()]
-#' @param cv_fishing_deviation_size_rate [numeric()]
+#' @param cv_movement_time_deviation [numeric()]
+#' @param cv_movement_term_deviation [numeric()]
+#' @param cv_movement_size_deviation [numeric()]
+#' @param cv_fishing_time_deviation [numeric()]
+#' @param cv_fishing_term_deviation [numeric()]
+#' @param cv_fishing_size_deviation [numeric()]
 #' @param expected_fudge [numeric()]
 #' @param data [list()] See details
 #' @param chains [integer()] number of chains
@@ -93,7 +93,7 @@ fit <- function (tag_data,
                  mu_ongoing_loss_rate = 0.02,
                  mu_dispersion = 1,
                  # Fishing prior mean deviations by time
-                 mu_fishing_deviation_time_rate = NULL, # [T, X]
+                 mu_fishing_time_deviation = NULL, # [T, X]
                  # Prior standard deviations
                  sd_mortality_rate = 0.1 * mu_mortality_rate,
                  sd_reporting_rate = 0.1 * mu_reporting_rate,
@@ -102,13 +102,13 @@ fit <- function (tag_data,
                  sd_ongoing_loss_rate = 0.1 * mu_ongoing_loss_rate,
                  sd_dispersion = 0.25 * mu_dispersion,
                  # Movement prior coefficients of variation
-                 cv_movement_deviation_time_rate = 0.1,
-                 cv_movement_deviation_term_rate = 0.1,
-                 cv_movement_deviation_size_rate = 0.1,
+                 cv_movement_time_deviation = 0.1,
+                 cv_movement_term_deviation = 0.1,
+                 cv_movement_size_deviation = 0.1,
                  # Fishing prior coefficients of variation
-                 cv_fishing_deviation_time_rate = 0.1,
-                 cv_fishing_deviation_term_rate = 0.1,
-                 cv_fishing_deviation_size_rate = 0.1,
+                 cv_fishing_time_deviation = 0.1,
+                 cv_fishing_term_deviation = 0.1,
+                 cv_fishing_size_deviation = 0.1,
                  # Fudge value
                  expected_fudge = 1e-12,
                  # CmdStanR
@@ -232,7 +232,8 @@ fit <- function (tag_data,
   )
   checkmate::assert_number(
     mu_initial_loss_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   checkmate::assert_number(
     mu_ongoing_loss_rate,
@@ -246,7 +247,7 @@ fit <- function (tag_data,
   )
   # Fishing prior mean deviations by time
   checkmate::assert_array(
-    mu_fishing_deviation_time_rate,
+    mu_fishing_time_deviation,
     mode = "double",
     any.missing = FALSE,
     d = 2,
@@ -276,11 +277,13 @@ fit <- function (tag_data,
   )
   checkmate::assert_number(
     sd_initial_loss_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   checkmate::assert_number(
     sd_ongoing_loss_rate,
-    lower = 0
+    lower = 0,
+    null.ok = has_data
   )
   checkmate::assert_number(
     sd_dispersion,
@@ -289,32 +292,33 @@ fit <- function (tag_data,
   )
   # Movement prior coefficients of variation
   checkmate::assert_number(
-    cv_movement_deviation_time_rate,
+    cv_movement_time_deviation,
     lower = 0,
     null.ok = has_data
   )
   checkmate::assert_number(
-    cv_movement_deviation_term_rate,
+    cv_movement_term_deviation,
     lower = 0,
     null.ok = has_data
   )
   checkmate::assert_number(
-    cv_movement_deviation_size_rate,
+    cv_movement_size_deviation,
     lower = 0,
     null.ok = has_data
   )
   # Fishing prior coefficients of variation
   checkmate::assert_number(
-    cv_fishing_deviation_time_rate,
-    lower = 0
-  )
-  checkmate::assert_number(
-    cv_fishing_deviation_term_rate,
+    cv_fishing_time_deviation,
     lower = 0,
     null.ok = has_data
   )
   checkmate::assert_number(
-    cv_fishing_deviation_size_rate,
+    cv_fishing_term_deviation,
+    lower = 0,
+    null.ok = has_data
+  )
+  checkmate::assert_number(
+    cv_fishing_size_deviation,
     lower = 0,
     null.ok = has_data
   )
@@ -448,8 +452,8 @@ fit <- function (tag_data,
   # Assemble prior mean fishing deviation time rate ----------------------------
 
   if (is.null(data)) {
-    if (is.null(mu_fishing_deviation_time_rate)) {
-      mu_fishing_deviation_time_rate <- array(0.0, dim = c(n_times, n_regions))
+    if (is.null(mu_fishing_time_deviation)) {
+      mu_fishing_time_deviation <- array(0.0, dim = c(n_times, n_regions))
     }
   }
 
@@ -478,7 +482,7 @@ fit <- function (tag_data,
       mu_ongoing_loss_rate = mu_ongoing_loss_rate,
       mu_dispersion = mu_dispersion,
       # Fishing prior mean deviations by time
-      mu_fishing_deviation_time_rate = mu_fishing_deviation_time_rate, # [T, X]
+      mu_fishing_time_deviation = mu_fishing_time_deviation, # [T, X]
       # Prior standard deviations
       sd_mortality_rate = sd_mortality_rate, # array[X]
       sd_reporting_rate = sd_reporting_rate, # array[X]
@@ -487,13 +491,13 @@ fit <- function (tag_data,
       sd_ongoing_loss_rate = sd_ongoing_loss_rate,
       sd_dispersion = sd_dispersion,
       # Movement prior coefficients of variation
-      cv_movement_deviation_time_rate = cv_movement_deviation_time_rate,
-      cv_movement_deviation_term_rate = cv_movement_deviation_term_rate,
-      cv_movement_deviation_size_rate = cv_movement_deviation_size_rate,
+      cv_movement_time_deviation = cv_movement_time_deviation,
+      cv_movement_term_deviation = cv_movement_term_deviation,
+      cv_movement_size_deviation = cv_movement_size_deviation,
       # Fishing prior coefficients of variation
-      cv_fishing_deviation_time_rate = cv_fishing_deviation_time_rate,
-      cv_fishing_deviation_term_rate = cv_fishing_deviation_term_rate,
-      cv_fishing_deviation_size_rate = cv_fishing_deviation_size_rate,
+      cv_fishing_time_deviation = cv_fishing_time_deviation,
+      cv_fishing_term_deviation = cv_fishing_term_deviation,
+      cv_fishing_size_deviation = cv_fishing_size_deviation,
       # Fudge values
       expected_fudge = expected_fudge
     )

@@ -24,7 +24,7 @@ data {
   real<lower=0> mu_ongoing_loss_rate; // Instantaneous
   real<lower=0> mu_dispersion;
   // Fishing prior mean deviations by time
-  array[T, X] real mu_fishing_deviation_time_rate;
+  array[T, X] real mu_fishing_time_deviation;
   // Prior standard deviations
   array[X] real<lower=0> sd_mortality_rate;
   array[X] real<lower=0> sd_reporting_rate;
@@ -33,13 +33,13 @@ data {
   real<lower=0> sd_ongoing_loss_rate;
   real<lower=0> sd_dispersion;
   // Movement prior coefficients of variation
-  real<lower=0> cv_movement_deviation_time_rate;
-  real<lower=0> cv_movement_deviation_term_rate;
-  real<lower=0> cv_movement_deviation_size_rate;
+  real<lower=0> cv_movement_time_deviation;
+  real<lower=0> cv_movement_term_deviation;
+  real<lower=0> cv_movement_size_deviation;
   // Fishing prior coefficients of variation
-  real<lower=0> cv_fishing_deviation_time_rate;
-  real<lower=0> cv_fishing_deviation_term_rate;
-  real<lower=0> cv_fishing_deviation_size_rate;
+  real<lower=0> cv_fishing_time_deviation;
+  real<lower=0> cv_fishing_term_deviation;
+  real<lower=0> cv_fishing_size_deviation;
   // Fudge values
   real<lower=0> expected_fudge;
 }
@@ -104,17 +104,17 @@ model {
   array[N, S, X] real survival_step;
   // Define movement rate values (for priors)
   matrix[X, X] movement_mean_rate;
-  array[T] matrix[X, X] movement_deviation_time_rate;
-  array[I] matrix[X, X] movement_deviation_term_rate;
-  array[S] matrix[X, X] movement_deviation_size_rate;
+  array[T] matrix[X, X] movement_time_deviation;
+  array[I] matrix[X, X] movement_term_deviation;
+  array[S] matrix[X, X] movement_size_deviation;
   // Define fishing rate values (for priors)
   array[X] real fishing_mean_rate;
-  array[T, X] real fishing_deviation_time_rate;
-  array[I, X] real fishing_deviation_term_rate;
-  array[S, X] real fishing_deviation_size_rate;
+  array[T, X] real fishing_time_deviation;
+  array[I, X] real fishing_term_deviation;
+  array[S, X] real fishing_size_deviation;
   // Define remaining values
   array[N - 1, S, X, L, X] real abundance;
-  array[C] int  observed;
+  array[C] int observed;
   array[C] real expected;
   int count = 1;
   // Assemble movement step [N, S] [X, X]
@@ -126,34 +126,28 @@ model {
     movement_index
   );
   // Assemble movement mean rate [X, X]
-  movement_mean_rate = assemble_movement_rate(
+  movement_mean_rate = assemble_movement_mean_rate(
     movement_parameter_mean_step,
     movement_index,
     I
   );
-  // Assemble movement deviation time rate [T] [X, X]
-  movement_deviation_time_rate = assemble_movement_deviation(
+  // Assemble movement time deviation [T] [X, X]
+  movement_time_deviation = assemble_movement_time_deviation(
     movement_parameter_mean_step,
     movement_parameter_time_step,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
     movement_index,
     I
   );
-  // Assemble movement deviation term rate [I] [X, X]
-  movement_deviation_term_rate = assemble_movement_deviation(
+  // Assemble movement term deviation [I] [X, X]
+  movement_term_deviation = assemble_movement_term_deviation(
     movement_parameter_mean_step,
-    rep_array(0.0, 1, P),
     movement_parameter_term_step,
-    rep_array(0.0, 1, P),
     movement_index,
-    I
+    1 // nterm = 1 for movement term deviations
   );
-  // Assemble movement deviation size rate [S] [X, X]
-  movement_deviation_size_rate = assemble_movement_deviation(
+  // Assemble movement size deviation [S] [X, X]
+  movement_size_deviation = assemble_movement_size_deviation(
     movement_parameter_mean_step,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
     movement_parameter_size_step,
     movement_index,
     I
@@ -166,31 +160,25 @@ model {
     fishing_parameter_size_step
   );
   // Assemble fishing mean rate [X]
-  fishing_mean_rate = assemble_fishing_rate(
+  fishing_mean_rate = assemble_fishing_mean_rate(
     fishing_parameter_mean_step,
     I
   );
-  // Assemble fishing deviation time rate [T, X]
-  fishing_deviation_time_rate = assemble_fishing_deviation(
+  // Assemble fishing time deviation [T, X]
+  fishing_time_deviation = assemble_fishing_time_deviation(
     fishing_parameter_mean_step,
     fishing_parameter_time_step,
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X),
     I
   );
-  // Assemble fishing deviation term rate [I, X]
-  fishing_deviation_term_rate = assemble_fishing_deviation(
+  // Assemble fishing term deviation [I, X]
+  fishing_term_deviation = assemble_fishing_term_deviation(
     fishing_parameter_mean_step,
-    rep_array(0.0, 1, X),
     fishing_parameter_term_step,
-    rep_array(0.0, 1, X),
-    I
+    1 // nterm = 1 for fishing term deviations
   );
-  // Assemble fishing deviation size rate [S, X]
-  fishing_deviation_size_rate = assemble_fishing_deviation(
+  // Assemble fishing size deviation [S, X]
+  fishing_size_deviation = assemble_fishing_size_deviation(
     fishing_parameter_mean_step,
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X),
     fishing_parameter_size_step,
     I
   );
@@ -243,79 +231,79 @@ model {
       } // End w
     } // End s
   } // End n
-  // Movement deviation time rate prior
+  // Movement time deviation prior
   for (t in 2:T) {
     for (y in 1:X) {
       for (x in 1:X) {
-        movement_deviation_time_rate[t, x, y] ~ normal(
-          movement_deviation_time_rate[t - 1, x, y],
-          cv_movement_deviation_time_rate * movement_mean_rate[x, y]
+        movement_time_deviation[t, x, y] ~ normal(
+          movement_time_deviation[t - 1, x, y],
+          cv_movement_time_deviation * movement_mean_rate[x, y]
         );
       }
     }
   }
-  // Movement deviation term rate prior
+  // Movement term deviation prior
   for (i in 2:I) {
     for (y in 1:X) {
       for (x in 1:X) {
-        movement_deviation_term_rate[i, x, y] ~ normal(
-          movement_deviation_term_rate[i - 1, x, y],
-          cv_movement_deviation_term_rate * movement_mean_rate[x, y]
+        movement_term_deviation[i, x, y] ~ normal(
+          movement_term_deviation[i - 1, x, y],
+          cv_movement_term_deviation * movement_mean_rate[x, y]
         );
       }
     }
   }
   for (y in 1:X) {
     for (x in 1:X) {
-      movement_deviation_term_rate[1, x, y] ~ normal(
-        movement_deviation_term_rate[I, x, y],
-        cv_movement_deviation_term_rate * movement_mean_rate[x, y]
+      movement_term_deviation[1, x, y] ~ normal(
+        movement_term_deviation[I, x, y],
+        cv_movement_term_deviation * movement_mean_rate[x, y]
       );
     }
   }
-  // Movement deviation size rate prior
+  // Movement size deviation prior
   for (s in 2:S) {
     for (y in 1:X) {
       for (x in 1:X) {
-        movement_deviation_size_rate[s, x, y] ~ normal(
-          movement_deviation_size_rate[s - 1, x, y],
-          cv_movement_deviation_size_rate * movement_mean_rate[x, y]
+        movement_size_deviation[s, x, y] ~ normal(
+          movement_size_deviation[s - 1, x, y],
+          cv_movement_size_deviation * movement_mean_rate[x, y]
         );
       }
     }
   }
   // Fishing mean rate prior
   fishing_mean_rate ~ normal(mu_fishing_mean_rate, sd_fishing_mean_rate);
-  // Fishing deviation time rate prior
+  // Fishing time deviation prior
   for (t in 1:T) {
     for (x in 1:X) {
-      fishing_deviation_time_rate[t, x] ~ normal(
-        mu_fishing_deviation_time_rate[t, x],
-        cv_fishing_deviation_time_rate * fishing_mean_rate[x]
+      fishing_time_deviation[t, x] ~ normal(
+        mu_fishing_time_deviation[t, x],
+        cv_fishing_time_deviation * fishing_mean_rate[x]
       );
     }
   }
-  // Fishing deviation term rate prior
+  // Fishing term deviation prior
   for (i in 2:I) {
     for (x in 1:X) {
-      fishing_deviation_term_rate[i, x] ~ normal(
-        fishing_deviation_term_rate[i - 1, x],
-        cv_fishing_deviation_term_rate * fishing_mean_rate[x]
+      fishing_term_deviation[i, x] ~ normal(
+        fishing_term_deviation[i - 1, x],
+        cv_fishing_term_deviation * fishing_mean_rate[x]
       );
     }
   }
   for (x in 1:X) {
-    fishing_deviation_term_rate[1, x] ~ normal(
-      fishing_deviation_term_rate[I, x],
-      cv_fishing_deviation_term_rate * fishing_mean_rate[x]
+    fishing_term_deviation[1, x] ~ normal(
+      fishing_term_deviation[I, x],
+      cv_fishing_term_deviation * fishing_mean_rate[x]
     );
   }
-  // Fishing deviation size rate prior
+  // Fishing size deviation prior
   for (s in 2:S) {
     for (x in 1:X) {
-      fishing_deviation_size_rate[s, x] ~ normal(
-        fishing_deviation_size_rate[s - 1, x],
-        cv_fishing_deviation_size_rate * fishing_mean_rate[x]
+      fishing_size_deviation[s, x] ~ normal(
+        fishing_size_deviation[s - 1, x],
+        cv_fishing_size_deviation * fishing_mean_rate[x]
       );
     }
   }
@@ -342,53 +330,41 @@ generated quantities {
   array[I, X] real fishing_term_rate = rep_array(0.0, I, X);
   array[S, X] real fishing_size_rate = rep_array(0.0, S, X);
   // Assemble movement time rate [T] [X, X]
-  movement_time_rate = assemble_movement_rate(
+  movement_time_rate = assemble_movement_time_rate(
     movement_parameter_mean_step,
     movement_parameter_time_step,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
     movement_index,
     I
   );
   // Assemble movement term rate [I] [X, X]
-  movement_term_rate = assemble_movement_rate(
+  movement_term_rate = assemble_movement_term_rate(
     movement_parameter_mean_step,
-    rep_array(0.0, 1, P),
     movement_parameter_term_step,
-    rep_array(0.0, 1, P),
     movement_index,
-    I
+    1 // nterm = 1 for movement term rates
   );
   // Assemble movement size rate [S] [X, X]
-  movement_size_rate = assemble_movement_rate(
+  movement_size_rate = assemble_movement_size_rate(
     movement_parameter_mean_step,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
     movement_parameter_size_step,
     movement_index,
     I
   );
   // Assemble fishing time rate [T, X]
-  fishing_time_rate = assemble_fishing_rate(
+  fishing_time_rate = assemble_fishing_time_rate(
     fishing_parameter_mean_step,
     fishing_parameter_time_step,
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X),
     I
   );
   // Assemble fishing term rate [I, X]
-  fishing_term_rate = assemble_fishing_rate(
+  fishing_term_rate = assemble_fishing_term_rate(
     fishing_parameter_mean_step,
-    rep_array(0.0, 1, X),
     fishing_parameter_term_step,
-    rep_array(0.0, 1, X),
-    I
+    1 // nterm = 1 for fishing term rates
   );
   // Assemble fishing size rate [S, X]
-  fishing_size_rate = assemble_fishing_rate(
+  fishing_size_rate = assemble_fishing_size_rate(
     fishing_parameter_mean_step,
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X),
     fishing_parameter_size_step,
     I
   );

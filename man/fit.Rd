@@ -26,19 +26,19 @@ fit(
   mu_initial_loss_rate = 0.1,
   mu_ongoing_loss_rate = 0.02,
   mu_dispersion = 1,
-  mu_fishing_deviation_time_rate = NULL,
+  mu_fishing_time_deviation = NULL,
   sd_mortality_rate = 0.1 * mu_mortality_rate,
   sd_reporting_rate = 0.1 * mu_reporting_rate,
   sd_fishing_mean_rate = 0.1 * mu_fishing_mean_rate,
   sd_initial_loss_rate = 0.1 * mu_initial_loss_rate,
   sd_ongoing_loss_rate = 0.1 * mu_ongoing_loss_rate,
   sd_dispersion = 0.25 * mu_dispersion,
-  cv_movement_deviation_time_rate = 0.1,
-  cv_movement_deviation_term_rate = 0.1,
-  cv_movement_deviation_size_rate = 0.1,
-  cv_fishing_deviation_time_rate = 0.1,
-  cv_fishing_deviation_term_rate = 0.1,
-  cv_fishing_deviation_size_rate = 0.1,
+  cv_movement_time_deviation = 0.1,
+  cv_movement_term_deviation = 0.1,
+  cv_movement_size_deviation = 0.1,
+  cv_fishing_time_deviation = 0.1,
+  cv_fishing_term_deviation = 0.1,
+  cv_fishing_size_deviation = 0.1,
   expected_fudge = 1e-12,
   data = NULL,
   chains = 1,
@@ -98,7 +98,7 @@ directional movement between a pair of regions}
 
 \item{mu_dispersion}{\code{\link[=numeric]{numeric()}}}
 
-\item{mu_fishing_deviation_time_rate}{\code{\link[=numeric]{numeric()}}}
+\item{mu_fishing_time_deviation}{\code{\link[=numeric]{numeric()}}}
 
 \item{sd_mortality_rate}{\code{\link[=numeric]{numeric()}}}
 
@@ -112,17 +112,17 @@ directional movement between a pair of regions}
 
 \item{sd_dispersion}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_movement_deviation_time_rate}{\code{\link[=numeric]{numeric()}}}
+\item{cv_movement_time_deviation}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_movement_deviation_term_rate}{\code{\link[=numeric]{numeric()}}}
+\item{cv_movement_term_deviation}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_movement_deviation_size_rate}{\code{\link[=numeric]{numeric()}}}
+\item{cv_movement_size_deviation}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_fishing_deviation_time_rate}{\code{\link[=numeric]{numeric()}}}
+\item{cv_fishing_time_deviation}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_fishing_deviation_term_rate}{\code{\link[=numeric]{numeric()}}}
+\item{cv_fishing_term_deviation}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_fishing_deviation_size_rate}{\code{\link[=numeric]{numeric()}}}
+\item{cv_fishing_size_deviation}{\code{\link[=numeric]{numeric()}}}
 
 \item{expected_fudge}{\code{\link[=numeric]{numeric()}}}
 
