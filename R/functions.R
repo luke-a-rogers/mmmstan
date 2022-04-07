@@ -53,7 +53,8 @@
 #' @param cv_fishing_time_deviation [numeric()]
 #' @param cv_fishing_term_deviation [numeric()]
 #' @param cv_fishing_size_deviation [numeric()]
-#' @param expected_fudge [numeric()]
+#' @param tolerance_expected [numeric()]
+#' @param tolerance_movement [numeric()]
 #' @param data [list()] See details
 #' @param chains [integer()] number of chains
 #' @param step_size [numeric()] initial step size
@@ -109,8 +110,9 @@ fit <- function (tag_data,
                  cv_fishing_time_deviation = 0.1,
                  cv_fishing_term_deviation = 0.1,
                  cv_fishing_size_deviation = 0.1,
-                 # Fudge value
-                 expected_fudge = 1e-12,
+                 # Tolerance value
+                 tolerance_expected = 1e-12,
+                 tolerance_movement = 1e-12,
                  # CmdStanR
                  data = NULL,
                  chains = 1,
@@ -322,9 +324,14 @@ fit <- function (tag_data,
     lower = 0,
     null.ok = has_data
   )
-  # Fudge value
+  # Tolerance value
   checkmate::assert_number(
-    expected_fudge,
+    tolerance_expected,
+    lower = 0,
+    null.ok = has_data
+  )
+  checkmate::assert_number(
+    tolerance_movement,
     lower = 0,
     null.ok = has_data
   )
@@ -498,8 +505,9 @@ fit <- function (tag_data,
       cv_fishing_time_deviation = cv_fishing_time_deviation,
       cv_fishing_term_deviation = cv_fishing_term_deviation,
       cv_fishing_size_deviation = cv_fishing_size_deviation,
-      # Fudge values
-      expected_fudge = expected_fudge
+      # Tolerance values
+      tolerance_expected = tolerance_expected,
+      tolerance_movement = tolerance_movement
     )
   }
 

@@ -40,8 +40,9 @@ data {
   real<lower=0> cv_fishing_time_deviation;
   real<lower=0> cv_fishing_term_deviation;
   real<lower=0> cv_fishing_size_deviation;
-  // Fudge values
-  real<lower=0> expected_fudge;
+  // Tolerance values
+  real<lower=0> tolerance_expected;
+  real<lower=0> tolerance_movement;
 }
 
 transformed data {
@@ -98,21 +99,22 @@ transformed parameters {
 }
 
 model {
-  // Define step values (for computation)
+  // Declare step values (for computation)
   array[N, S] matrix[X, X] movement_step;
   array[N, S, X] real fishing_step;
   array[N, S, X] real survival_step;
-  // Define movement rate values (for priors)
+  // Declare movement rate values (for priors)
+  matrix[X, X] movement_mean_step;
   matrix[X, X] movement_mean_rate;
   array[T] matrix[X, X] movement_time_deviation;
   array[I] matrix[X, X] movement_term_deviation;
   array[S] matrix[X, X] movement_size_deviation;
-  // Define fishing rate values (for priors)
+  // Declare fishing rate values (for priors)
   array[X] real fishing_mean_rate;
   array[T, X] real fishing_time_deviation;
   array[I, X] real fishing_term_deviation;
   array[S, X] real fishing_size_deviation;
-  // Define remaining values
+  // Declare remaining values
   array[N - 1, S, X, L, X] real abundance;
   array[C] int observed;
   array[C] real expected;
@@ -124,6 +126,12 @@ model {
     movement_parameter_term_step,
     movement_parameter_size_step,
     movement_index
+  );
+  // Assemble movement mean step [X, X]
+  movement_mean_step = assemble_movement_mean_rate(
+    movement_parameter_mean_step,
+    movement_index,
+    1 // nterm = 1 for movement mean step
   );
   // Assemble movement mean rate [X, X]
   movement_mean_rate = assemble_movement_mean_rate(
@@ -223,7 +231,7 @@ model {
               expected[count] = abundance[n, s, w, l, y]
               * (1 - exp(fishing_step[n + l - 1, s, y]))
               * reporting_step[y]
-              + expected_fudge;
+              + tolerance_expected;
               count += 1;
             } // End y
           } // End l
@@ -235,10 +243,14 @@ model {
   for (t in 2:T) {
     for (y in 1:X) {
       for (x in 1:X) {
-        movement_time_deviation[t, x, y] ~ normal(
-          movement_time_deviation[t - 1, x, y],
-          cv_movement_time_deviation * movement_mean_rate[x, y]
-        );
+        if (movement_mean_rate[x, y] > 0) {
+          movement_time_deviation[t, x, y] ~ normal(
+            movement_time_deviation[t - 1, x, y],
+            cv_movement_time_deviation * movement_mean_rate[x, y]
+          );
+        } else {
+          movement_time_deviation[t, x, y] ~ normal(0.0, tolerance_movement);
+        }
       }
     }
   }
@@ -246,29 +258,41 @@ model {
   for (i in 2:I) {
     for (y in 1:X) {
       for (x in 1:X) {
-        movement_term_deviation[i, x, y] ~ normal(
-          movement_term_deviation[i - 1, x, y],
-          cv_movement_term_deviation * movement_mean_rate[x, y]
-        );
+        if (movement_mean_step[x, y] > 0) {
+          movement_term_deviation[i, x, y] ~ normal(
+            movement_term_deviation[i - 1, x, y],
+            cv_movement_term_deviation * movement_mean_step[x, y]
+          );
+        } else {
+          movement_term_deviation[i, x, y] ~ normal(0.0, tolerance_movement);
+        }
       }
     }
   }
   for (y in 1:X) {
     for (x in 1:X) {
-      movement_term_deviation[1, x, y] ~ normal(
-        movement_term_deviation[I, x, y],
-        cv_movement_term_deviation * movement_mean_rate[x, y]
-      );
+      if (movement_mean_rate[x, y] > 0) {
+        movement_term_deviation[1, x, y] ~ normal(
+          movement_term_deviation[I, x, y],
+          cv_movement_term_deviation * movement_mean_rate[x, y]
+        );
+      } else {
+          movement_term_deviation[1, x, y] ~ normal(0.0, tolerance_movement);
+      }
     }
   }
   // Movement size deviation prior
   for (s in 2:S) {
     for (y in 1:X) {
       for (x in 1:X) {
-        movement_size_deviation[s, x, y] ~ normal(
-          movement_size_deviation[s - 1, x, y],
-          cv_movement_size_deviation * movement_mean_rate[x, y]
-        );
+        if (movement_mean_rate[x, y] > 0) {
+          movement_size_deviation[s, x, y] ~ normal(
+            movement_size_deviation[s - 1, x, y],
+            cv_movement_size_deviation * movement_mean_rate[x, y]
+          );
+        } else {
+          movement_size_deviation[s, x, y] ~ normal(0.0, tolerance_movement);
+        }
       }
     }
   }
@@ -321,11 +345,11 @@ model {
 }
 
 generated quantities {
-  // Define movement values
+  // Declare movement values
   array[T] matrix[X,X] movement_time_rate = rep_array(rep_matrix(0.0,X,X),T);
   array[I] matrix[X,X] movement_term_rate = rep_array(rep_matrix(0.0,X,X),I);
   array[S] matrix[X,X] movement_size_rate = rep_array(rep_matrix(0.0,X,X),S);
-  // Define fishing values
+  // Declare fishing values
   array[T, X] real fishing_time_rate = rep_array(0.0, T, X);
   array[I, X] real fishing_term_rate = rep_array(0.0, I, X);
   array[S, X] real fishing_size_rate = rep_array(0.0, S, X);

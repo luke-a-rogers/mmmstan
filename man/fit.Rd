@@ -39,7 +39,8 @@ fit(
   cv_fishing_time_deviation = 0.1,
   cv_fishing_term_deviation = 0.1,
   cv_fishing_size_deviation = 0.1,
-  expected_fudge = 1e-12,
+  tolerance_expected = 1e-12,
+  tolerance_movement = 1e-12,
   data = NULL,
   chains = 1,
   step_size = 0.01,
@@ -124,7 +125,9 @@ directional movement between a pair of regions}
 
 \item{cv_fishing_size_deviation}{\code{\link[=numeric]{numeric()}}}
 
-\item{expected_fudge}{\code{\link[=numeric]{numeric()}}}
+\item{tolerance_expected}{\code{\link[=numeric]{numeric()}}}
+
+\item{tolerance_movement}{\code{\link[=numeric]{numeric()}}}
 
 \item{data}{\code{\link[=list]{list()}} See details}
 
