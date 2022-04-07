@@ -229,7 +229,7 @@ model {
             for (y in 1:X) { // Current region
               observed[count] = tags_recovered[n, s, w, l, y];
               expected[count] = abundance[n, s, w, l, y]
-              * (1 - exp(fishing_step[n + l - 1, s, y]))
+              * (1 - exp(-fishing_step[n + l - 1, s, y]))
               * reporting_step[y]
               + tolerance_expected;
               count += 1;
