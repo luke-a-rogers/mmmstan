@@ -12,8 +12,7 @@ data {
   int<lower=0> L; // Number of maximum steps at liberty
   int<lower=0> P; // Number of movement rate mean parameters
   // Tag data
-  array[N - 1, S, X] int<lower=0> tags_released;
-  array[N - 1, S, X, L, X] int<lower=0> tags_recovered;
+  array[N - 1, S, L, X, X] int<lower=0> tags;
   // Movement index array
   array[X, X] int<lower=0, upper=1> movement_index;
   // Prior means
@@ -46,12 +45,13 @@ data {
 }
 
 transformed data {
-  int<lower=0> C = 0; // Number of observations
+  // Number of observations
+  int<lower=0> C = 0;
   // Count observations
   for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Released region
-        if (tags_released[n, s, x] > 0) {
+        if (tags[n, s, 1, x, x] > 0) {
           C += (min(N - n + 1, L) - 1) * X; // Realized steps liberty
         }
       }
@@ -99,26 +99,29 @@ transformed parameters {
 }
 
 model {
+  // Declare enumeration values
+  array[N-1,S,L] matrix[X,X] abundance = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
+  array[N-1,S,L] matrix[X,X] predicted = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
+  array[C] int observed = rep_array(0.0, C);
+  array[C] real expected = rep_array(0.0, C);
+  // Declate index values
+  int count;
   // Declare step values (for computation)
-  array[N, S] matrix[X, X] movement_step;
-  array[N, S, X] real fishing_step;
-  array[N, S, X] real survival_step;
-  // Declare movement rate values (for priors)
-  matrix[X, X] movement_mean_step;
-  matrix[X, X] movement_mean_rate;
-  array[T] matrix[X, X] movement_time_deviation;
-  array[I] matrix[X, X] movement_term_deviation;
-  array[S] matrix[X, X] movement_size_deviation;
-  // Declare fishing rate values (for priors)
-  array[X] real fishing_mean_rate;
-  array[T, X] real fishing_time_deviation;
-  array[I, X] real fishing_term_deviation;
-  array[S, X] real fishing_size_deviation;
-  // Declare remaining values
-  array[N - 1, S, X, L, X] real abundance;
-  array[C] int observed;
-  array[C] real expected;
-  int count = 1;
+  array[N, S] matrix[X, X] survival_step = rep_array(rep_matrix(0.0,X,X),N,S);
+  array[N, S] matrix[X, X] movement_step = rep_array(rep_matrix(0.0,X,X),N,S);
+  array[N, S] matrix[X, X] harvest_step = rep_array(rep_matrix(0.0,X,X),N,S);
+  // Declare movement values (for priors)
+  matrix[X, X] movement_mean_step = rep_matrix(0.0, X, X);
+  matrix[X, X] movement_mean_rate = rep_matrix(0.0, X, X);
+  array[T] matrix[X,X] movement_time_deviation=rep_array(rep_matrix(0.0,X,X),T);
+  array[I] matrix[X,X] movement_term_deviation=rep_array(rep_matrix(0.0,X,X),I);
+  array[S] matrix[X,X] movement_size_deviation=rep_array(rep_matrix(0.0,X,X),S);
+  // Declare fishing values (for priors)
+  array[X] real fishing_mean_step = rep_array(0.0, X);
+  array[X] real fishing_mean_rate = rep_array(0.0, X);
+  array[T, X] real fishing_time_deviation = rep_array(0.0, T, X);
+  array[I, X] real fishing_term_deviation = rep_array(0.0, I, X);
+  array[S, X] real fishing_size_deviation = rep_array(0.0, S, X);
   // Assemble movement step [N, S] [X, X]
   movement_step = assemble_movement_step(
     movement_parameter_mean_step,
@@ -160,12 +163,17 @@ model {
     movement_index,
     I
   );
-  // Assemble fishing mortality step [N, S, X]
-  fishing_step = assemble_fishing_step(
+  // Assemble harvest step [N, S] [X, X]
+  harvest_step = assemble_harvest_step(
     fishing_parameter_mean_step,
     fishing_parameter_time_step,
     fishing_parameter_term_step,
     fishing_parameter_size_step
+  );
+  // Assemble fishing mean step [X]
+  fishing_mean_step = assemble_fishing_mean_rate(
+    fishing_parameter_mean_step,
+    1 // nterm = 1 for fishing step
   );
   // Assemble fishing mean rate [X]
   fishing_mean_rate = assemble_fishing_mean_rate(
@@ -190,6 +198,8 @@ model {
     fishing_parameter_size_step,
     I
   );
+
+  /**
   // Compute survival step [N, S, X]
   for (n in 1:N) { // Study step
     for (s in 1:S) { // Released size
@@ -202,6 +212,8 @@ model {
       }
     }
   }
+  */
+  /**
   // Populate abundance released [N - 1, S, X]
   for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
@@ -211,6 +223,56 @@ model {
       }
     }
   }
+  */
+
+  // Populate released abundance (real) from tags (integer)
+  for (n in 1:(N - 1)) { // Released step
+    for (s in 1:S) { // Released size
+      for (x in 1:X) { // Released region
+        abundance[n, s, 1, x, x] = tags[n, s, 1, x, x] // Integer scalar
+        * (1 - initial_loss_step); // Real scalar
+      }
+    }
+  }
+  // Populate survival step [N, S] [X, X]
+  for (n in 1:N) { // Study step
+    for (s in 1:S) { // Released size
+      survival_step[n, s] = (1 - harvest_step[n, s]) // Diagonal matrix [X, X]
+      * (1 - mortality_step) // Diagonal matrix [X, X]
+      * (1 - ongoing_loss_step); // Scalar
+    }
+  }
+  // Initialize count
+  count = 1;
+  // Compute expected recoveries
+  for (n in 1:(N - 1)) { // Released step
+    for (s in 1:S) { // Released size
+      for (l in 2:min(N - n + 1, L)) { // Liberty step
+        // Propagate abundance
+        abundance[n, s, l] = abundance[n, s, l - 1]
+        * survival_step[n + l - 2] // Previous step; diagonal matrix [X, X]
+        * movement_step[n + l - 2]; // Prevous step; square matrix [X, X]
+        // Compute predicted
+        predicted[n, s, l] = abundance[n, s, l] // Square matrix [X, X]
+        * harvest_step[n + l - 1] // Current step; diagonal matrix [X, X]
+        * reporting_step // Constant step; diagonal matrix [X, X]
+        + tolerance_expected; // Constant scalar
+        // Compute vectors
+        for (y in 1:X) { // Current region
+          for (x in 1:X) { // Released region
+            if (tags[n, s, 1, x, x] > 0) { // Were any tags released?
+              observed[count] = tags[n, s, l, x, y];
+              expected[count] = predicted[n, s, l, x, y];
+              count += 1;
+            } // End if
+          } // End x
+        } // End y
+      } // End l
+    } // End s
+  } // End n
+
+  /**
+
   // Compute expected recoveries
   for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
@@ -239,6 +301,9 @@ model {
       } // End w
     } // End s
   } // End n
+
+  */
+
   // Movement time deviation prior
   for (t in 2:T) {
     for (y in 1:X) {
@@ -345,11 +410,14 @@ model {
 }
 
 generated quantities {
+  /**
+
   // Declare movement values
   array[T] matrix[X,X] movement_time_rate = rep_array(rep_matrix(0.0,X,X),T);
   array[I] matrix[X,X] movement_term_rate = rep_array(rep_matrix(0.0,X,X),I);
   array[S] matrix[X,X] movement_size_rate = rep_array(rep_matrix(0.0,X,X),S);
   // Declare fishing values
+  array[N, S, X] real fishing_step = rep_array(0.0, N, S, X);
   array[T, X] real fishing_time_rate = rep_array(0.0, T, X);
   array[I, X] real fishing_term_rate = rep_array(0.0, I, X);
   array[S, X] real fishing_size_rate = rep_array(0.0, S, X);
@@ -374,6 +442,13 @@ generated quantities {
     movement_index,
     I
   );
+  // Assemble fishing mortality step [N, S, X]
+  fishing_step = assemble_fishing_step(
+    fishing_parameter_mean_step,
+    fishing_parameter_time_step,
+    fishing_parameter_term_step,
+    fishing_parameter_size_step
+  );
   // Assemble fishing time rate [T, X]
   fishing_time_rate = assemble_fishing_time_rate(
     fishing_parameter_mean_step,
@@ -392,4 +467,6 @@ generated quantities {
     fishing_parameter_size_step,
     I
   );
+
+  */
 }
