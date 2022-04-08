@@ -410,27 +410,9 @@ fit <- function (tag_data,
 
   # Assemble tag data ----------------------------------------------------------
 
-  # Released
   if (is.null(data)) {
-    tags_released <- create_tags_released(
-      tags = tag_data,
-      list_regions = list_regions,
-      list_sizes = list_sizes,
-      year_released_start = year_released_start,
-      year_recovered_end = year_recovered_end,
-      # step_liberty_max = step_liberty_max,
-      term_interval = term_interval,
-      colname_date_released = colname_date_released,
-      # colname_date_recovered = colname_date_recovered,
-      colname_region_released = colname_region_released,
-      # colname_region_recovered = colname_region_recovered,
-      colname_size_released = colname_size_released
-    )
-  }
-  # Recovered
-  if (is.null(data)) {
-    tags_recovered <- create_tags_recovered(
-      tags = tag_data,
+    tag_array <- create_tag_array(
+      tag_data = tag_data,
       list_regions = list_regions,
       list_sizes = list_sizes,
       year_released_start = year_released_start,
@@ -477,8 +459,7 @@ fit <- function (tag_data,
       L = n_liberty, # Number of maximum steps at liberty
       P = sum(movement_index), # Number of movement rate mean parameters
       # Tag data
-      tags_released = tags_released, # array[N, S, X]
-      tags_recovered = tags_recovered, # array[N, S, X, L, X]
+      tags = tag_array, # array[N, S, L, X, X]
       # Movement index array
       movement_index = movement_index, # array[X, X]
       # Prior means

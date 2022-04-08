@@ -372,9 +372,9 @@ create_step_released <- function (date_released,
   return(as.integer(step_released))
 }
 
-#' Create Tags Recovered
+#' Create Tag Array
 #'
-#' @param tags [data.frame()]
+#' @param tag_data [data.frame()]
 #' @param list_regions [list()]
 #' @param list_sizes [list()]
 #' @param year_released_start [integer()] year that the first tag was released
@@ -391,25 +391,25 @@ create_step_released <- function (date_released,
 #'
 #' @importFrom rlang .data
 #'
-#' @return [tibble::tibble()]
+#' @return [array()]
 #' @export
 #'
-create_tags_recovered <- function (tags,
-                                   list_regions,
-                                   list_sizes,
-                                   year_released_start,
-                                   year_recovered_end,
-                                   step_liberty_max = NULL,
-                                   term_interval = "quarter",
-                                   colname_date_released = "date_released",
-                                   colname_date_recovered = "date_recovered",
-                                   colname_region_released = "region_released",
-                                   colname_region_recovered = "region_recovered",
-                                   colname_size_released = "size_released") {
+create_tag_array <- function (tag_data,
+                              list_regions,
+                              list_sizes,
+                              year_released_start,
+                              year_recovered_end,
+                              step_liberty_max = NULL,
+                              term_interval = "quarter",
+                              colname_date_released = "date_released",
+                              colname_date_recovered = "date_recovered",
+                              colname_region_released = "region_released",
+                              colname_region_recovered = "region_recovered",
+                              colname_size_released = "size_released") {
 
   # Check arguments ------------------------------------------------------------
 
-  checkmate::assert_data_frame(tags)
+  checkmate::assert_data_frame(tag_data)
   checkmate::assert_list(list_sizes)
   checkmate::assert_list(list_regions)
   checkmate::assert_integerish(
@@ -436,23 +436,23 @@ create_tags_recovered <- function (tags,
   )
   checkmate::assert_choice(
     x = colname_date_released,
-    choices = colnames(tags)
+    choices = colnames(tag_data)
   )
   checkmate::assert_choice(
     x = colname_date_recovered,
-    choices = colnames(tags)
+    choices = colnames(tag_data)
   )
   checkmate::assert_choice(
     x = colname_region_released,
-    choices = colnames(tags)
+    choices = colnames(tag_data)
   )
   checkmate::assert_choice(
     x = colname_region_recovered,
-    choices = colnames(tags)
+    choices = colnames(tag_data)
   )
   checkmate::assert_choice(
     x = colname_size_released,
-    choices = colnames(tags)
+    choices = colnames(tag_data)
   )
 
   # Placate R-CMD-check --------------------------------------------------------
@@ -484,207 +484,9 @@ create_tags_recovered <- function (tags,
   n_regions <- length(list_regions)
   n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
 
-  # Assemble tibble ------------------------------------------------------------
+  # Assemble released tibble ---------------------------------------------------
 
-  tags_recovered_tibble <- tags %>%
-    dplyr::rename(
-      date_released = .data[[colname_date_released]],
-      date_recovered = .data[[colname_date_recovered]],
-      region_released = .data[[colname_region_released]],
-      region_recovered = .data[[colname_region_recovered]],
-      size_released = .data[[colname_size_released]]
-    ) %>%
-    dplyr::select(
-      date_released,
-      date_recovered,
-      region_released,
-      region_recovered,
-      size_released
-    ) %>%
-    tidyr::drop_na() %>%
-    dplyr::mutate(
-      n = create_step_released(
-        date_released = .data$date_released,
-        date_released_start = date_released_start,
-        date_recovered_end = date_recovered_end,
-        term_interval = term_interval
-      ),
-      s = create_group(x = .data$size_released, list_x = list_sizes),
-      x = create_group(x = .data$region_released, list_x = list_regions),
-      l = create_step_liberty(
-        date_released = .data$date_released,
-        date_recovered = .data$date_recovered,
-        date_released_start = date_released_start,
-        date_recovered_end = date_recovered_end,
-        term_interval = term_interval,
-        step_liberty_max = step_liberty_max
-      ),
-      y = create_group(x = .data$region_recovered, list_x = list_regions)
-    ) %>%
-    tidyr::drop_na() %>%
-    dplyr::filter(.data$n < n_steps) %>% # n_steps = T * I
-    dplyr::filter(.data$l <= n_liberty) %>%
-    dplyr::filter(.data$n + .data$l - 2L < n_steps) %>% # One beyond released
-    dplyr::select(
-      .data$n,
-      .data$s,
-      .data$x,
-      .data$l,
-      .data$y
-    ) %>%
-    dplyr::group_by(
-      .data$n,
-      .data$s,
-      .data$x,
-      .data$l,
-      .data$y
-    ) %>%
-    dplyr::mutate(count = dplyr::n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::distinct(.keep_all = TRUE) %>%
-    dplyr::arrange(
-      .data$n,
-      .data$s,
-      .data$x,
-      .data$l,
-      .data$y
-    ) %>%
-    tidyr::drop_na()
-
-  # Initialize array -----------------------------------------------------------
-
-  tags_recovered <- array(
-    0L,
-    dim = c(n_steps - 1L, n_sizes, n_regions, n_liberty, n_regions)
-  )
-
-  # Populate array -------------------------------------------------------------
-
-  for (i in seq_len(nrow(tags_recovered_tibble))) {
-    tags_recovered[
-      tags_recovered_tibble$n[i],
-      tags_recovered_tibble$s[i],
-      tags_recovered_tibble$x[i],
-      tags_recovered_tibble$l[i],
-      tags_recovered_tibble$y[i]
-    ] <- as.integer(tags_recovered_tibble$count[i])
-  }
-
-  # Return array ---------------------------------------------------------------
-
-  return(tags_recovered)
-}
-
-#' Create Tags Released
-#'
-#' @param tags [data.frame()]
-#' @param list_regions [list()]
-#' @param list_sizes [list()]
-#' @param year_released_start [integer()] year that the first tag was released
-#' @param year_recovered_end [integer()] year that the last tag was recovered
-#' @param term_interval [character()] one of \code{"year"}, \code{"quarter"}
-#'   or \code{"month"}
-#' @param colname_date_released [character()]
-#' @param colname_region_released [character()]
-#' @param colname_size_released [character()]
-#'
-#' @importFrom rlang .data
-#'
-#' @return [tibble::tibble()]
-#' @export
-#'
-create_tags_released <- function (tags,
-                                  list_regions,
-                                  list_sizes,
-                                  year_released_start,
-                                  year_recovered_end,
-                                  # step_liberty_max,
-                                  term_interval = "quarter",
-                                  colname_date_released = "date_released",
-                                  # colname_date_recovered = "date_recovered",
-                                  colname_region_released = "region_released",
-                                  # colname_region_recovered = "region_recovered",
-                                  colname_size_released = "size_released") {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_data_frame(tags)
-  checkmate::assert_list(list_sizes)
-  checkmate::assert_list(list_regions)
-  checkmate::assert_integerish(
-    year_released_start,
-    any.missing = FALSE,
-    len = 1L
-  )
-  checkmate::assert_integerish(
-    year_recovered_end,
-    lower = year_released_start + 1L,
-    any.missing = FALSE,
-    len = 1L
-  )
-  # checkmate::assert_integerish(
-  #   step_liberty_max,
-  #   lower = 2,
-  #   len = 1,
-  #   any.missing = FALSE
-  # )
-  checkmate::assert_choice(
-    x = term_interval,
-    choices = c("year", "quarter", "month")
-  )
-  checkmate::assert_choice(
-    x = colname_date_released,
-    choices = colnames(tags)
-  )
-  # checkmate::assert_choice(
-  #   x = colname_date_recovered,
-  #   choices = colnames(tags)
-  # )
-  checkmate::assert_choice(
-    x = colname_region_released,
-    choices = colnames(tags)
-  )
-  # checkmate::assert_choice(
-  #   x = colname_region_recovered,
-  #   choices = colnames(tags)
-  # )
-  checkmate::assert_choice(
-    x = colname_size_released,
-    choices = colnames(tags)
-  )
-
-  # Placate R-CMD-check --------------------------------------------------------
-
-  date_released <- NULL
-  # date_recovered <- NULL
-  region_released <- NULL
-  # region_recovered <- NULL
-  size_released <- NULL
-  count <- NULL
-
-  # Compute dates --------------------------------------------------------------
-
-  # Initial date of the first released step
-  date_released_start <- lubridate::as_date(
-    paste0(year_released_start, "-01-01")
-  )
-  # Final date of the last released step
-  date_recovered_end <- lubridate::as_date(
-    paste0(year_recovered_end, "-12-31")
-  )
-
-  # Compute index limits -------------------------------------------------------
-
-  n_times <- compute_n_times(date_released_start, date_recovered_end)
-  n_terms <- compute_n_terms(term_interval)
-  n_steps <- n_times * n_terms
-  n_sizes <- length(list_sizes)
-  n_regions <- length(list_regions)
-  # n_liberty <- step_liberty_max
-
-  # Assemble tibble ------------------------------------------------------------
-
-  tags_released_tibble <- tags %>%
+  tags_released_tibble <- tag_data %>%
     dplyr::rename(
       date_released = .data[[colname_date_released]],
       # date_recovered = .data[[colname_date_recovered]],
@@ -747,26 +549,108 @@ create_tags_released <- function (tags,
     ) %>%
     tidyr::drop_na()
 
+  # Assemble recovered tibble --------------------------------------------------
+
+  tags_recovered_tibble <- tag_data %>%
+    dplyr::rename(
+      date_released = .data[[colname_date_released]],
+      date_recovered = .data[[colname_date_recovered]],
+      region_released = .data[[colname_region_released]],
+      region_recovered = .data[[colname_region_recovered]],
+      size_released = .data[[colname_size_released]]
+    ) %>%
+    dplyr::select(
+      date_released,
+      date_recovered,
+      region_released,
+      region_recovered,
+      size_released
+    ) %>%
+    tidyr::drop_na() %>%
+    dplyr::mutate(
+      n = create_step_released(
+        date_released = .data$date_released,
+        date_released_start = date_released_start,
+        date_recovered_end = date_recovered_end,
+        term_interval = term_interval
+      ),
+      s = create_group(x = .data$size_released, list_x = list_sizes),
+      x = create_group(x = .data$region_released, list_x = list_regions),
+      l = create_step_liberty(
+        date_released = .data$date_released,
+        date_recovered = .data$date_recovered,
+        date_released_start = date_released_start,
+        date_recovered_end = date_recovered_end,
+        term_interval = term_interval,
+        step_liberty_max = step_liberty_max
+      ),
+      y = create_group(x = .data$region_recovered, list_x = list_regions)
+    ) %>%
+    tidyr::drop_na() %>%
+    dplyr::filter(.data$n < n_steps) %>% # n_steps = T * I
+    dplyr::filter(.data$l > 1L) %>%
+    dplyr::filter(.data$l <= n_liberty) %>%
+    dplyr::filter(.data$n + .data$l - 2L < n_steps) %>% # One beyond released
+    dplyr::select(
+      .data$n,
+      .data$s,
+      .data$x,
+      .data$l,
+      .data$y
+    ) %>%
+    dplyr::group_by(
+      .data$n,
+      .data$s,
+      .data$x,
+      .data$l,
+      .data$y
+    ) %>%
+    dplyr::mutate(count = dplyr::n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::distinct(.keep_all = TRUE) %>%
+    dplyr::arrange(
+      .data$n,
+      .data$s,
+      .data$x,
+      .data$l,
+      .data$y
+    ) %>%
+    tidyr::drop_na()
+
   # Initialize array -----------------------------------------------------------
 
-  tags_released <- array(
+  tag_array <- array(
     0L,
-    dim = c(n_steps - 1L, n_sizes, n_regions)
+    dim = c(n_steps - 1L, n_sizes, n_liberty, n_regions, n_regions)
   )
 
-  # Populate array -------------------------------------------------------------
+  # Populate released ----------------------------------------------------------
 
   for (i in seq_len(nrow(tags_released_tibble))) {
-    tags_released[
+    tag_array[
       tags_released_tibble$n[i],
       tags_released_tibble$s[i],
+      1L,
+      tags_released_tibble$x[i],
       tags_released_tibble$x[i]
     ] <- as.integer(tags_released_tibble$count[i])
   }
 
+  # Populate recovered ---------------------------------------------------------
+
+  for (i in seq_len(nrow(tags_recovered_tibble))) {
+    tag_array[
+      tags_recovered_tibble$n[i],
+      tags_recovered_tibble$s[i],
+      tags_recovered_tibble$l[i],
+      tags_recovered_tibble$x[i],
+      tags_recovered_tibble$y[i]
+    ] <- as.integer(tags_recovered_tibble$count[i])
+  }
+
   # Return array ---------------------------------------------------------------
 
-  return(tags_released)
+  return(tag_array)
 }
 
 #' Read File From Path

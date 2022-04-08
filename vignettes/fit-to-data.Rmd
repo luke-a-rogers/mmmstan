@@ -85,7 +85,7 @@ if (FALSE) {
   iter_sampling <- 750
   use_reduce_sum <- FALSE
   threads_per_chain <- 8  
-  # Get tag functions working
+  # Get tag function working
   # tags <- tag_data
   # Fit
   m1 <- fit(

@@ -45,18 +45,8 @@ data {
 }
 
 transformed data {
-  // Number of observations
-  int<lower=0> C = 0;
-  // Count observations
-  for (n in 1:(N - 1)) { // Released step
-    for (s in 1:S) { // Released size
-      for (x in 1:X) { // Released region
-        if (tags[n, s, 1, x, x] > 0) {
-          C += (min(N - n + 1, L) - 1) * X; // Realized steps liberty
-        }
-      }
-    }
-  }
+  // Upper bound on number of observations
+  int<lower=0> C = N * S * L * X * X;
 }
 
 parameters {
@@ -70,39 +60,30 @@ parameters {
   array[T, X] real fishing_parameter_time_step; // Deviation by 'year'
   array[I, X] real fishing_parameter_term_step; // Deviation by 'season'
   array[S, X] real fishing_parameter_size_step; // Deviation by 'size'
-  // Natural mortality parameters
-  array[X] real<lower=0> mortality_step; // Instantaneous
-  // Tag reporting parameters
-  array[X] real<lower=0, upper=1> reporting_step; // Fraction
-  // Tag loss parameters
-  real<lower=0, upper=1> initial_loss_rate; // Fraction
+  // Vector rate parameters
+  vector<lower=0, upper=1>[X] reporting_rate; // Fraction
+  vector<lower=0>[X] mortality_rate; // Instantaneous
+  // Scalar step parameters
+  real<lower=0, upper=1> initial_loss_step; // Fraction
   real<lower=0> ongoing_loss_step; // Instantaneous
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
 
 transformed parameters {
-  // Ongoing tag loss rate
-  real<lower=0> ongoing_loss_rate = ongoing_loss_step * I;
-  // Natural mortality rate
-  array[X] real<lower=0> mortality_rate;
-  // Tag reporting rate
-  array[X] real<lower=0, upper=1> reporting_rate; // Fraction
-  // Populate natural mortality rate
-  for (x in 1:X) {
-    mortality_rate[x] = mortality_step[x] * I;
-  }
-  // Populate tag reporting rate
-  for (x in 1:X) {
-    reporting_rate[x] = reporting_step[x]; // Fraction
-  }
+  // Diagonal matrix step parameters
+  matrix<lower=0, upper=1>[X, X] reporting_step = diag_matrix(reporting_rate);
+  matrix<lower=0>[X, X] mortality_step = diag_matrix(mortality_rate / (I*1.0));
+  // Scalar rate parameters
+  real<lower=0, upper=1> initial_loss_rate = initial_loss_step; // Fraction
+  real<lower=0> ongoing_loss_rate = ongoing_loss_step * I; // Instantaneous
 }
 
 model {
   // Declare enumeration values
   array[N-1,S,L] matrix[X,X] abundance = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
   array[N-1,S,L] matrix[X,X] predicted = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
-  array[C] int observed = rep_array(0.0, C);
+  array[C] int observed = rep_array(0, C);
   array[C] real expected = rep_array(0.0, C);
   // Declate index values
   int count;
@@ -163,7 +144,7 @@ model {
     movement_index,
     I
   );
-  // Assemble harvest step [N, S] [X, X]
+  // Assemble harvest step [N, S] [X, X] diagonal
   harvest_step = assemble_harvest_step(
     fishing_parameter_mean_step,
     fishing_parameter_time_step,
@@ -225,45 +206,46 @@ model {
   }
   */
 
-  // Populate released abundance (real) from tags (integer)
-  for (n in 1:(N - 1)) { // Released step
-    for (s in 1:S) { // Released size
-      for (x in 1:X) { // Released region
-        abundance[n, s, 1, x, x] = tags[n, s, 1, x, x] // Integer scalar
-        * (1 - initial_loss_step); // Real scalar
-      }
-    }
-  }
-  // Populate survival step [N, S] [X, X]
+  // Populate survival step and released abundance
   for (n in 1:N) { // Study step
     for (s in 1:S) { // Released size
+      // Survival step
       survival_step[n, s] = (1 - harvest_step[n, s]) // Diagonal matrix [X, X]
       * (1 - mortality_step) // Diagonal matrix [X, X]
       * (1 - ongoing_loss_step); // Scalar
+      // Released abundance
+      if (n < N) { // Released step
+        for (x in 1:X) { // Released region
+          abundance[n, s, 1, x, x] = tags[n, s, 1, x, x] // Integer scalar
+          * (1 - initial_loss_step); // Real scalar
+        }
+      }
     }
   }
   // Initialize count
-  count = 1;
+  count = 0;
   // Compute expected recoveries
   for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
       for (l in 2:min(N - n + 1, L)) { // Liberty step
         // Propagate abundance
         abundance[n, s, l] = abundance[n, s, l - 1]
-        * survival_step[n + l - 2] // Previous step; diagonal matrix [X, X]
-        * movement_step[n + l - 2]; // Prevous step; square matrix [X, X]
+        * survival_step[n + l - 2, s] // Previous step; diagonal matrix [X, X]
+        * movement_step[n + l - 2, s]; // Prevous step; square matrix [X, X]
         // Compute predicted
         predicted[n, s, l] = abundance[n, s, l] // Square matrix [X, X]
-        * harvest_step[n + l - 1] // Current step; diagonal matrix [X, X]
+        * harvest_step[n + l - 1, s] // Current step; diagonal matrix [X, X]
         * reporting_step // Constant step; diagonal matrix [X, X]
         + tolerance_expected; // Constant scalar
         // Compute vectors
         for (y in 1:X) { // Current region
           for (x in 1:X) { // Released region
             if (tags[n, s, 1, x, x] > 0) { // Were any tags released?
-              observed[count] = tags[n, s, l, x, y];
-              expected[count] = predicted[n, s, l, x, y];
+              // Increment observation count
               count += 1;
+              // Populate observed and expected values
+              observed[count] = tags[n, s, l, x, y]; // Integer
+              expected[count] = predicted[n, s, l, x, y]; // Real
             } // End if
           } // End x
         } // End y
@@ -377,14 +359,14 @@ model {
     for (x in 1:X) {
       fishing_term_deviation[i, x] ~ normal(
         fishing_term_deviation[i - 1, x],
-        cv_fishing_term_deviation * fishing_mean_rate[x]
+        cv_fishing_term_deviation * fishing_mean_step[x]
       );
     }
   }
   for (x in 1:X) {
     fishing_term_deviation[1, x] ~ normal(
       fishing_term_deviation[I, x],
-      cv_fishing_term_deviation * fishing_mean_rate[x]
+      cv_fishing_term_deviation * fishing_mean_step[x]
     );
   }
   // Fishing size deviation prior
@@ -406,7 +388,7 @@ model {
   // Dispersion prior
   dispersion ~ normal(mu_dispersion, sd_dispersion);
   // Sampling statement (var = mu + mu^2 / dispersion)
-  observed ~ neg_binomial_2(expected, dispersion);
+  observed[1:count] ~ neg_binomial_2(expected[1:count], dispersion);
 }
 
 generated quantities {

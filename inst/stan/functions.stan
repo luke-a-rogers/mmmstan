@@ -1,25 +1,4 @@
 /**
-* Inverse logit
-*
-* @param arg, a real value
-*
-* @return a value in [0, 1]
-*/
-real inverse_logit(real arg) {
-  real value;
-  if (is_inf(arg)) {
-    if (arg > 0) {
-      value = 1;
-    } else {
-      value = 0;
-    }
-  } else {
-    value = exp(arg) / (1 + exp(arg));
-  }
-  return value;
-}
-
-/**
 * Inverse multi-logit
 *
 * @param arg, an array of dimension [P]
@@ -683,6 +662,66 @@ array[,,] real assemble_fishing_parameter_slab (
   }
   // Return parameter slab
   return parameter_slab;
+}
+
+/**
+* Assemble a harvest array of diagonal matrices at timescale 'step'
+*
+* @param pmean, an array of dimension [X]
+* @param ptime, an array of dimension [T, X]
+* @param pterm, an array of dimension [I, X]
+* @param psize, an array of dimension [S, X]
+*
+* @return array [N, S] (diagonal) matrix [X, X]
+*
+* The first argument pmean holds the parameters associated with the mean
+* fishing rates. The remaining arguments hold the parameter deviations
+* associated with fishing rate deviations from the mean for time (ptime),
+* term (pterm), and size (psize).
+*
+* Harvest associated with harvest means only, or harvest means
+* plus certain types of deviations can be assembled by setting the
+* arguments for deviations to exclude to rep_array(0.0, 1, X).
+*
+* Note that N = T * I, which is the number of study steps and one more than
+* the number of released steps, N - 1.
+*/
+array[,] matrix assemble_harvest_step (
+  array[] real pmean,
+  array[,] real ptime,
+  array[,] real pterm,
+  array[,] real psize
+) {
+  // Get dimensions
+  int X = dims(pmean)[1];
+  int T = dims(ptime)[1];
+  int I = dims(pterm)[1];
+  int S = dims(psize)[1];
+  // Set dimensions
+  int N = T * I;
+  // Initialize arrays
+  array[N, S, X] real parameter_slab = assemble_fishing_parameter_slab(
+    pmean,
+    ptime,
+    pterm,
+    psize
+  );
+  array[N, S] matrix[X, X] harvest_step = rep_array(rep_matrix(0.0,X,X),N,S);
+  // Populate harvest step
+  for (n in 1:N) {
+    for (s in 1:S) {
+      for (x in 1:X) {
+        /**
+        * We have values from parameter_slab in (-Inf, Inf). We want values
+        * for harvest step in (0, 1). The inv_logi function maps (-Inf, Inf) to
+        * (0, 1) as desired.
+        */
+        harvest_step[n, s, x, x] = inv_logit(parameter_slab[n, s, x]);
+      }
+    }
+  }
+  // Return fishing step
+  return harvest_step;
 }
 
 /**
