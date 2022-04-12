@@ -113,6 +113,7 @@ fit <- function (tag_data,
                  # Tolerance value
                  tolerance_expected = 1e-12,
                  tolerance_movement = 1e-12,
+                 tolerance_fishing = 1e-12,
                  # CmdStanR
                  data = NULL,
                  chains = 1,
@@ -335,6 +336,11 @@ fit <- function (tag_data,
     lower = 0,
     null.ok = has_data
   )
+  checkmate::assert_number(
+    tolerance_fishing,
+    lower = 0,
+    null.ok = has_data
+  )
   # Data
   checkmate::assert_list(
     data,
@@ -488,7 +494,8 @@ fit <- function (tag_data,
       cv_fishing_size_deviation = cv_fishing_size_deviation,
       # Tolerance values
       tolerance_expected = tolerance_expected,
-      tolerance_movement = tolerance_movement
+      tolerance_movement = tolerance_movement,
+      tolerance_fishing = tolerance_fishing
     )
   }
 

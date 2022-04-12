@@ -78,6 +78,7 @@ if (FALSE) {
   cv_fishing_size_deviation <- 0.1
   tolerance_expected <- 1e-12
   tolerance_movement <- 1e-12
+  tolerance_fishing <- 1e-12
   data <- NULL
   chains <- 1
   step_size <- 0.01
@@ -125,6 +126,7 @@ if (FALSE) {
     cv_fishing_size_deviation = 0.1,
     tolerance_expected = 1e-12,
     tolerance_movement = 1e-12,
+    tolerance_fishing = 1e-12,
     data = NULL,
     chains = 1,
     step_size = 0.01,

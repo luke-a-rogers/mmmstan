@@ -806,16 +806,16 @@ array[] real assemble_fishing_mean_rate (
   // Get dimensions
   int X = dims(pmean)[1];
   // Initialize arrays
-  array[1, 1, X] real fishing_step = assemble_fishing_step(
+  array[1, 1, X] real fishing_mean_step = assemble_fishing_step(
     pmean,
     rep_array(0.0, 1, X),
     rep_array(0.0, 1, X),
     rep_array(0.0, 1, X)
   );
   // Initialize array
-  array[X] real fishing_rate = pow(fishing_step[1, 1], nterm);
+  array[X] real fishing_mean_rate = pow(fishing_mean_step[1, 1], nterm);
   // Return fishing rate
-  return fishing_rate;
+  return fishing_mean_rate;
 }
 
 /**
@@ -1073,4 +1073,47 @@ array[,] real assemble_fishing_size_deviation (
   }
   // Return movement deviation
   return fishing_deviation;
+}
+
+/**
+* Assemble a survival step array of matrices
+*
+* @param hstep, an array [N, S] [X, X] harvest rates
+* @param mstep, a diagonal matrix [X, X] natural mortality rates
+* @param ostep, a real scalar instantaneous ongoing loss rate
+*
+* @return an array [N, S] [X, X]
+*
+* The first argument hstep holds diagonal matrices of stepwise harvest rates.
+* The second argument holds a diagonal matrix of stepwise average natural
+* mortality rates, also not instantaneous.
+*
+* The argument ostep holds the scalar stepwise instantaneous ongoing tag loss
+* rate. The argument nterm is the number of terms (often quarters) per time
+* (usually year)
+*/
+array[,] matrix assemble_survival_step (
+  array[,] matrix hstep,
+  vector mrate,
+  real orate,
+  int nterm
+) {
+  // Get dimensions
+  int N = dims(hstep)[1];
+  int S = dims(hstep)[2];
+  int X = dims(mrate)[1];
+  // Initialize values
+  array[N, S] matrix[X, X] survival_step = rep_array(rep_matrix(0.0,X,X),N,S);
+  matrix[X, X] m_surv_step = diag_matrix(exp(-mrate / (nterm * 1.0)));
+  real o_surv_step = exp(-orate / (nterm * 1.0));
+  // Populate survival step
+  for (n in 1:N) { // Study step
+    for (s in 1:S) { // Released size
+      survival_step[n, s] = (1 - hstep[n, s]) // Diagonal matrix [X, X]
+      * m_surv_step // Diagonal matrix [X, X]
+      * o_surv_step; // Scalar
+    }
+  }
+  // Return survival step
+  return survival_step;
 }
