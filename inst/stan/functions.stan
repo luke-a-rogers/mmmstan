@@ -607,6 +607,79 @@ array[] matrix assemble_movement_size_deviation (
 }
 
 /**
+* Assemble Matrices That Indicate Allowed Movement at Each Liberty Step
+*
+* @param mindex, an array of dimension [X, X]
+* @param nliberty, an integer giving the maximum steps at liberty
+*
+* @return an array of dimension [L] holding matrices of dimension [X, X]
+*
+* The argument mindex is a square integer array of zeros and ones indicating
+* that movement is permitted (one) or not permitted (zero) between a given
+* source region (row) and destination region (column) in one step.
+*
+* The argument nliberty is the maximum number of steps at liberty
+*/
+array[] matrix assemble_movement_allowed_transpose(
+  array[,] int mindex,
+  int nliberty
+) {
+  // Get dimensions
+  int X = dims(mindex)[1];
+  int L = nliberty;
+  // Initialize values
+  array[L] matrix[X, X] movement_allowed_transpose;
+  matrix[X, X] movement_transpose;
+  // Populate movement transpose
+  for (x in 1:X) {
+    for (y in 1:X) {
+      movement_transpose[y, x] = mindex[x, y] * 1.0;
+    }
+  }
+  // Populate movement allowed transpose
+  movement_allowed_transpose[1] = rep_matrix(0.0, X, X);
+  movement_allowed_transpose[2] = movement_transpose;
+  // Iterate higher indexes
+  for (l in 3:L) {
+    if (min(movement_allowed_transpose[l - 1] > 0.0)) {
+      movement_allowed_transpose[l] = movement_allowed_transpose[l - 1];
+    } else {
+      movement_allowed_transpose[l] = movement_allowed_transpose[l - 1]
+      * movement_transpose;
+    }
+  }
+  // Return movement allowed transpose
+  return movement_allowed_transpose;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
 * Assemble a fishing parameter array 'slab'
 *
 * @param pmean, an array of dimension [X]
