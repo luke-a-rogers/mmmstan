@@ -439,7 +439,7 @@ fit <- function (tag_data,
       S = n_sizes, # Number of size classes
       N = n_steps, # Number of release steps (T * I)
       L = n_liberty, # Number of maximum steps at liberty
-      P = sum(movement_index), # Number of movement rate mean parameters
+      P = sum(movement_index) - n_regions, # Number of movement rate mean parameters
       # Tag data
       tags = tag_array, # [N, S, L, X, X]
       # Movement index array
@@ -473,7 +473,8 @@ fit <- function (tag_data,
 
   # Check dimensions data elements ---------------------------------------------
 
-  # Check N = T * I
+  checkmate::assert_true(data$N == data$T * data$I)
+  checkmate::assert_true(data$P == sum(data$movement_index) - data$X)
 
   # Initialize the model -------------------------------------------------------
 

@@ -1,4 +1,55 @@
 /**
+* Inverse multinomial logit
+*
+* @param params, an array of dimension [U]
+*
+* @return an array of dimension [V] that sums to one
+*/
+array[] real inv_multi_logit (array[] real params) {
+  // Get dimension
+  int U = size(params); // Number of parameters (in a given mindex row)
+  int V = U + 1; // Number of resultant movement rates
+  // Declare scalars
+  real sum_exp_params = 0.0;
+  real sum_movements_u = 0.0;
+  // Declare simplex
+  array[V] real movements = rep_array(0.0, V);
+  // Populate sum
+  for (u in 1:U) {
+    sum_exp_params += exp(params[u]);
+  }
+  // Populate movement rates
+  for (u in 1:U) {
+    movements[u] = exp(params[u]) / (1.0 + sum_exp_params);
+    sum_movements_u += movements[u];
+  }
+  movements[V] = 1.0 - sum_movements_u;
+  // Check movement rates
+  if (sum(movements) > 1) {
+    print("params: ", params);
+    print("movements: ", movements);
+    reject("sum(movements): ", sum(movements));
+  }
+  if (sum(movements) < 0) {
+    print("params: ", params);
+    print("movements: ", movements);
+    reject("sum(movements): ", sum(movements));
+  }
+  if (max(movements) > 1) {
+    print("params: ", params);
+    print("movements: ", movements);
+    reject("max(movements): ", max(movements));
+  }
+  if (min(movements) < 0) {
+    print("params: ", params);
+    print("movements: ", movements);
+    reject("min(movements): ", min(movements));
+  }
+  // Return movement rates
+  return movements;
+}
+
+/**
 * Inverse multi-logit
 *
 * @param arg, an array of dimension [P]
@@ -12,7 +63,7 @@ array[] real inverse_multi_logit (array[] real arg) {
   real sum_exp_arg = 0;
   real sum_value = 0;
   // Instantiate value
-  array[P + 1] real value;
+  array[P + 1] real value = rep_array(0.0, P + 1);
   // Check dimensions
   if (P < 1) {reject("P must not be < 1; found P = ", P);}
   // Get sum of exponential
@@ -152,7 +203,7 @@ array[,,] real assemble_movement_slab (
         p[2] = p[1] + sum(mindex[x]) - 2;
         m[2] = m[1] + sum(mindex[x]) - 1;
         // Assign values to the movement slab
-        movement_slab[n, s, m[1]:m[2]] = inverse_multi_logit(
+        movement_slab[n, s, m[1]:m[2]] = inv_multi_logit(
           parameter_slab[n, s, p[1]:p[2]]
         );
         // Update the lower limit of the index ranges
