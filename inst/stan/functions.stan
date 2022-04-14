@@ -607,7 +607,7 @@ array[] matrix assemble_movement_size_deviation (
 }
 
 /**
-* Assemble Matrices That Indicate Allowed Movement at Each Liberty Step
+* Assemble Matrices That Indicate Possible Movement at Each Liberty Step
 *
 * @param mindex, an array of dimension [X, X]
 * @param nliberty, an integer giving the maximum steps at liberty
@@ -620,7 +620,7 @@ array[] matrix assemble_movement_size_deviation (
 *
 * The argument nliberty is the maximum number of steps at liberty
 */
-array[] matrix assemble_movement_allowed_transpose(
+array[] matrix assemble_movement_possible_transpose (
   array[,] int mindex,
   int nliberty
 ) {
@@ -628,7 +628,7 @@ array[] matrix assemble_movement_allowed_transpose(
   int X = dims(mindex)[1];
   int L = nliberty;
   // Initialize values
-  array[L] matrix[X, X] movement_allowed_transpose;
+  array[L] matrix[X, X] movement_possible_transpose;
   matrix[X, X] movement_transpose;
   // Populate movement transpose
   for (x in 1:X) {
@@ -636,557 +636,147 @@ array[] matrix assemble_movement_allowed_transpose(
       movement_transpose[y, x] = mindex[x, y] * 1.0;
     }
   }
-  // Populate movement allowed transpose
-  movement_allowed_transpose[1] = rep_matrix(0.0, X, X);
-  movement_allowed_transpose[2] = movement_transpose;
+  // Populate movement possible transpose
+  movement_possible_transpose[1] = rep_matrix(0.0, X, X);
+  movement_possible_transpose[2] = movement_transpose;
   // Iterate higher indexes
   for (l in 3:L) {
-    if (min(movement_allowed_transpose[l - 1] > 0.0)) {
-      movement_allowed_transpose[l] = movement_allowed_transpose[l - 1];
+    if (min(movement_possible_transpose[l - 1]) > 0.0) {
+      movement_possible_transpose[l] = movement_possible_transpose[l - 1];
     } else {
-      movement_allowed_transpose[l] = movement_allowed_transpose[l - 1]
+      movement_possible_transpose[l] = movement_possible_transpose[l - 1]
       * movement_transpose;
     }
   }
-  // Return movement allowed transpose
-  return movement_allowed_transpose;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
-* Assemble a fishing parameter array 'slab'
-*
-* @param pmean, an array of dimension [X]
-* @param ptime, an array of dimension [T, X]
-* @param pterm, an array of dimension [I, X]
-* @param psize, an array of dimension [S, X]
-*
-* @return an array of dimension [N, S, X]
-*
-* The first argument fmean holds the parameters associated with the mean
-* fishing rates. The remaining arguments hold the parameter deviations
-* associated with fishing rate deviations from the mean for time (ptime),
-* term (pterm), and size (psize).
-*
-* Parameter slabs associated with fishing rate means only,
-* or fishing rates plus certain types of deviations can be
-* assembled by passing rep_array(0.0, 1, X) for arguments corresponging
-* to the deviations to exclude.
-*
-* Note that N = T * I, which is the number of study steps and one more than
-* the number of released steps, N - 1.
-*/
-array[,,] real assemble_fishing_parameter_slab (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] real pterm,
-  array[,] real psize
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int I = dims(pterm)[1];
-  int S = dims(psize)[1];
-  // Set N and instantiate index
-  int N = T * I;
-  int n;
-  // Instantiate slabs
-  array[N, S, X] real parameter_slab = rep_array(0.0, N, S, X);
-  // Populate parameter slab
-  n = 1;
-  for (t in 1:T) {
-    for (i in 1:I) {
-      for (s in 1:S) {
-        for (x in 1:X) {
-          parameter_slab[n, s, x] = pmean[x]
-          + ptime[t, x]
-          + pterm[i, x]
-          + psize[s, x];
-        }
-      }
-      n += 1;
-    }
-  }
-  // Return parameter slab
-  return parameter_slab;
+  // Return movement possible transpose
+  return movement_possible_transpose;
 }
 
 /**
-* Assemble a harvest array of diagonal matrices at timescale 'step'
+* Assemble a fishing rate array
 *
-* @param pmean, an array of dimension [X]
-* @param ptime, an array of dimension [T, X]
-* @param pterm, an array of dimension [I, X]
-* @param psize, an array of dimension [S, X]
-*
-* @return array [N, S] (diagonal) matrix [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The remaining arguments hold the parameter deviations
-* associated with fishing rate deviations from the mean for time (ptime),
-* term (pterm), and size (psize).
-*
-* Harvest associated with harvest means only, or harvest means
-* plus certain types of deviations can be assembled by setting the
-* arguments for deviations to exclude to rep_array(0.0, 1, X).
-*
-* Note that N = T * I, which is the number of study steps and one more than
-* the number of released steps, N - 1.
-*/
-array[,] matrix assemble_harvest_step (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] real pterm,
-  array[,] real psize
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int I = dims(pterm)[1];
-  int S = dims(psize)[1];
-  // Set dimensions
-  int N = T * I;
-  // Initialize arrays
-  array[N, S, X] real parameter_slab = assemble_fishing_parameter_slab(
-    pmean,
-    ptime,
-    pterm,
-    psize
-  );
-  array[N, S] matrix[X, X] harvest_step = rep_array(rep_matrix(0.0,X,X),N,S);
-  // Populate harvest step
-  for (n in 1:N) {
-    for (s in 1:S) {
-      for (x in 1:X) {
-        /**
-        * We have values from parameter_slab in (-Inf, Inf). We want values
-        * for harvest step in (0, 1). The inv_logi function maps (-Inf, Inf) to
-        * (0, 1) as desired.
-        */
-        harvest_step[n, s, x, x] = inv_logit(parameter_slab[n, s, x]);
-      }
-    }
-  }
-  // Return fishing step
-  return harvest_step;
-}
-
-/**
-* Assemble a fishing array at timescale 'step'
-*
-* @param pmean, an array of dimension [X]
-* @param ptime, an array of dimension [T, X]
-* @param pterm, an array of dimension [I, X]
-* @param psize, an array of dimension [S, X]
-*
-* @return an array of dimension [N, S, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The remaining arguments hold the parameter deviations
-* associated with fishing rate deviations from the mean for time (ptime),
-* term (pterm), and size (psize).
-*
-* Fishing associated with fishing rate means only, or fishing
-* rates plus certain types of deviations can be assembled by setting the
-* arguments for deviations to exclude to rep_array(0.0, 1, X).
-*
-* Note that N = T * I, which is the number of study steps and one more than
-* the number of released steps, N - 1.
-*/
-array[,,] real assemble_fishing_step (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] real pterm,
-  array[,] real psize
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int I = dims(pterm)[1];
-  int S = dims(psize)[1];
-  // Set dimensions
-  int N = T * I;
-  // Initialize arrays
-  array[N, S, X] real parameter_slab = assemble_fishing_parameter_slab(
-    pmean,
-    ptime,
-    pterm,
-    psize
-  );
-  array[N, S, X] real fishing_step = rep_array(0.0, N, S, X);
-  // Populate fishing step
-  for (n in 1:N) {
-    for (s in 1:S) {
-      for (x in 1:X) {
-        /**
-        * We have values from parameter_slab in (-Inf, Inf). We want values
-        * for fishing step in (0, Inf). The exp function maps (-Inf, Inf) to
-        * (0, Inf) as desired.
-        */
-        fishing_step[n, s, x] = exp(parameter_slab[n, s, x]);
-      }
-    }
-  }
-  // Return fishing step
-  return fishing_step;
-}
-
-/**
-* Assemble a fishing mean rate array
-*
-* @param pmean, an array of dimension [X]
+* @param fstep, an array [N] of vectors [X]
+* @param ntime, an integer giving the number of years in the study
 * @param nterm, an integer giving the number of seasons (terms) per year (times)
 *
-* @return an array of dimension [X]
+* @return an array [T] of vectors [X]
 *
-* The first argument pmean holds the parameters associated with the mean
-* fishing mortality rates.
+* The argument fstep is an array of vectors of stepwise fishing rates.
+*
+* The arguement ntime is the number of times (years) in the study.
 *
 * The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
+* (usually year).
 */
-array[] real assemble_fishing_mean_rate (
-  array[] real pmean,
+array[] vector assemble_fishing_rate (
+  array[] vector fstep,
+  int ntime,
   int nterm
 ) {
   // Get dimensions
-  int X = dims(pmean)[1];
-  // Initialize arrays
-  array[1, 1, X] real fishing_mean_step = assemble_fishing_step(
-    pmean,
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X)
-  );
-  // Initialize array
-  array[X] real fishing_mean_rate = pow(fishing_mean_step[1, 1], nterm);
-  // Return fishing rate
-  return fishing_mean_rate;
-}
-
-/**
-* Assemble a fishing time rate array
-*
-* @param pmean, an array of dimension [X]
-* @param ptime, an array of dimension [T, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [T, X] holding fishing mortality rate
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The second argument holds the parameter deviations
-* associated with fishing rate deviations from the mean for time, ptime.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[,] real assemble_fishing_time_rate (
-  array[] real pmean,
-  array[,] real ptime,
-  int nterm
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  // Initialize arrays
-  array[T, 1, X] real fishing_step = assemble_fishing_step(
-    pmean,
-    ptime,
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X)
-  );
-  array[T, X] real fishing_rate = rep_array(0.0, T, X);
-  // Populate fishing rates
-  for (t in 1:T) {
-    fishing_rate[t] = pow(fishing_step[t, 1], nterm);
-  }
-  // Return fishing rate
-  return fishing_rate;
-}
-
-/**
-* Assemble a fishing term rate array
-*
-* @param pmean, an array of dimension [X]
-* @param pterm, an array of dimension [I, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [I, X] holding fishing mortality rate
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The second argument holds the parameter deviations
-* associated with fishing rate deviations from the mean for term, pterm.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[,] real assemble_fishing_term_rate (
-  array[] real pmean,
-  array[,] real pterm,
-  int nterm
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int I = dims(pterm)[1];
-  // Initialize arrays
-  array[I, 1, X] real fishing_step = assemble_fishing_step(
-    pmean,
-    rep_array(0.0, 1, X),
-    pterm,
-    rep_array(0.0, 1, X)
-  );
-  array[I, X] real fishing_rate = rep_array(0.0, I, X);
-  // Populate fishing rates
-  for (i in 1:I) {
-    fishing_rate[i] = pow(fishing_step[i, 1], nterm);
-  }
-  // Return fishing rate
-  return fishing_rate;
-}
-
-/**
-* Assemble a fishing size rate array
-*
-* @param pmean, an array of dimension [X]
-* @param psize, an array of dimension [S, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [S, X] holding fishing mortality rate
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The second argument holds the parameter deviations
-* associated with fishing rate deviations from the mean for size, psize.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[,] real assemble_fishing_size_rate (
-  array[] real pmean,
-  array[,] real psize,
-  int nterm
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int S = dims(psize)[1];
-  // Initialize arrays
-  array[1, S, X] real fishing_step = assemble_fishing_step(
-    pmean,
-    rep_array(0.0, 1, X),
-    rep_array(0.0, 1, X),
-    psize
-  );
-  array[S, X] real fishing_rate = rep_array(0.0, S, X);
-  // Populate fishing rates
-  for (s in 1:S) {
-    fishing_rate[s] = pow(fishing_step[1, s], nterm);
-  }
-  // Return fishing rate
-  return fishing_rate;
-}
-
-/**
-* Assemble a fishing time deviation array
-*
-* @param pmean, an array of dimension [X]
-* @param ptime, an array of dimension [T, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [T, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The second argument holds the parameter deviations
-* associated with fishing rate deviations from the mean for time, ptime.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[,] real assemble_fishing_time_deviation (
-  array[] real pmean,
-  array[,] real ptime,
-  int nterm
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  // Initialize movement rates
-  array[X] real fishing_mean = assemble_fishing_mean_rate(
-    pmean,
-    nterm
-  );
-  array[T, X] real fishing_type = assemble_fishing_time_rate(
-    pmean,
-    ptime,
-    nterm
-  );
-  array[T, X] real fishing_deviation;
-  // Populate movement deviation
-  for (t in 1:T) {
-    for (x in 1:X) {
-      fishing_deviation[t, x] = fishing_type[t, x] - fishing_mean[x];
-    }
-  }
-  // Return movement deviation
-  return fishing_deviation;
-}
-
-/**
-* Assemble a fishing term deviation array
-*
-* @param pmean, an array of dimension [X]
-* @param pterm, an array of dimension [I, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [I, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The second argument holds the parameter deviations
-* associated with fishing rate deviations from the mean for term, pterm.
-*/
-array[,] real assemble_fishing_term_deviation (
-  array[] real pmean,
-  array[,] real pterm,
-  int nterm
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int I = dims(pterm)[1];
-  // Initialize movement rates
-  array[X] real fishing_mean = assemble_fishing_mean_rate(
-    pmean,
-    nterm
-  );
-  array[I, X] real fishing_type = assemble_fishing_term_rate(
-    pmean,
-    pterm,
-    nterm
-  );
-  array[I, X] real fishing_deviation;
-  // Populate movement deviation
-  for (i in 1:I) {
-    for (x in 1:X) {
-      fishing_deviation[i, x] = fishing_type[i, x] - fishing_mean[x];
-    }
-  }
-  // Return movement deviation
-  return fishing_deviation;
-}
-
-/**
-* Assemble a fishing size deviation array
-*
-* @param pmean, an array of dimension [X]
-* @param psize, an array of dimension [S, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [S, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* fishing rates. The second argument holds the parameter deviations
-* associated with fishing rate deviations from the mean for size, psize.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[,] real assemble_fishing_size_deviation (
-  array[] real pmean,
-  array[,] real psize,
-  int nterm
-) {
-  // Get dimensions
-  int X = dims(pmean)[1];
-  int S = dims(psize)[1];
-  // Initialize movement rates
-  array[X] real fishing_mean = assemble_fishing_mean_rate(
-    pmean,
-    nterm
-  );
-  array[S, X] real fishing_type = assemble_fishing_size_rate(
-    pmean,
-    psize,
-    nterm
-  );
-  array[S, X] real fishing_deviation;
-  // Populate movement deviation
-  for (s in 1:S) {
-    for (x in 1:X) {
-      fishing_deviation[s, x] = fishing_type[s, x] - fishing_mean[x];
-    }
-  }
-  // Return movement deviation
-  return fishing_deviation;
-}
-
-/**
-* Assemble a survival step array of matrices
-*
-* @param hstep, an array [N, S] [X, X] harvest rates
-* @param mstep, a diagonal matrix [X, X] natural mortality rates
-* @param ostep, a real scalar instantaneous ongoing loss rate
-*
-* @return an array [N, S] [X, X]
-*
-* The first argument hstep holds diagonal matrices of stepwise harvest rates.
-* The second argument holds a diagonal matrix of stepwise average natural
-* mortality rates, also not instantaneous.
-*
-* The argument ostep holds the scalar stepwise instantaneous ongoing tag loss
-* rate. The argument nterm is the number of terms (often quarters) per time
-* (usually year)
-*/
-array[,] matrix assemble_survival_step (
-  array[,] matrix hstep,
-  vector mrate,
-  real orate,
-  int nterm
-) {
-  // Get dimensions
-  int N = dims(hstep)[1];
-  int S = dims(hstep)[2];
-  int X = dims(mrate)[1];
+  int N = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  int T = ntime;
+  int I = nterm;
   // Initialize values
-  array[N, S] matrix[X, X] survival_step = rep_array(rep_matrix(0.0,X,X),N,S);
-  matrix[X, X] m_surv_step = diag_matrix(exp(-mrate / (nterm * 1.0)));
-  real o_surv_step = exp(-orate / (nterm * 1.0));
-  // Populate survival step
-  for (n in 1:N) { // Study step
-    for (s in 1:S) { // Released size
-      survival_step[n, s] = (1 - hstep[n, s]) // Diagonal matrix [X, X]
-      * m_surv_step // Diagonal matrix [X, X]
-      * o_surv_step; // Scalar
+  array[T] vector[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
+  // Initialize index count
+  int count = 1;
+  // Populate fishing rate
+  for (t in 1:T) {
+    for (i in 1:I){
+      fishing_rate[t] = fishing_rate[t] + fstep[count];
+      count += 1;
     }
+  }
+  // Return fishing rate
+  return fishing_rate;
+}
+
+/**
+* Assemble a survival step array [N] of diagonal matrices [X, X]
+*
+* @param fstep, an array [N] of vector [X] stepwise fishing rates
+* @param mstep, a vector [X] of stepwise natural mortality rates
+* @param ostep, a real ongoing stepwise tag loss rate
+*
+* @return an array [N] of matrices [X, X]
+*/
+array[] matrix assemble_survival_step (
+  array [] vector fstep,
+  vector mstep,
+  real ostep
+) {
+  // Get dimensions
+  int N = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  // Initialize values
+  array[N] matrix[X, X] survival_step = rep_array(rep_matrix(0.0, X, X), N);
+  // Populate survival step
+  for (n in 1:N) {
+    survival_step[n] = diag_matrix(exp(-fstep[n]))
+    * diag_matrix(exp(-mstep))
+    * exp(-ostep);
   }
   // Return survival step
   return survival_step;
+}
+
+/**
+* Assemble an observation step array [N] of diagonal matrices [X, X]
+*
+* @param fstep, an array [N] of vector [X] stepwise fishing rates
+* @param rstep, a vector [X] of tag reporting steps
+*
+* @return an array [N] of matrices [X, X]
+*/
+array[] matrix assemble_observal_step (
+  array [] vector fstep,
+  vector rstep
+) {
+  // Get dimensions
+  int N = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  // Initialize values
+  array[N] matrix[X, X] observal_step = rep_array(rep_matrix(0.0, X, X), N);
+  // Populate reporting step
+  for (n in 1:N) {
+    observal_step[n] = diag_matrix(1 - exp(-fstep[n])) * diag_matrix(rstep);
+  }
+  // Return observal step
+  return observal_step;
+}
+
+/**
+* Assemble an fishing term deviation array [T, I] of vectors [X]
+*
+* @param fstep, an array [N] of vector [X] stepwise fishing rates
+* @param frate, an array [N] of vector [X] fishing rates
+* @param nterm, an integer giving the number of seasons (terms) per year (times)
+*
+* @return an array [T, I] of vectors [X]
+*/
+array[,] vector assemble_fishing_term_deviation(
+  array[] vector fstep,
+  array[] vector frate,
+  int nterm
+) {
+  // Get dimensions
+  int N = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  int T = dims(frate)[1];
+  int I = nterm;
+  // Initialize values
+  array[T, I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0,X),T,I);
+  // Initialize index count
+  int count = 1;
+  // Populate fishing term deviation
+  for (t in 1:T) {
+    for (i in 1:I) {
+      fishing_term_deviation[t, i] = frate[t] / (I * 1.0) - fstep[count];
+      count += 1;
+    }
+  }
+  // Return fishing term deviation
+  return fishing_term_deviation;
 }

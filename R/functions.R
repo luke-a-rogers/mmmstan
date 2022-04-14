@@ -34,27 +34,25 @@
 #'   directional movement between a pair of regions
 #' @param movement_disallow [integer()] [matrix()] As for
 #'   \code{movement_allow}, but specified movement is disallowed
+#' @param mu_fishing_rate [numeric()][array()]
 #' @param mu_mortality_rate [numeric()]
 #' @param mu_reporting_rate [numeric()]
-#' @param mu_fishing_mean_rate [numeric()]
 #' @param mu_initial_loss_rate [numeric()]
 #' @param mu_ongoing_loss_rate [numeric()]
 #' @param mu_dispersion [numeric()]
-#' @param mu_fishing_time_deviation [numeric()]
-#' @param sd_mortality_rate [numeric()]
-#' @param sd_reporting_rate [numeric()]
-#' @param sd_fishing_mean_rate [numeric()]
-#' @param sd_initial_loss_rate [numeric()]
-#' @param sd_ongoing_loss_rate [numeric()]
-#' @param sd_dispersion [numeric()]
+#' @param cv_fishing_rate [numeric()]
+#' @param cv_mortality_rate [numeric()]
+#' @param cv_reporting_rate [numeric()]
+#' @param cv_initial_loss_rate [numeric()]
+#' @param cv_ongoing_loss_rate [numeric()]
+#' @param cv_dispersion [numeric()]
 #' @param cv_movement_time_deviation [numeric()]
 #' @param cv_movement_term_deviation [numeric()]
 #' @param cv_movement_size_deviation [numeric()]
-#' @param cv_fishing_time_deviation [numeric()]
-#' @param cv_fishing_term_deviation [numeric()]
-#' @param cv_fishing_size_deviation [numeric()]
+#' @param sd_fishing_term_deviation [numeric()]
 #' @param tolerance_expected [numeric()]
 #' @param tolerance_movement [numeric()]
+#' @param tolerance_fishing [numeric()]
 #' @param data [list()] See details
 #' @param chains [integer()] number of chains
 #' @param step_size [numeric()] initial step size
@@ -87,29 +85,31 @@ fit <- function (tag_data,
                  movement_allow = NULL,
                  movement_disallow = NULL,
                  # Prior means
+                 mu_fishing_rate = array(
+                   0.1,
+                   dim = c(
+                     year_recovered_end - year_released_start + 1,
+                     length(list_regions)
+                   )
+                 ),
                  mu_mortality_rate = rep(0.1, length(list_regions)),
                  mu_reporting_rate = rep(1, length(list_regions)),
-                 mu_fishing_mean_rate = rep(0.1, length(list_regions)),
                  mu_initial_loss_rate = 0.1,
                  mu_ongoing_loss_rate = 0.02,
                  mu_dispersion = 1,
-                 # Fishing prior mean deviations by time
-                 mu_fishing_time_deviation = NULL, # [T, X]
-                 # Prior standard deviations
-                 sd_mortality_rate = 0.1 * mu_mortality_rate,
-                 sd_reporting_rate = 0.1 * mu_reporting_rate,
-                 sd_fishing_mean_rate = 0.1 * mu_fishing_mean_rate,
-                 sd_initial_loss_rate = 0.1 * mu_initial_loss_rate,
-                 sd_ongoing_loss_rate = 0.1 * mu_ongoing_loss_rate,
-                 sd_dispersion = 0.25 * mu_dispersion,
+                 # Prior coefficients of variation
+                 cv_fishing_rate = 0.1,
+                 cv_mortality_rate = 0.1,
+                 cv_reporting_rate = 0.1,
+                 cv_initial_loss_rate = 0.1,
+                 cv_ongoing_loss_rate = 0.1,
+                 cv_dispersion = 0.25,
                  # Movement prior coefficients of variation
                  cv_movement_time_deviation = 0.1,
                  cv_movement_term_deviation = 0.1,
                  cv_movement_size_deviation = 0.1,
-                 # Fishing prior coefficients of variation
-                 cv_fishing_time_deviation = 0.1,
-                 cv_fishing_term_deviation = 0.1,
-                 cv_fishing_size_deviation = 0.1,
+                 # Fishing prior standard deviation
+                 sd_fishing_term_deviation = 0.25,
                  # Tolerance value
                  tolerance_expected = 1e-12,
                  tolerance_movement = 1e-12,
@@ -212,6 +212,20 @@ fit <- function (tag_data,
     null.ok = TRUE
   )
   # Prior means
+  checkmate::assert_array(
+    mu_fishing_rate,
+    mode = "double",
+    any.missing = FALSE,
+    d = 2,
+    null.ok = has_data
+  )
+  checkmate::assert_numeric(
+    mu_fishing_rate,
+    lower = 0,
+    finite = TRUE,
+    any.missing = FALSE,
+    null.ok = has_data
+  )
   checkmate::assert_numeric(
     mu_mortality_rate,
     lower = 0,
@@ -223,13 +237,6 @@ fit <- function (tag_data,
     mu_reporting_rate,
     lower = 0,
     upper = 1,
-    any.missing = FALSE,
-    null.ok = has_data
-  )
-  checkmate::assert_numeric(
-    mu_fishing_mean_rate,
-    lower = 0,
-    finite = TRUE,
     any.missing = FALSE,
     null.ok = has_data
   )
@@ -249,47 +256,34 @@ fit <- function (tag_data,
     null.ok = has_data
   )
   # Fishing prior mean deviations by time
-  checkmate::assert_array(
-    mu_fishing_time_deviation,
-    mode = "double",
-    any.missing = FALSE,
-    d = 2,
-    null.ok = TRUE
+  checkmate::assert_number(
+    cv_fishing_rate,
+    lower = 0,
+    null.ok = has_data
   )
   # Prior standard deviations
-  checkmate::assert_numeric(
-    sd_mortality_rate,
-    lower = 0,
-    finite = TRUE,
-    any.missing = FALSE,
-    null.ok = has_data
-  )
-  checkmate::assert_numeric(
-    sd_reporting_rate,
-    lower = 0,
-    finite = TRUE,
-    any.missing = FALSE,
-    null.ok = has_data
-  )
-  checkmate::assert_numeric(
-    sd_fishing_mean_rate,
-    lower = 0,
-    finite = TRUE,
-    any.missing = FALSE,
-    null.ok = has_data
-  )
   checkmate::assert_number(
-    sd_initial_loss_rate,
+    cv_mortality_rate,
     lower = 0,
     null.ok = has_data
   )
   checkmate::assert_number(
-    sd_ongoing_loss_rate,
+    cv_reporting_rate,
     lower = 0,
     null.ok = has_data
   )
   checkmate::assert_number(
-    sd_dispersion,
+    cv_initial_loss_rate,
+    lower = 0,
+    null.ok = has_data
+  )
+  checkmate::assert_number(
+    cv_ongoing_loss_rate,
+    lower = 0,
+    null.ok = has_data
+  )
+  checkmate::assert_number(
+    cv_dispersion,
     lower = 0,
     null.ok = has_data
   )
@@ -309,19 +303,9 @@ fit <- function (tag_data,
     lower = 0,
     null.ok = has_data
   )
-  # Fishing prior coefficients of variation
+  # Fishing term deviation prior standard deviation
   checkmate::assert_number(
-    cv_fishing_time_deviation,
-    lower = 0,
-    null.ok = has_data
-  )
-  checkmate::assert_number(
-    cv_fishing_term_deviation,
-    lower = 0,
-    null.ok = has_data
-  )
-  checkmate::assert_number(
-    cv_fishing_size_deviation,
+    sd_fishing_term_deviation,
     lower = 0,
     null.ok = has_data
   )
@@ -444,14 +428,6 @@ fit <- function (tag_data,
     )
   }
 
-  # Assemble prior mean fishing deviation time rate ----------------------------
-
-  if (is.null(data)) {
-    if (is.null(mu_fishing_time_deviation)) {
-      mu_fishing_time_deviation <- array(0.0, dim = c(n_times, n_regions))
-    }
-  }
-
   # Assemble data --------------------------------------------------------------
 
   if (is.null(data)) {
@@ -465,33 +441,29 @@ fit <- function (tag_data,
       L = n_liberty, # Number of maximum steps at liberty
       P = sum(movement_index), # Number of movement rate mean parameters
       # Tag data
-      tags = tag_array, # array[N, S, L, X, X]
+      tags = tag_array, # [N, S, L, X, X]
       # Movement index array
-      movement_index = movement_index, # array[X, X]
+      movement_index = movement_index, # [X, X]
       # Prior means
-      mu_mortality_rate = mu_mortality_rate, # array[X]
-      mu_reporting_rate = mu_reporting_rate, # array[X]
-      mu_fishing_mean_rate = mu_fishing_mean_rate, # array[X]
+      mu_fishing_rate = mu_fishing_rate, # [T, X]
+      mu_mortality_rate = mu_mortality_rate, # [X]
+      mu_reporting_rate = mu_reporting_rate, # [X]
       mu_initial_loss_rate = mu_initial_loss_rate,
       mu_ongoing_loss_rate = mu_ongoing_loss_rate,
       mu_dispersion = mu_dispersion,
-      # Fishing prior mean deviations by time
-      mu_fishing_time_deviation = mu_fishing_time_deviation, # [T, X]
-      # Prior standard deviations
-      sd_mortality_rate = sd_mortality_rate, # array[X]
-      sd_reporting_rate = sd_reporting_rate, # array[X]
-      sd_fishing_mean_rate = sd_fishing_mean_rate, # array[X]
-      sd_initial_loss_rate = sd_initial_loss_rate,
-      sd_ongoing_loss_rate = sd_ongoing_loss_rate,
-      sd_dispersion = sd_dispersion,
+      # Prior coefficients of variation
+      cv_fishing_rate = cv_fishing_rate,
+      cv_mortality_rate = cv_mortality_rate,
+      cv_reporting_rate = cv_reporting_rate,
+      cv_initial_loss_rate = cv_initial_loss_rate,
+      cv_ongoing_loss_rate = cv_ongoing_loss_rate,
+      cv_dispersion = cv_dispersion,
       # Movement prior coefficients of variation
       cv_movement_time_deviation = cv_movement_time_deviation,
       cv_movement_term_deviation = cv_movement_term_deviation,
       cv_movement_size_deviation = cv_movement_size_deviation,
-      # Fishing prior coefficients of variation
-      cv_fishing_time_deviation = cv_fishing_time_deviation,
-      cv_fishing_term_deviation = cv_fishing_term_deviation,
-      cv_fishing_size_deviation = cv_fishing_size_deviation,
+      # Fishing term deviation prior standard deviation
+      sd_fishing_term_deviation = sd_fishing_term_deviation,
       # Tolerance values
       tolerance_expected = tolerance_expected,
       tolerance_movement = tolerance_movement,

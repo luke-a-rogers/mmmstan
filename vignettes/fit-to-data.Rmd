@@ -57,25 +57,28 @@ if (FALSE) {
   movement_pattern <- 2
   movement_allow <- matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
   movement_disallow <- NULL
+  mu_fishing_rate <- array(
+    0.1, 
+    dim = c(
+      year_recovered_end - year_released_start + 1L,
+      length(list_regions)
+    ) 
+  )
   mu_mortality_rate <- rep(0.1, length(list_regions))
   mu_reporting_rate <- rep(1, length(list_regions))
-  mu_fishing_mean_rate <- rep(0.1, length(list_regions))
   mu_initial_loss_rate <- 0.1
   mu_ongoing_loss_rate <- 0.02
   mu_dispersion <- 1
-  mu_fishing_time_deviation <- NULL
-  sd_mortality_rate <- 0.1 * mu_mortality_rate
-  sd_reporting_rate <- 0.1 * mu_reporting_rate
-  sd_fishing_mean_rate <- 0.1 * mu_fishing_mean_rate
-  sd_initial_loss_rate <- 0.1 * mu_initial_loss_rate
-  sd_ongoing_loss_rate <- 0.1 * mu_ongoing_loss_rate
-  sd_dispersion <- 0.25 * mu_dispersion
+  cv_fishing_rate <- 0.1
+  cv_mortality_rate <- 0.1
+  cv_reporting_rate <- 0.1
+  cv_initial_loss_rate <- 0.1
+  cv_ongoing_loss_rate <- 0.1
+  cv_dispersion <- 0.25
   cv_movement_time_deviation <- 0.1
   cv_movement_term_deviation <- 0.1
   cv_movement_size_deviation <- 0.1
-  cv_fishing_time_deviation <- 0.1
-  cv_fishing_term_deviation <- 0.1
-  cv_fishing_size_deviation <- 0.1
+  sd_fishing_term_deviation <- 0.25
   tolerance_expected <- 1e-12
   tolerance_movement <- 1e-12
   tolerance_fishing <- 1e-12
@@ -86,8 +89,6 @@ if (FALSE) {
   iter_sampling <- 750
   use_reduce_sum <- FALSE
   threads_per_chain <- 8  
-  # Get tag function working
-  # tags <- tag_data
   # Fit
   m1 <- fit(
     tag_data = tag_data,
@@ -105,25 +106,29 @@ if (FALSE) {
     movement_pattern = 2,
     movement_allow = matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE),
     movement_disallow = NULL,
+    mu_fishing_rate = array(
+      0.1, 
+      dim = c(
+        year_recovered_end - year_released_start + 1L,
+        length(list_regions)
+      ) 
+    ),
     mu_mortality_rate = rep(0.1, length(list_regions)),
     mu_reporting_rate = rep(1, length(list_regions)),
-    mu_fishing_mean_rate = rep(0.1, length(list_regions)),
     mu_initial_loss_rate = 0.1,
     mu_ongoing_loss_rate = 0.02,
     mu_dispersion = 1,
     mu_fishing_time_deviation = NULL,
-    sd_mortality_rate = 0.1 * mu_mortality_rate,
-    sd_reporting_rate = 0.1 * mu_reporting_rate,
-    sd_fishing_mean_rate = 0.1 * mu_fishing_mean_rate,
-    sd_initial_loss_rate = 0.1 * mu_initial_loss_rate,
-    sd_ongoing_loss_rate = 0.1 * mu_ongoing_loss_rate,
-    sd_dispersion = 0.25 * mu_dispersion,
+    cv_fishing_rate = 0.1,
+    cv_mortality_rate = 0.1,
+    cv_reporting_rate = 0.1,
+    cv_initial_loss_rate = 0.1,
+    cv_ongoing_loss_rate = 0.1,
+    cv_dispersion = 0.25,
     cv_movement_time_deviation = 0.1,
     cv_movement_term_deviation = 0.1,
     cv_movement_size_deviation = 0.1,
-    cv_fishing_time_deviation = 0.1,
-    cv_fishing_term_deviation = 0.1,
-    cv_fishing_size_deviation = 0.1,
+    sd_fishing_term_deviation = 0.25,
     tolerance_expected = 1e-12,
     tolerance_movement = 1e-12,
     tolerance_fishing = 1e-12,
