@@ -1,5 +1,5 @@
-array[] assemble_simplex_dimensions (
-  array[,] mindex,
+array[] int assemble_simplex_dimensions (
+  array[,] int mindex,
   int ntime,
   int nterm,
   int nsize
@@ -30,7 +30,7 @@ array[,] matrix assemble_movement_step(
   array[] vector a4,
   array[] vector a5,
   array[] vector a6,
-  array[,] mindex,
+  array[,] int mindex,
   int ntime,
   int nterm,
   int nsize,
@@ -41,6 +41,7 @@ array[,] matrix assemble_movement_step(
   int T = ntime;
   int I = nterm;
   int S = nsize;
+  int X = dims(mindex)[1];
   // Initialize movement step
   array[N, S] matrix[X, X] movement_step = rep_array(rep_matrix(tolm,X,X),N,S);
   // Initialize indexes
@@ -122,7 +123,7 @@ matrix assemble_movement_mean (
 }
 
 array[] matrix assemble_movement_time_rate (
-  array[] real mstep,
+  array[,] matrix mstep,
   int ntime,
   int nterm
 ) {
@@ -130,8 +131,8 @@ array[] matrix assemble_movement_time_rate (
   int N = dims(mstep)[1];
   int T = ntime;
   int I = nterm;
-  int S = dims(mstep[2]);
-  int X = dims(mstep[3]);
+  int S = dims(mstep)[2];
+  int X = dims(mstep)[3];
   // Initialize values
   array[T] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), T);
   matrix[X, X] movement_time;
@@ -139,7 +140,7 @@ array[] matrix assemble_movement_time_rate (
   int n = 1;
   // Populate movement rate
   for (t in 1:T) {
-    movement_time = diag_matrix(1.0, X, X);
+    movement_time = diag_matrix(rep_vector(1.0, X));
     for (i in 1:I) {
       movement_mean = rep_matrix(0.0, X, X);
       for (s in 1:S) {
@@ -155,7 +156,7 @@ array[] matrix assemble_movement_time_rate (
 }
 
 array[] matrix assemble_movement_term_rate (
-  array[] real mstep,
+  array[,] matrix mstep,
   int ntime,
   int nterm
 ) {
@@ -163,8 +164,8 @@ array[] matrix assemble_movement_term_rate (
   int N = dims(mstep)[1];
   int T = ntime;
   int I = nterm;
-  int S = dims(mstep[2]);
-  int X = dims(mstep[3]);
+  int S = dims(mstep)[2];
+  int X = dims(mstep)[3];
   // Initialize values
   array[I] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), I);
   array[I] matrix[X, X] movement_sum = rep_array(rep_matrix(0.0, X, X), I);
@@ -183,7 +184,7 @@ array[] matrix assemble_movement_term_rate (
 }
 
 array[] matrix assemble_movement_size_rate (
-  array[] real mstep,
+  array[,] matrix mstep,
   int ntime,
   int nterm
 ) {
@@ -191,15 +192,15 @@ array[] matrix assemble_movement_size_rate (
   int N = dims(mstep)[1];
   int T = ntime;
   int I = nterm;
-  int S = dims(mstep[2]);
-  int X = dims(mstep[3]);
+  int S = dims(mstep)[2];
+  int X = dims(mstep)[3];
   // Initialize values
   array[S] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), S);
   array[S] matrix[X, X] movement_prod;
   int n = 1;
   // Populate movement sum
   for (t in 1:T) {
-    movement_prod = rep_array(diag_matrix(1.0, X, X), S)
+    movement_prod = rep_array(diag_matrix(rep_vector(1.0, X)), S);
     for (i in 1:I) {
       for (s in 1:S) {
         movement_prod[s] = movement_prod[s] * mstep[n, s];
@@ -207,7 +208,7 @@ array[] matrix assemble_movement_size_rate (
       n += 1;
     }
     for (s in 1:S) {
-      movement_rate[s] = movement_sum[s] + movement_prod[s] / (T * 1.0);
+      movement_rate[s] = movement_rate[s] + movement_prod[s] / (T * 1.0);
     }
   }
   // Return movement rate
@@ -254,7 +255,7 @@ array[] matrix assemble_movement_size_deviation (
 ) {
   // Get dimensions
   int S = dims(msize)[1];
-  int X = dims(mterm)[2];
+  int X = dims(mmean)[2];
   // Declare values
   array[S] matrix[X, X] movement_deviation = rep_array(rep_matrix(0.0,X,X),S);
   // Populate movement deviation
@@ -265,588 +266,104 @@ array[] matrix assemble_movement_size_deviation (
   return movement_deviation;
 }
 
+vector assemble_fishing_mean (
+  array[] vector fstep,
+  int fmult
+) {
+  // Get dimensions
+  int N = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  // Declare values
+  vector[X] fishing_mean = rep_vector(0.0, X);
+  // Populate fishing mean
+  for (n in 1:N) {
+    fishing_mean = fishing_mean + fstep[n] / (N * 1.0);
+  }
+  // Possibly convert stepwise to rate
+  fishing_mean = fishing_mean * fmult;
+  // Return fishing mean
+  return fishing_mean;
+}
 
-
-
-
-
-
-
-/**
-* Assemble a movement term rate array
-*
-* @param pmean, an array of dimension [P]
-* @param pterm, an array of dimension [I, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [I] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for term, pterm.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_term_rate (
-  array[] real pmean,
-  array[,] real pterm,
-  array[,] int mindex,
+array[] vector assemble_fishing_time_rate (
+  array[] vector fstep,
+  int ntime,
   int nterm
 ) {
   // Get dimensions
-  int P = dims(pmean)[1];
-  int I = dims(pterm)[1];
-  int X = dims(mindex)[1];
-  // Initialize arrays
-  array[I, 1] matrix[X, X] movement_step = assemble_movement_step(
-    pmean,
-    rep_array(0.0, 1, P),
-    pterm,
-    rep_array(0.0, 1, P),
-    mindex
-  );
-  array[I] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), I);
-  // Populate movement rates
-  for (i in 1:I) {
-    movement_rate[i] = matrix_power(movement_step[i, 1], nterm);
-  }
-  // Return movement rate
-  return movement_rate;
-}
-
-/**
-* Assemble a movement size rate array
-*
-* @param pmean, an array of dimension [P]
-* @param psize, an array of dimension [S, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [S] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for size, psize.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_size_rate (
-  array[] real pmean,
-  array[,] real psize,
-  array[,] int mindex,
-  int nterm
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int S = dims(psize)[1];
-  int X = dims(mindex)[1];
-  // Initialize arrays
-  array[1, S] matrix[X, X] movement_step = assemble_movement_step(
-    pmean,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
-    psize,
-    mindex
-  );
-  array[S] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), S);
-  // Populate movement rates
-  for (s in 1:S) {
-    movement_rate[s] = matrix_power(movement_step[1, s], nterm);
-  }
-  // Return movement rate
-  return movement_rate;
-}
-
-
-
-
-
-
-
-
-/**
-* Inverse multinomial logit
-*
-* @param params, an array of dimension [U]
-*
-* @return an array of dimension [V] that sums to one
-*/
-array[] real inv_multi_logit (array[] real params) {
-  // Get dimension
-  int U = size(params); // Number of parameters (in a given mindex row)
-  int V = U + 1; // Number of resultant movement rates
-  // Declare scalars
-  real sum_exp_params = 0.0;
-  real sum_movements_u = 0.0;
-  // Declare simplex
-  array[V] real movements = rep_array(0.0, V);
-  // Populate sum
-  for (u in 1:U) {
-    sum_exp_params += exp(params[u]);
-  }
-  // Populate movement rates
-  for (u in 1:U) {
-    movements[u] = exp(params[u]) / (1.0 + sum_exp_params);
-    sum_movements_u += movements[u];
-  }
-  movements[V] = 1.0 - sum_movements_u;
-  // Check movement rates
-  if (sum(movements) > 1) {
-    print("params: ", params);
-    print("movements: ", movements);
-    reject("sum(movements): ", sum(movements));
-  }
-  if (sum(movements) < 0) {
-    print("params: ", params);
-    print("movements: ", movements);
-    reject("sum(movements): ", sum(movements));
-  }
-  if (max(movements) > 1) {
-    print("params: ", params);
-    print("movements: ", movements);
-    reject("max(movements): ", max(movements));
-  }
-  if (min(movements) < 0) {
-    print("params: ", params);
-    print("movements: ", movements);
-    reject("min(movements): ", min(movements));
-  }
-  // Return movement rates
-  return movements;
-}
-
-/**
-* Inverse multi-logit
-*
-* @param arg, an array of dimension [P]
-*
-* @return an array of dimension [P + 1] that sums to one
-*/
-array[] real inverse_multi_logit (array[] real arg) {
-  // Get dimensions
-  int P = size(arg);
-  // Instantiate sums
-  real sum_exp_arg = 0;
-  real sum_value = 0;
-  // Instantiate value
-  array[P + 1] real value = rep_array(0.0, P + 1);
-  // Check dimensions
-  if (P < 1) {reject("P must not be < 1; found P = ", P);}
-  // Get sum of exponential
-  for (p in 1:P) {
-    sum_exp_arg += exp(arg[p]);
-  }
-  // Populate value
-  for (p in 1:P) {
-    value[p] = exp(arg[p]) / (1 + sum_exp_arg);
-    sum_value += value[p];
-  }
-  value[P + 1] = 1 - sum_value;
-  // Return value
-  return value;
-}
-
-/**
-* Assemble a movement parameter array 'slab'
-*
-* @param pmean, an array of dimension [P]
-* @param ptime, an array of dimension [T, P]
-* @param pterm, an array of dimension [I, P]
-* @param psize, an array of dimension [S, P]
-*
-* @return an array of dimension [N, S, P]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The remaining arguments hold the parameter deviations
-* associated with movement rate deviations from the mean for time (ptime),
-* term (pterm), and size (psize).
-*
-* Parameter slabs associated with movement rate means only,
-* or movement rates plus certain types of deviations can be
-* assembled by passing rep_array(0.0, 1, P) for arguments corresponding
-* to the deviations to exclude.
-*
-* Note that N = T * I, which is the number of study steps and one more than
-* the number of released steps, N - 1.
-*/
-array[,,] real assemble_movement_parameter_slab (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] real pterm,
-  array[,] real psize
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int I = dims(pterm)[1];
-  int S = dims(psize)[1];
-  // Set N and instantiate index
-  int N = T * I;
-  int n;
-  // Instantiate slabs
-  array[N, S, P] real parameter_slab = rep_array(0.0, N, S, P);
-  // Populate parameter slab
-  n = 1;
+  int N = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  int T = ntime;
+  int I = nterm;
+  // Declare values
+  array[T] vector[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
+  int n = 1;
+  // Populate fishing rate
   for (t in 1:T) {
     for (i in 1:I) {
-      for (s in 1:S) {
-        for (p in 1:P) {
-          parameter_slab[n, s, p] = pmean[p]
-          + ptime[t, p]
-          + pterm[i, p]
-          + psize[s, p];
-        }
-      }
+      fishing_rate[t] = fishing_rate[t] + fstep[n];
       n += 1;
     }
   }
-  // Return parameter slab
-  return parameter_slab;
+  // Return fishing rate
+  return fishing_rate;
 }
 
-/**
-* Assemble a movement array 'slab'
-*
-* @param pmean, an array of dimension [P]
-* @param ptime, an array of dimension [T, P]
-* @param pterm, an array of dimension [I, P]
-* @param psize, an array of dimension [S, P]
-* @param mindex, an array of dimension [X, X]
-*
-* @return an array of dimension [N, S, M]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The remaining arguments hold the parameter deviations
-* associated with movement rate deviations from the mean for time (ptime),
-* term (pterm), and size (psize).
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* Movement slabs associated with movement rate means only,
-* or movement rates plus certain types of deviations can be
-* assembled by passing rep_array(0.0, 1, P) for arguments corresponding
-* to the deviations to exclude.
-*
-* Note that N = T * I, which is the number of study steps and one more than
-* the number of released steps, N - 1.
-*/
-array[,,] real assemble_movement_slab (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] real pterm,
-  array[,] real psize,
-  array[,] int mindex
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int I = dims(pterm)[1];
-  int S = dims(psize)[1];
-  int X = dims(mindex)[1];
-  // Set dimensions
-  int M = P + X;
-  int N = T * I;
-  // Instantiate index ranges
-  array[2] int p;
-  array[2] int m;
-  // Initialize slabs
-  array[N, S, P] real parameter_slab = assemble_movement_parameter_slab(
-    pmean,
-    ptime,
-    pterm,
-    psize
-  );
-  array[N, S, M] real movement_slab = rep_array(0.0, N, S, M);
-  // Populate movement slab
-  for (n in 1:N) { // N steps
-    for (s in 1:S) { // S size classes
-      p[1] = 1;
-      m[1] = 1;
-      for (x in 1:X) { // X sets of parameters to convert
-        // Set the upper limit of the index ranges
-        p[2] = p[1] + sum(mindex[x]) - 2;
-        m[2] = m[1] + sum(mindex[x]) - 1;
-        // Assign values to the movement slab
-        movement_slab[n, s, m[1]:m[2]] = inv_multi_logit(
-          parameter_slab[n, s, p[1]:p[2]]
-        );
-        // Update the lower limit of the index ranges
-        p[1] = p[2] + 1;
-        m[1] = m[2] + 1;
-      }
-    }
-  }
-  // Return movement slab
-  return movement_slab;
-}
-
-/**
-* Assemble a movement array at timescale 'step'
-*
-* @param pmean, an array of dimension [P]
-* @param ptime, an array of dimension [T, P]
-* @param pterm, an array of dimension [I, P]
-* @param psize, an array of dimension [S, P]
-* @param mindex, an array of dimension [X, X]
-*
-* @return an array of dimension [N, S] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The remaining arguments hold the parameter deviations
-* associated with movement rate deviations from the mean for time (ptime),
-* term (pterm), and size (psize).
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* Movement associated with movement means only, or movement plus certain
-* types of deviations can be assembled by passing rep_array(0.0, 1, P)
-* for arguments corresponding to the deviations to exclude.
-*
-* Note that N = T * I, which is the number of study steps and one more than
-* the number of released steps, N - 1.
-*/
-array[,] matrix assemble_movement_step (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] real pterm,
-  array[,] real psize,
-  array[,] int mindex
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int I = dims(pterm)[1];
-  int S = dims(psize)[1];
-  int X = dims(mindex)[1];
-  // Set dimensions
-  int M = P + X;
-  int N = T * I;
-  // Initialize arrays
-  array[N, S, M] real movement_slab = assemble_movement_slab(
-    pmean,
-    ptime,
-    pterm,
-    psize,
-    mindex
-  );
-  array[N, S] matrix[X, X] movement_step = rep_array(rep_matrix(0.0,X,X),N,S);
-  // Instantiate matrix
-  matrix[X, X] transpose_step;
-  // Instantiate count
-  int m;
-  // Populate movement step
-  for (n in 1:N) {
-    for (s in 1:S) {
-      m = 1;
-      // Accommodate column-major indexing for matrices
-      transpose_step = rep_matrix(0.0, X, X);
-      for (x in 1:X) {
-        for (y in 1:X) {
-          if (mindex[x, y] == 1) {
-            transpose_step[y, x] = movement_slab[n, s, m];
-            m += 1;
-          }
-        }
-      }
-      movement_step[n, s] = transpose_step'; // Transpose of transpose
-    }
-  }
-  // Return movement step
-  return movement_step;
-}
-
-
-
-/**
-* Assemble a movement time deviation array
-*
-* @param pmean, an array of dimension [P]
-* @param ptime, an array of dimension [T, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [T] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for time, ptime.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_time_deviation (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] int mindex,
+array[] vector assemble_fishing_term_mean (
+  array[] vector fstep,
+  int ntime,
   int nterm
 ) {
   // Get dimensions
-  int P = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int X = dims(mindex)[1];
-  // Initialize movement rates
-  matrix[X, X] movement_mean = assemble_movement_mean_rate(
-    pmean,
-    mindex,
-    nterm
-  );
-  array[T] matrix[X, X] movement_type = assemble_movement_time_rate(
-    pmean,
-    ptime,
-    mindex,
-    nterm
-  );
-  array[T] matrix[X, X] movement_deviation;
-  // Populate movement deviation
+  int N = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  int T = ntime;
+  int I = nterm;
+  // Declare values
+  array[I] vector[X] fishing_term_mean = rep_array(rep_vector(0.0, X), I);
+  int n = 1;
+  // Populate fishing term mean
   for (t in 1:T) {
-    for (y in 1:X) {
-      for (x in 1:X) {
-        movement_deviation[t,x,y] = movement_type[t,x,y] - movement_mean[x,y];
-      }
+    for (i in 1:I) {
+      fishing_term_mean[i] = fishing_term_mean[i] + fstep[n] / (T * 1.0);
+      n += 1;
     }
   }
-  // Return movement deviation
-  return movement_deviation;
+  // Return fishing mean
+  return fishing_term_mean;
 }
 
-/**
-* Assemble a movement term deviation array
-*
-* @param pmean, an array of dimension [P]
-* @param pterm, an array of dimension [I, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [I] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for term, pterm.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_term_deviation (
-  array[] real pmean,
-  array[,] real pterm,
-  array[,] int mindex,
+array[,] vector assemble_fishing_term_deviation (
+  array[] vector fstep,
+  int ntime,
   int nterm
 ) {
   // Get dimensions
-  int P = dims(pmean)[1];
-  int I = dims(pterm)[1];
-  int X = dims(mindex)[1];
-  // Initialize movement rates
-  matrix[X, X] movement_mean = assemble_movement_mean_rate(
-    pmean,
-    mindex,
-    nterm
-  );
-  array[I] matrix[X, X] movement_type = assemble_movement_term_rate(
-    pmean,
-    pterm,
-    mindex,
-    nterm
-  );
-  array[I] matrix[X, X] movement_deviation;
-  // Populate movement deviation
-  for (i in 1:I) {
-    for (y in 1:X) {
-      for (x in 1:X) {
-        movement_deviation[i,x,y] = movement_type[i,x,y] - movement_mean[x,y];
-      }
+  int N = dims(fstep)[1];
+  int T = ntime;
+  int I = nterm;
+  int X = dims(fstep)[2];
+  // Declare values
+  array[T, I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0, X), T, I);
+  array[T] vector[X] fishing_time_mean_step = rep_array(rep_vector(0.0, X), T);
+  int n = 1;
+  // Populate fishing time step
+  for (t in 1:T) {
+    for (i in 1:I) {
+      fishing_time_mean_step[t] = fishing_time_mean_step[t] + fstep[n] / (I * 1.0);
+      n += 1;
     }
   }
-  // Return movement deviation
-  return movement_deviation;
-}
-
-/**
-* Assemble a movement size deviation array
-*
-* @param pmean, an array of dimension [P]
-* @param psize, an array of dimension [S, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [S] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for size, psize.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_size_deviation (
-  array[] real pmean,
-  array[,] real psize,
-  array[,] int mindex,
-  int nterm
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int S = dims(psize)[1];
-  int X = dims(mindex)[1];
-  // Initialize movement rates
-  matrix[X, X] movement_mean = assemble_movement_mean_rate(
-    pmean,
-    mindex,
-    nterm
-  );
-  array[S] matrix[X, X] movement_type = assemble_movement_size_rate(
-    pmean,
-    psize,
-    mindex,
-    nterm
-  );
-  array[S] matrix[X, X] movement_deviation;
-  // Populate movement deviation
-  for (s in 1:S) {
-    for (y in 1:X) {
-      for (x in 1:X) {
-        movement_deviation[s,x,y] = movement_type[s,x,y] - movement_mean[x,y];
-      }
+  n = 1;
+  // Populate fishing term deviation
+  for (t in 1:T) {
+    for (i in 1:I) {
+      fishing_term_deviation[t, i] = fstep[n] - fishing_time_mean_step[t];
+      n += 1;
     }
   }
-  // Return movement deviation
-  return movement_deviation;
+  // Return fishing term deviation
+  return fishing_term_deviation;
 }
 
 /**
@@ -896,47 +413,6 @@ array[] matrix assemble_movement_possible_transpose (
 }
 
 /**
-* Assemble a fishing rate array
-*
-* @param fstep, an array [N] of vectors [X]
-* @param ntime, an integer giving the number of years in the study
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array [T] of vectors [X]
-*
-* The argument fstep is an array of vectors of stepwise fishing rates.
-*
-* The arguement ntime is the number of times (years) in the study.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year).
-*/
-array[] vector assemble_fishing_rate (
-  array[] vector fstep,
-  int ntime,
-  int nterm
-) {
-  // Get dimensions
-  int N = dims(fstep)[1];
-  int X = dims(fstep)[2];
-  int T = ntime;
-  int I = nterm;
-  // Initialize values
-  array[T] vector[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
-  // Initialize index count
-  int count = 1;
-  // Populate fishing rate
-  for (t in 1:T) {
-    for (i in 1:I){
-      fishing_rate[t] = fishing_rate[t] + fstep[count];
-      count += 1;
-    }
-  }
-  // Return fishing rate
-  return fishing_rate;
-}
-
-/**
 * Assemble a survival step array [N] of diagonal matrices [X, X]
 *
 * @param fstep, an array [N] of vector [X] stepwise fishing rates
@@ -973,7 +449,7 @@ array[] matrix assemble_survival_step (
 *
 * @return an array [N] of matrices [X, X]
 */
-array[] matrix assemble_observal_step (
+array[] matrix assemble_observed_step (
   array [] vector fstep,
   vector rstep
 ) {
@@ -981,45 +457,11 @@ array[] matrix assemble_observal_step (
   int N = dims(fstep)[1];
   int X = dims(fstep)[2];
   // Initialize values
-  array[N] matrix[X, X] observal_step = rep_array(rep_matrix(0.0, X, X), N);
+  array[N] matrix[X, X] observed_step = rep_array(rep_matrix(0.0, X, X), N);
   // Populate reporting step
   for (n in 1:N) {
-    observal_step[n] = diag_matrix(1 - exp(-fstep[n])) * diag_matrix(rstep);
+    observed_step[n] = diag_matrix(1 - exp(-fstep[n])) * diag_matrix(rstep);
   }
-  // Return observal step
-  return observal_step;
-}
-
-/**
-* Assemble an fishing term deviation array [T, I] of vectors [X]
-*
-* @param fstep, an array [N] of vector [X] stepwise fishing rates
-* @param frate, an array [N] of vector [X] fishing rates
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array [T, I] of vectors [X]
-*/
-array[,] vector assemble_fishing_term_deviation(
-  array[] vector fstep,
-  array[] vector frate,
-  int nterm
-) {
-  // Get dimensions
-  int N = dims(fstep)[1];
-  int X = dims(fstep)[2];
-  int T = dims(frate)[1];
-  int I = nterm;
-  // Initialize values
-  array[T, I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0,X),T,I);
-  // Initialize index count
-  int count = 1;
-  // Populate fishing term deviation
-  for (t in 1:T) {
-    for (i in 1:I) {
-      fishing_term_deviation[t, i] = frate[t] / (I * 1.0) - fstep[count];
-      count += 1;
-    }
-  }
-  // Return fishing term deviation
-  return fishing_term_deviation;
+  // Return observed step
+  return observed_step;
 }
