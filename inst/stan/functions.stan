@@ -1,3 +1,382 @@
+array[] assemble_simplex_dimensions (
+  array[,] mindex,
+  int ntime,
+  int nterm,
+  int nsize
+) {
+  // Get dimensions
+  int X = dims(mindex)[1];
+  // Declare values
+  array[6] int simplex_dimensions = rep_array(0, 6);
+  int row_sum;
+  // Populate simplex dimensions
+  for (x in 1:X) {
+    row_sum = 0;
+    for (y in 1:X) {
+      row_sum += mindex[x, y];
+    }
+    if (row_sum > 0) {
+      simplex_dimensions[row_sum] += ntime * nterm * nsize;
+    }
+  }
+  // Return simplex dimensions
+  return simplex_dimensions;
+}
+
+array[,] matrix assemble_movement_step(
+  array[] vector a1,
+  array[] vector a2,
+  array[] vector a3,
+  array[] vector a4,
+  array[] vector a5,
+  array[] vector a6,
+  array[,] mindex,
+  int ntime,
+  int nterm,
+  int nsize,
+  real tolm
+) {
+  // Get dimensions
+  int N = ntime * nterm;
+  int T = ntime;
+  int I = nterm;
+  int S = nsize;
+  // Initialize movement step
+  array[N, S] matrix[X, X] movement_step = rep_array(rep_matrix(tolm,X,X),N,S);
+  // Initialize indexes
+  array[6] int index = rep_array(0, 6); // Simplex array row index
+  int row_sum; // Movement index row sum
+  int column; // Simplex index (column)
+  // Populate movement step
+  for (n in 1:N) {
+    for (s in 1:S) {
+      for (x in 1:X) {
+        row_sum = sum(mindex[x, 1:X]);
+        if (row_sum > 0) {
+          index[row_sum] += 1;
+          column = 0;
+          for (y in 1:X) {
+            if (mindex[x, y] == 1) {
+              column += 1;
+              if (row_sum == 1) {
+                movement_step[n, s, x, y] = a1[index[row_sum], column];
+              } else if (row_sum == 2) {
+                movement_step[n, s, x, y] = a2[index[row_sum], column];
+              } else if (row_sum == 3) {
+                movement_step[n, s, x, y] = a3[index[row_sum], column];
+              } else if (row_sum == 4) {
+                movement_step[n, s, x, y] = a4[index[row_sum], column];
+              } else if (row_sum == 5) {
+                movement_step[n, s, x, y] = a5[index[row_sum], column];
+              } else if (row_sum == 6) {
+                movement_step[n, s, x, y] = a6[index[row_sum], column];
+              } else {
+                reject("row_sum: ", row_sum);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  // Return movement step
+  return movement_step;
+}
+
+/**
+* Assemble a movement mean matrix
+*
+* @param mstep, an array [N, S] of matrices [X, X]
+* @param mpower, matrix power
+*
+* @return a matrix of dimension [X, X]
+*/
+matrix assemble_movement_mean (
+  array[,] matrix mstep,
+  int mpower
+) {
+  // Get dimensions
+  int N = dims(mstep)[1];
+  int S = dims(mstep)[2];
+  int X = dims(mstep)[3];
+  // Initialize values
+  matrix[X, X] movement_mean = rep_matrix(0.0, X, X);
+  matrix[X, X] movement_sum = rep_matrix(0.0, X, X);
+  real movement_count = (N * 1.0) * (S * 1.0);
+  // Populate movement sum
+  for (n in 1:N) {
+    for (s in 1:S) {
+      for (y in 1:X) {
+        for (x in 1:X) {
+          movement_sum[x, y] += mstep[n, s, x, y];
+        }
+      }
+    }
+  }
+  // Populate movement mean
+  movement_mean = movement_sum / movement_count;
+  // Possibly convert stepwise to rate
+  movement_mean = matrix_power(movement_mean, mpower);
+  // Return movement mean
+  return movement_mean;
+}
+
+array[] matrix assemble_movement_time_rate (
+  array[] real mstep,
+  int ntime,
+  int nterm
+) {
+  // Get dimensions
+  int N = dims(mstep)[1];
+  int T = ntime;
+  int I = nterm;
+  int S = dims(mstep[2]);
+  int X = dims(mstep[3]);
+  // Initialize values
+  array[T] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), T);
+  matrix[X, X] movement_time;
+  matrix[X, X] movement_mean;
+  int n = 1;
+  // Populate movement rate
+  for (t in 1:T) {
+    movement_time = diag_matrix(1.0, X, X);
+    for (i in 1:I) {
+      movement_mean = rep_matrix(0.0, X, X);
+      for (s in 1:S) {
+        movement_mean += mstep[n, s] / (S * 1.0);
+      }
+      movement_time = movement_time * movement_mean;
+      n += 1;
+    }
+    movement_rate[t] = movement_time;
+  }
+  // Return movement rate
+  return movement_rate;
+}
+
+array[] matrix assemble_movement_term_rate (
+  array[] real mstep,
+  int ntime,
+  int nterm
+) {
+  // Get dimensions
+  int N = dims(mstep)[1];
+  int T = ntime;
+  int I = nterm;
+  int S = dims(mstep[2]);
+  int X = dims(mstep[3]);
+  // Initialize values
+  array[I] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), I);
+  array[I] matrix[X, X] movement_sum = rep_array(rep_matrix(0.0, X, X), I);
+  int n = 1;
+  // Populate movement sum
+  for (t in 1:T) {
+    for (i in 1:I) {
+      for (s in 1:S) {
+        movement_rate[i] = movement_rate[i] + mstep[n, s] / (T * S * 1.0);
+      }
+      n += 1;
+    }
+  }
+  // Return stepwise movement rate
+  return movement_rate;
+}
+
+array[] matrix assemble_movement_size_rate (
+  array[] real mstep,
+  int ntime,
+  int nterm
+) {
+  // Get dimensions
+  int N = dims(mstep)[1];
+  int T = ntime;
+  int I = nterm;
+  int S = dims(mstep[2]);
+  int X = dims(mstep[3]);
+  // Initialize values
+  array[S] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), S);
+  array[S] matrix[X, X] movement_prod;
+  int n = 1;
+  // Populate movement sum
+  for (t in 1:T) {
+    movement_prod = rep_array(diag_matrix(1.0, X, X), S)
+    for (i in 1:I) {
+      for (s in 1:S) {
+        movement_prod[s] = movement_prod[s] * mstep[n, s];
+      }
+      n += 1;
+    }
+    for (s in 1:S) {
+      movement_rate[s] = movement_sum[s] + movement_prod[s] / (T * 1.0);
+    }
+  }
+  // Return movement rate
+  return movement_rate;
+}
+
+array[] matrix assemble_movement_time_deviation (
+  array[] matrix mtime,
+  matrix mmean
+) {
+  // Get dimensions
+  int T = dims(mtime)[1];
+  int X = dims(mtime)[2];
+  // Declare values
+  array[T] matrix[X, X] movement_deviation = rep_array(rep_matrix(0.0,X,X),T);
+  // Populate movement deviation
+  for (t in 1:T) {
+    movement_deviation[t] = mtime[t] - mmean;
+  }
+  // Return movement
+  return movement_deviation;
+}
+
+array[] matrix assemble_movement_term_deviation (
+  array[] matrix mterm,
+  matrix mmean
+) {
+  // Get dimensions
+  int I = dims(mterm)[1];
+  int X = dims(mterm)[2];
+  // Declare values
+  array[I] matrix[X, X] movement_deviation = rep_array(rep_matrix(0.0,X,X),I);
+  // Populate movement deviation
+  for (i in 1:I) {
+    movement_deviation[i] = mterm[i] - mmean;
+  }
+  // Return movement
+  return movement_deviation;
+}
+
+array[] matrix assemble_movement_size_deviation (
+  array[] matrix msize,
+  matrix mmean
+) {
+  // Get dimensions
+  int S = dims(msize)[1];
+  int X = dims(mterm)[2];
+  // Declare values
+  array[S] matrix[X, X] movement_deviation = rep_array(rep_matrix(0.0,X,X),S);
+  // Populate movement deviation
+  for (s in 1:S) {
+    movement_deviation[s] = msize[s] - mmean;
+  }
+  // Return movement
+  return movement_deviation;
+}
+
+
+
+
+
+
+
+
+/**
+* Assemble a movement term rate array
+*
+* @param pmean, an array of dimension [P]
+* @param pterm, an array of dimension [I, P]
+* @param mindex, an array of dimension [X, X]
+* @param nterm, an integer giving the number of seasons (terms) per year (times)
+*
+* @return an array of dimension [I] holding matrices of dimension [X, X]
+*
+* The first argument pmean holds the parameters associated with the mean
+* movement rates. The second argument holds the parameter deviations
+* associated with movement rate deviations from the mean for term, pterm.
+*
+* The argument mindex is a square integer array of zeros and ones indicating
+* that movement is permitted (one) or not permitted (zero) between a given
+* source region (row) and destination region (column) in one step.
+*
+* The argument nterm is the number of terms (often quarters) per time
+* (usually year) and acts as the matrix power for multiplying
+* movement matrices [X, X].
+*/
+array[] matrix assemble_movement_term_rate (
+  array[] real pmean,
+  array[,] real pterm,
+  array[,] int mindex,
+  int nterm
+) {
+  // Get dimensions
+  int P = dims(pmean)[1];
+  int I = dims(pterm)[1];
+  int X = dims(mindex)[1];
+  // Initialize arrays
+  array[I, 1] matrix[X, X] movement_step = assemble_movement_step(
+    pmean,
+    rep_array(0.0, 1, P),
+    pterm,
+    rep_array(0.0, 1, P),
+    mindex
+  );
+  array[I] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), I);
+  // Populate movement rates
+  for (i in 1:I) {
+    movement_rate[i] = matrix_power(movement_step[i, 1], nterm);
+  }
+  // Return movement rate
+  return movement_rate;
+}
+
+/**
+* Assemble a movement size rate array
+*
+* @param pmean, an array of dimension [P]
+* @param psize, an array of dimension [S, P]
+* @param mindex, an array of dimension [X, X]
+* @param nterm, an integer giving the number of seasons (terms) per year (times)
+*
+* @return an array of dimension [S] holding matrices of dimension [X, X]
+*
+* The first argument pmean holds the parameters associated with the mean
+* movement rates. The second argument holds the parameter deviations
+* associated with movement rate deviations from the mean for size, psize.
+*
+* The argument mindex is a square integer array of zeros and ones indicating
+* that movement is permitted (one) or not permitted (zero) between a given
+* source region (row) and destination region (column) in one step.
+*
+* The argument nterm is the number of terms (often quarters) per time
+* (usually year) and acts as the matrix power for multiplying
+* movement matrices [X, X].
+*/
+array[] matrix assemble_movement_size_rate (
+  array[] real pmean,
+  array[,] real psize,
+  array[,] int mindex,
+  int nterm
+) {
+  // Get dimensions
+  int P = dims(pmean)[1];
+  int S = dims(psize)[1];
+  int X = dims(mindex)[1];
+  // Initialize arrays
+  array[1, S] matrix[X, X] movement_step = assemble_movement_step(
+    pmean,
+    rep_array(0.0, 1, P),
+    rep_array(0.0, 1, P),
+    psize,
+    mindex
+  );
+  array[S] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), S);
+  // Populate movement rates
+  for (s in 1:S) {
+    movement_rate[s] = matrix_power(movement_step[1, s], nterm);
+  }
+  // Return movement rate
+  return movement_rate;
+}
+
+
+
+
+
+
+
+
 /**
 * Inverse multinomial logit
 *
@@ -293,194 +672,7 @@ array[,] matrix assemble_movement_step (
   return movement_step;
 }
 
-/**
-* Assemble a movement mean rate matrix
-*
-* @param pmean, an array of dimension [P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return a matrix of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-matrix assemble_movement_mean_rate (
-  array[] real pmean,
-  array[,] int mindex,
-  int nterm
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int X = dims(mindex)[1];
-  // Initialize arrays
-  array[1, 1] matrix[X, X] movement_step = assemble_movement_step(
-    pmean,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
-    mindex
-  );
-  // Initialize matrix
-  matrix[X, X] movement_rate = matrix_power(movement_step[1, 1], nterm);
-  // Return movement rate
-  return movement_rate;
-}
 
-/**
-* Assemble a movement time rate array
-*
-* @param pmean, an array of dimension [P]
-* @param ptime, an array of dimension [T, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [T] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for time, ptime.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_time_rate (
-  array[] real pmean,
-  array[,] real ptime,
-  array[,] int mindex,
-  int nterm
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int T = dims(ptime)[1];
-  int X = dims(mindex)[1];
-  // Initialize arrays
-  array[T, 1] matrix[X, X] movement_step = assemble_movement_step(
-    pmean,
-    ptime,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
-    mindex
-  );
-  array[T] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), T);
-  // Populate movement rates
-  for (t in 1:T) {
-    movement_rate[t] = matrix_power(movement_step[t, 1], nterm);
-  }
-  // Return movement rate
-  return movement_rate;
-}
-
-/**
-* Assemble a movement term rate array
-*
-* @param pmean, an array of dimension [P]
-* @param pterm, an array of dimension [I, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [I] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for term, pterm.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_term_rate (
-  array[] real pmean,
-  array[,] real pterm,
-  array[,] int mindex,
-  int nterm
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int I = dims(pterm)[1];
-  int X = dims(mindex)[1];
-  // Initialize arrays
-  array[I, 1] matrix[X, X] movement_step = assemble_movement_step(
-    pmean,
-    rep_array(0.0, 1, P),
-    pterm,
-    rep_array(0.0, 1, P),
-    mindex
-  );
-  array[I] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), I);
-  // Populate movement rates
-  for (i in 1:I) {
-    movement_rate[i] = matrix_power(movement_step[i, 1], nterm);
-  }
-  // Return movement rate
-  return movement_rate;
-}
-
-/**
-* Assemble a movement size rate array
-*
-* @param pmean, an array of dimension [P]
-* @param psize, an array of dimension [S, P]
-* @param mindex, an array of dimension [X, X]
-* @param nterm, an integer giving the number of seasons (terms) per year (times)
-*
-* @return an array of dimension [S] holding matrices of dimension [X, X]
-*
-* The first argument pmean holds the parameters associated with the mean
-* movement rates. The second argument holds the parameter deviations
-* associated with movement rate deviations from the mean for size, psize.
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one step.
-*
-* The argument nterm is the number of terms (often quarters) per time
-* (usually year) and acts as the matrix power for multiplying
-* movement matrices [X, X].
-*/
-array[] matrix assemble_movement_size_rate (
-  array[] real pmean,
-  array[,] real psize,
-  array[,] int mindex,
-  int nterm
-) {
-  // Get dimensions
-  int P = dims(pmean)[1];
-  int S = dims(psize)[1];
-  int X = dims(mindex)[1];
-  // Initialize arrays
-  array[1, S] matrix[X, X] movement_step = assemble_movement_step(
-    pmean,
-    rep_array(0.0, 1, P),
-    rep_array(0.0, 1, P),
-    psize,
-    mindex
-  );
-  array[S] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0, X, X), S);
-  // Populate movement rates
-  for (s in 1:S) {
-    movement_rate[s] = matrix_power(movement_step[1, s], nterm);
-  }
-  // Return movement rate
-  return movement_rate;
-}
 
 /**
 * Assemble a movement time deviation array

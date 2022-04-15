@@ -44,6 +44,13 @@ data {
 transformed data {
   // Upper bound on number of observations
   int<lower=0> C = N * S * L * X * X;
+  // Declare simplex dimensions
+  array[6] simplex_dimensions = assemble_simplex_dimensions(
+    movement_index,
+    T, I, S
+  );
+
+
   // Declare movement possible transpose values
   array[L] matrix[X, X] movement_possible_transpose;
   // Populate movement possible transpose
@@ -54,11 +61,13 @@ transformed data {
 }
 
 parameters {
-  // Movement parameters
-  array[P] real movement_parameter_mean_step; // Mean across dimensions
-  array[T, P] real movement_parameter_time_step; // Deviation by 'year'
-  array[I, P] real movement_parameter_term_step; // Deviation by 'season'
-  array[S, P] real movement_parameter_size_step; // Deviation by 'size'
+  // Movement simplexes
+  array[simplex_dimensions[1]] simplex[1] a1;
+  array[simplex_dimensions[2]] simplex[2] a2;
+  array[simplex_dimensions[3]] simplex[3] a3;
+  array[simplex_dimensions[4]] simplex[4] a4;
+  array[simplex_dimensions[5]] simplex[5] a5;
+  array[simplex_dimensions[6]] simplex[6] a6;
   // Stepwise instantaneous rate parameters
   array[N] vector<lower=0>[X] fishing_step; // Instantaneous
   vector<lower=0>[X] mortality_step; // Instantaneous
@@ -72,76 +81,41 @@ parameters {
 
 transformed parameters {
   // Declare step values (for computation)
-  array[N, S] matrix<lower=0, upper=1>[X, X] movement_step = rep_array(rep_matrix(0.0,X,X),N,S);
+  array[N, S] matrix<lower=0, upper=1>[X, X] movement_step;
   array[N] matrix<lower=0, upper=1>[X,X] survival_step = rep_array(rep_matrix(0.0,X,X),N);
   array[N] matrix<lower=0, upper=1>[X,X] observal_step = rep_array(rep_matrix(0.0,X,X),N);
-  // Declare movement values (for priors)
+  // Declare movement means (for priors)
   matrix<lower=0, upper=1>[X, X] movement_mean_step = rep_matrix(0.0, X, X);
   matrix<lower=0, upper=1>[X, X] movement_mean_rate = rep_matrix(0.0, X, X);
+  // Declare movement rates (for priors)
+  array[T] matrix<lower=0, upper=1>[X,X] movement_time_rate = rep_array(rep_matrix(0.0,X,X),T);
+  array[I] matrix<lower=0, upper=1>[X,X] movement_term_rate = rep_array(rep_matrix(0.0,X,X),I);
+  array[S] matrix<lower=0, upper=1>[X,X] movement_size_rate = rep_array(rep_matrix(0.0,X,X),S);
+  // Declare movement deviations (for priors)
   array[T] matrix<lower=-1, upper=1>[X,X] movement_time_deviation=rep_array(rep_matrix(0.0,X,X),T);
   array[I] matrix<lower=-1, upper=1>[X,X] movement_term_deviation=rep_array(rep_matrix(0.0,X,X),I);
   array[S] matrix<lower=-1, upper=1>[X,X] movement_size_deviation=rep_array(rep_matrix(0.0,X,X),S);
+  // Declare fishing means (for priors)
+  vector<lower=0>[X] fishing_mean_step = rep_vector(0.0, X);
+  vector<lower=0>[X] fishing_mean_rate = rep_vector(0.0, X);
+  // Declare fishing rates (for priors)
+  array[T] vector<lower=0>[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
+  array[I] vector<lower=0>[X] fishing_term_rate = rep_array(rep_vector(0.0, X), T);
+  // Declare fishing deviations (for priors)
+  array[I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0, X), I);
   // Declare instantaneous rates (for priors)
-  array[T] vector[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
   vector<lower=0>[X] mortality_rate = mortality_step * I; // Instantaneous
   real<lower=0> ongoing_loss_rate = ongoing_loss_step * I; // Instantaneous
   // Declare fractional (per tag) rates
   vector<lower=0, upper=1>[X] reporting_rate = reporting_step; // Fraction
   real<lower=0, upper=1> initial_loss_rate = initial_loss_step; // Fraction
-  // Declare fishing term deviations (for priors)
-  array[T, I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0, X), T, I);
+
   // Assemble movement step [N, S] [X, X]
   movement_step = assemble_movement_step(
-    movement_parameter_mean_step,
-    movement_parameter_time_step,
-    movement_parameter_term_step,
-    movement_parameter_size_step,
-    movement_index
-  );
-  // Assemble movement mean step [X, X]
-  movement_mean_step = assemble_movement_mean_rate(
-    movement_parameter_mean_step,
+    a1, a2, a3, a4, a5, a6,
+    T, I, S,
     movement_index,
-    1 // nterm = 1 for movement mean step
-  );
-  // Assemble movement mean rate [X, X]
-  movement_mean_rate = assemble_movement_mean_rate(
-    movement_parameter_mean_step,
-    movement_index,
-    I
-  );
-  // Assemble movement time deviation [T] [X, X]
-  movement_time_deviation = assemble_movement_time_deviation(
-    movement_parameter_mean_step,
-    movement_parameter_time_step,
-    movement_index,
-    I
-  );
-  // Assemble movement term deviation [I] [X, X]
-  movement_term_deviation = assemble_movement_term_deviation(
-    movement_parameter_mean_step,
-    movement_parameter_term_step,
-    movement_index,
-    1 // nterm = 1 for movement term deviations
-  );
-  // Assemble movement size deviation [S] [X, X]
-  movement_size_deviation = assemble_movement_size_deviation(
-    movement_parameter_mean_step,
-    movement_parameter_size_step,
-    movement_index,
-    I
-  );
-  // Assemble fishing rate [T] [X]
-  fishing_rate = assemble_fishing_rate(
-    fishing_step,
-    T,
-    I
-  );
-  // Assemble fishing term deviation [T, I] [X]
-  fishing_term_deviation = assemble_fishing_term_deviation(
-    fishing_step,
-    fishing_rate,
-    I
+    tolerance_movement
   );
   // Assemble survival step [N] [X, X]
   survival_step = assemble_survival_step(
@@ -153,6 +127,49 @@ transformed parameters {
   observal_step = assemble_observal_step(
     fishing_step,
     reporting_step
+  );
+  // Assemble movement mean step and rate [X, X]
+  movement_mean_step = assemble_movement_mean(movement_step, 1);
+  movement_mean_rate = assemble_movement_mean(movement_step, I);
+  // Assemble movement time [T] term [I] and size [S] rates [X, X]
+  movement_time_rate = assemble_movement_time_rate(movement_step, T, I);
+  movement_term_rate = assemble_movement_term_rate(movement_step, T, I);
+  movement_size_rate = assemble_movement_size_rate(movement_step, T, I);
+  // Assemble movement time deviation [T] [X, X]
+  movement_time_deviation = assemble_movement_time_deviation(
+    movement_time_rate,
+    movement_mean_rate
+  );
+  // Assemble movement term deviation [I] [X, X]
+  movement_term_deviation = assemble_movement_term_deviation(
+    movement_term_rate,
+    movement_mean_step
+  );
+  // Assemble movement size deviation [S] [X, X]
+  movement_size_deviation = assemble_movement_size_deviation(
+    movement_size_rate,
+    movement_mean_rate
+  );
+
+
+
+
+
+
+  array[T] vector[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
+  // Declare fishing term deviations (for priors)
+  array[T, I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0, X), T, I);
+  // Assemble fishing rate [T] [X]
+  fishing_rate = assemble_fishing_rate(
+    fishing_step,
+    T,
+    I
+  );
+  // Assemble fishing term deviation [T, I] [X]
+  fishing_term_deviation = assemble_fishing_term_deviation(
+    fishing_step,
+    fishing_rate,
+    I
   );
 }
 
@@ -295,6 +312,8 @@ model {
   }
   */
 
+
+
   // Natural mortality rate prior
   mortality_rate ~ normal(
     mu_mortality_rate,
@@ -324,36 +343,13 @@ model {
 generated quantities {
   /**
 
-  // Declare movement values
-  array[T] matrix[X,X] movement_time_rate = rep_array(rep_matrix(0.0,X,X),T);
-  array[I] matrix[X,X] movement_term_rate = rep_array(rep_matrix(0.0,X,X),I);
-  array[S] matrix[X,X] movement_size_rate = rep_array(rep_matrix(0.0,X,X),S);
   // Declare fishing values
   array[N, S, X] real fishing_step = rep_array(0.0, N, S, X);
   array[T, X] real fishing_time_rate = rep_array(0.0, T, X);
   array[I, X] real fishing_term_rate = rep_array(0.0, I, X);
   array[S, X] real fishing_size_rate = rep_array(0.0, S, X);
   // Assemble movement time rate [T] [X, X]
-  movement_time_rate = assemble_movement_time_rate(
-    movement_parameter_mean_step,
-    movement_parameter_time_step,
-    movement_index,
-    I
-  );
-  // Assemble movement term rate [I] [X, X]
-  movement_term_rate = assemble_movement_term_rate(
-    movement_parameter_mean_step,
-    movement_parameter_term_step,
-    movement_index,
-    1 // nterm = 1 for movement term rates
-  );
-  // Assemble movement size rate [S] [X, X]
-  movement_size_rate = assemble_movement_size_rate(
-    movement_parameter_mean_step,
-    movement_parameter_size_step,
-    movement_index,
-    I
-  );
+
   // Assemble fishing mortality step [N, S, X]
   fishing_step = assemble_fishing_step(
     fishing_parameter_mean_step,
