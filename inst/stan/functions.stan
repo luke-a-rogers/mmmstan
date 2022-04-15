@@ -416,26 +416,31 @@ array[] matrix assemble_movement_possible_transpose (
 * Assemble a survival step array [N] of diagonal matrices [X, X]
 *
 * @param fstep, an array [N] of vector [X] stepwise fishing rates
+* @param sstep, a vector [X] of selectivity fractions
 * @param mstep, a vector [X] of stepwise natural mortality rates
 * @param ostep, a real ongoing stepwise tag loss rate
 *
-* @return an array [N] of matrices [X, X]
+* @return an array [N, S] of matrices [X, X]
 */
-array[] matrix assemble_survival_step (
+array[,] matrix assemble_survival_step (
   array [] vector fstep,
+  vector sstep,
   vector mstep,
   real ostep
 ) {
   // Get dimensions
   int N = dims(fstep)[1];
+  int S = dims(sstep)[1];
   int X = dims(fstep)[2];
   // Initialize values
-  array[N] matrix[X, X] survival_step = rep_array(rep_matrix(0.0, X, X), N);
+  array[N, S] matrix[X, X] survival_step = rep_array(rep_matrix(0.0, X, X),N,S);
   // Populate survival step
   for (n in 1:N) {
-    survival_step[n] = diag_matrix(exp(-fstep[n]))
-    * diag_matrix(exp(-mstep))
-    * exp(-ostep);
+    for (s in 1:S) {
+      survival_step[n, s] = diag_matrix(exp(-fstep[n] * sstep[s]))
+      * diag_matrix(exp(-mstep))
+      * exp(-ostep);
+    }
   }
   // Return survival step
   return survival_step;
@@ -445,22 +450,28 @@ array[] matrix assemble_survival_step (
 * Assemble an observation step array [N] of diagonal matrices [X, X]
 *
 * @param fstep, an array [N] of vector [X] stepwise fishing rates
+* @param sstep, a vector [X] of selectivity fractions
 * @param rstep, a vector [X] of tag reporting steps
 *
-* @return an array [N] of matrices [X, X]
+* @return an array [N, S] of matrices [X, X]
 */
-array[] matrix assemble_observed_step (
+array[,] matrix assemble_observed_step (
   array [] vector fstep,
+  vector sstep,
   vector rstep
 ) {
   // Get dimensions
   int N = dims(fstep)[1];
+  int S = dims(sstep)[1];
   int X = dims(fstep)[2];
   // Initialize values
-  array[N] matrix[X, X] observed_step = rep_array(rep_matrix(0.0, X, X), N);
+  array[N, S] matrix[X, X] observed_step = rep_array(rep_matrix(0.0, X, X),N,S);
   // Populate reporting step
   for (n in 1:N) {
-    observed_step[n] = diag_matrix(1 - exp(-fstep[n])) * diag_matrix(rstep);
+    for (s in 1:S) {
+      observed_step[n, s] = diag_matrix(1 - exp(-fstep[n] * sstep[s]))
+      * diag_matrix(rstep);
+    }
   }
   // Return observed step
   return observed_step;
