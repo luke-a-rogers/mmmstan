@@ -24,19 +24,20 @@ fit(
     length(list_regions))),
   mu_mortality_rate = rep(0.1, length(list_regions)),
   mu_reporting_rate = rep(1, length(list_regions)),
+  mu_selectivity = rep(1, length(list_sizes) - 1L),
   mu_initial_loss_rate = 0.1,
   mu_ongoing_loss_rate = 0.02,
   mu_dispersion = 1,
   cv_fishing_rate = 0.1,
   cv_mortality_rate = 0.1,
   cv_reporting_rate = 0.1,
+  cv_selectivity = 0.1,
   cv_initial_loss_rate = 0.1,
   cv_ongoing_loss_rate = 0.1,
   cv_dispersion = 0.25,
   cv_movement_time_deviation = 0.1,
   cv_movement_term_deviation = 0.1,
   cv_movement_size_deviation = 0.1,
-  sd_fishing_term_deviation = 0.25,
   tolerance_expected = 1e-12,
   tolerance_movement = 1e-12,
   tolerance_fishing = 1e-12,
@@ -92,6 +93,8 @@ directional movement between a pair of regions}
 
 \item{mu_reporting_rate}{\code{\link[=numeric]{numeric()}}}
 
+\item{mu_selectivity}{\code{\link[=numeric]{numeric()}}}
+
 \item{mu_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{mu_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
@@ -104,6 +107,8 @@ directional movement between a pair of regions}
 
 \item{cv_reporting_rate}{\code{\link[=numeric]{numeric()}}}
 
+\item{cv_selectivity}{\code{\link[=numeric]{numeric()}}}
+
 \item{cv_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
@@ -115,8 +120,6 @@ directional movement between a pair of regions}
 \item{cv_movement_term_deviation}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_movement_size_deviation}{\code{\link[=numeric]{numeric()}}}
-
-\item{sd_fishing_term_deviation}{\code{\link[=numeric]{numeric()}}}
 
 \item{tolerance_expected}{\code{\link[=numeric]{numeric()}}}
 

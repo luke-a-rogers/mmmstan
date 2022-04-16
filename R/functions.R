@@ -51,7 +51,6 @@
 #' @param cv_movement_time_deviation [numeric()]
 #' @param cv_movement_term_deviation [numeric()]
 #' @param cv_movement_size_deviation [numeric()]
-#' @param cv_fishing_term_deviation [numeric()]
 #' @param tolerance_expected [numeric()]
 #' @param tolerance_movement [numeric()]
 #' @param tolerance_fishing [numeric()]
@@ -112,8 +111,6 @@ fit <- function (tag_data,
                  cv_movement_time_deviation = 0.1,
                  cv_movement_term_deviation = 0.1,
                  cv_movement_size_deviation = 0.1,
-                 # Fishing prior standard deviation
-                 cv_fishing_term_deviation = 0.25,
                  # Tolerance value
                  tolerance_expected = 1e-12,
                  tolerance_movement = 1e-12,
@@ -319,12 +316,6 @@ fit <- function (tag_data,
     lower = 0,
     null.ok = has_data
   )
-  # Fishing term deviation prior standard deviation
-  checkmate::assert_number(
-    cv_fishing_term_deviation,
-    lower = 0,
-    null.ok = has_data
-  )
   # Tolerance value
   checkmate::assert_number(
     tolerance_expected,
@@ -480,8 +471,6 @@ fit <- function (tag_data,
       cv_movement_time_deviation = cv_movement_time_deviation,
       cv_movement_term_deviation = cv_movement_term_deviation,
       cv_movement_size_deviation = cv_movement_size_deviation,
-      # Fishing term deviation prior standard deviation
-      cv_fishing_term_deviation = cv_fishing_term_deviation,
       # Tolerance values
       tolerance_expected = tolerance_expected,
       tolerance_movement = tolerance_movement,

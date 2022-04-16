@@ -35,8 +35,6 @@ data {
   real<lower=0> cv_movement_time_deviation;
   real<lower=0> cv_movement_term_deviation;
   real<lower=0> cv_movement_size_deviation;
-  // Fishing term deviation prior coefficient of variation
-  real<lower=0> cv_fishing_term_deviation;
   // Tolerance values
   real<lower=0> tolerance_expected;
   real<lower=0> tolerance_movement;
@@ -69,7 +67,7 @@ parameters {
   array[simplex_dimensions[5]] simplex[5] a5;
   array[simplex_dimensions[6]] simplex[6] a6;
   // Stepwise instantaneous rate parameters
-  array[N] vector<lower=0>[X] fishing_step; // Instantaneous
+  array[T] vector<lower=0>[X] fishing_step; // Instantaneous
   vector<lower=0>[X] mortality_step; // Instantaneous
   real<lower=0> ongoing_loss_step; // Instantaneous
   // Stepwise fractional (per tag) rate parameters
@@ -77,6 +75,8 @@ parameters {
   real<lower=0, upper=1> initial_loss_step; // Fraction (per tag)
   // Selectivity
   vector<lower=0, upper=1>[S - 1] selectivity_short;
+  // Fishing term weights
+  array[X] simplex[I] fishing_simplex;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -99,10 +99,6 @@ transformed parameters {
   array[S] matrix<lower=-1, upper=1>[X, X] movement_size_deviation = rep_array(rep_matrix(0.0,X,X),S);
   // Declare fishing rates (for priors)
   array[T] vector<lower=0>[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
-  array[I] vector<lower=0>[X] fishing_term_mean = rep_array(rep_vector(0.0, X), I);
-  // Declare fishing deviations (for priors)
-  array[T, I] vector[X] fishing_deviation = rep_array(rep_vector(0.0, X), T, I);
-  array[I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0, X), I);
   // Declare instantaneous rates (for priors)
   vector<lower=0>[X] mortality_rate = mortality_step * I; // Instantaneous
   real<lower=0> ongoing_loss_rate = ongoing_loss_step * I; // Instantaneous
@@ -111,6 +107,8 @@ transformed parameters {
   real<lower=0, upper=1> initial_loss_rate = initial_loss_step; // Fraction
   // Selectivity
   vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
+  // Fishing term weight
+  array[I] matrix[X, X] fishing_term = assemble_fishing_term(fishing_simplex);
   // Assemble movement step [N, S] [X, X]
   movement_step = assemble_movement_step(
     a1, a2, a3, a4, a5, a6,
@@ -121,6 +119,7 @@ transformed parameters {
   // Assemble survival step [N, S] [X, X]
   survival_step = assemble_survival_step(
     fishing_step,
+    fishing_term,
     selectivity,
     mortality_step,
     ongoing_loss_step
@@ -128,6 +127,7 @@ transformed parameters {
   // Assemble observed step [N, S] [X, X]
   observed_step = assemble_observed_step(
     fishing_step,
+    fishing_term,
     selectivity,
     reporting_step
   );
@@ -153,16 +153,8 @@ transformed parameters {
     movement_size_rate,
     movement_mean_rate
   );
-  // Assemble fishing rate [T] [X] and term mean [I] [X]
-  fishing_rate = assemble_fishing_rate(fishing_step, T, I);
-  fishing_term_mean = assemble_fishing_term_mean(fishing_step, T, I);
-  // Assemble fishing deviation [T, I] [X] and term deviation [I] [X]
-  fishing_deviation = assemble_fishing_deviation(fishing_step, T, I);
-  fishing_term_deviation = assemble_fishing_term_deviation(
-    fishing_step,
-    fishing_term_mean,
-    I
-  );
+  // Assemble fishing rate [T] [X]
+  fishing_rate = assemble_fishing_rate(fishing_step, I);
 }
 
 model {
@@ -277,26 +269,6 @@ model {
       mu_fishing_rate[t],
       cv_fishing_rate
       * mu_fishing_rate[t]
-      + tolerance_fishing
-    );
-  }
-  print("fishing_term_mean: ", fishing_term_mean);
-  print("fishing_step: ", fishing_step);
-  // Fishing deviation prior
-  for (t in 1:T) {
-    for (i in 1:I) {
-      fishing_deviation[t, i] ~ normal(
-        fishing_term_deviation[i],
-        tolerance_fishing
-      );
-    }
-  }
-  // Fishing term deviation prior
-  for (i in 1:I) {
-    fishing_term_deviation[i] ~ normal(
-      0.0,
-      cv_fishing_term_deviation
-      * fishing_term_mean[i]
       + tolerance_fishing
     );
   }

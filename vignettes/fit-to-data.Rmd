@@ -41,9 +41,21 @@ if (FALSE) {
         "source"
       )
     )
+  # Region arguments -----------------------------------------------------------
+  
+  # # Eight regions
+  # list_regions <- list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8)
+  # movement_pattern <- 2
+  # movement_allow <- matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
+  # movement_disallow <- NULL
+  
+  # Three regions
+  list_regions <- list(ak = 1:6, bc = 7, cc = 8)
+  movement_pattern <- 2
+  movement_allow <- NULL
+  movement_disallow <- NULL
+  
   # Arguments
-  tag_data <- tag_data
-  list_regions <- list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8)
   list_sizes <- list(s = 400:499, m = 500:599, l = 600:699, xl = 700:799)
   year_released_start <- 1979
   year_recovered_end <- 2015 # Go to 2017 with present data
@@ -54,9 +66,6 @@ if (FALSE) {
   colname_region_released <- "released_region" # "region_released"
   colname_region_recovered <- "recovered_region" # "region_recovered"
   colname_size_released <- "released_length" # "size_released"
-  movement_pattern <- 2
-  movement_allow <- matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
-  movement_disallow <- NULL
   mu_fishing_rate <- array(
     0.1, 
     dim = c(
@@ -70,8 +79,8 @@ if (FALSE) {
   mu_initial_loss_rate <- 0.1
   mu_ongoing_loss_rate <- 0.02
   mu_dispersion <- 1
-  cv_fishing_rate <- 0.1
-  cv_mortality_rate <- 0.1
+  cv_fishing_rate <- 0.01
+  cv_mortality_rate <- 0.01
   cv_reporting_rate <- 0.1
   cv_selectivity <- 0.1
   cv_initial_loss_rate <- 0.1
@@ -80,7 +89,6 @@ if (FALSE) {
   cv_movement_time_deviation <- 0.1
   cv_movement_term_deviation <- 0.1
   cv_movement_size_deviation <- 0.1
-  cv_fishing_term_deviation <- 0.25
   tolerance_expected <- 1e-12
   tolerance_movement <- 1e-12
   tolerance_fishing <- 1e-6
@@ -91,58 +99,53 @@ if (FALSE) {
   iter_sampling <- 750
   use_reduce_sum <- FALSE
   threads_per_chain <- 8  
-  # Fit
+  
+  # Fit ------------------------------------------------------------------------
+  
   m1 <- fit(
     tag_data = tag_data,
-    list_regions = list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8),
-    list_sizes = list(s = 400:499, m = 500:599, l = 600:699, xl = 700:799),
-    year_released_start = 1979,
-    year_released_end = 2015, # Go to 2017 with present data
-    step_liberty_max = NULL,
-    term_interval = "quarter",
-    colname_date_released = "released_date", # "date_released",
-    colname_date_recovered = "recovered_date", # "date_recovered",
-    colname_region_released = "released_region", # "region_released",
-    colname_region_recovered = "recovered_region", # "region_recovered",
-    colname_size_released = "released_length", # "size_released",
-    movement_pattern = 2,
-    movement_allow = matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE),
-    movement_disallow = NULL,
-    mu_fishing_rate = array(
-      0.1, 
-      dim = c(
-        year_recovered_end - year_released_start + 1L,
-        length(list_regions)
-      ) 
-    ),
-    mu_mortality_rate = rep(0.1, length(list_regions)),
-    mu_reporting_rate = rep(1, length(list_regions)),
-    mu_selectivity = rep(1, length(list_sizes) - 1L),
-    mu_initial_loss_rate = 0.1,
-    mu_ongoing_loss_rate = 0.02,
-    mu_dispersion = 1,
-    mu_fishing_time_deviation = NULL,
-    cv_fishing_rate = 0.1,
-    cv_mortality_rate = 0.1,
-    cv_reporting_rate = 0.1,
-    cv_selectivity = 0.1,
-    cv_initial_loss_rate = 0.1,
-    cv_ongoing_loss_rate = 0.1,
-    cv_dispersion = 0.25,
-    cv_movement_time_deviation = 0.1,
-    cv_movement_term_deviation = 0.1,
-    cv_movement_size_deviation = 0.1,
-    cv_fishing_term_deviation = 0.25,
-    tolerance_expected = 1e-12,
-    tolerance_movement = 1e-12,
-    tolerance_fishing = 1e-12,
-    data = NULL,
-    chains = 1,
-    step_size = 0.01,
-    iter_warmup = 250,
-    iter_sampling = 750,
-    use_reduce_sum = FALSE,
-    threads_per_chain = 8)
+    list_regions = list_regions,
+    list_sizes = list_sizes,
+    year_released_start = year_released_start,
+    year_released_end = year_released_end,
+    step_liberty_max = step_liberty_max,
+    term_interval = term_interval,
+    colname_date_released = colname_date_released, # "date_released",
+    colname_date_recovered = colname_date_recovered, # "date_recovered",
+    colname_region_released = colname_region_released, # "region_released",
+    colname_region_recovered = colname_region_recovered, # "region_recovered",
+    colname_size_released = colname_size_released, # "size_released",
+    movement_pattern = movement_pattern,
+    movement_allow = movement_allow,
+    movement_disallow = movement_disallow,
+    mu_fishing_rate = mu_fishing_rate,
+    mu_mortality_rate = mu_mortality_rate,
+    mu_reporting_rate = mu_reporting_rate,
+    mu_selectivity = mu_selectivity,
+    mu_initial_loss_rate = mu_initial_loss_rate,
+    mu_ongoing_loss_rate = mu_ongoing_loss_rate,
+    mu_dispersion = mu_dispersion,
+    mu_fishing_time_deviation = mu_fishing_time_deviation,
+    cv_fishing_rate = cv_fishing_rate,
+    cv_mortality_rate = cv_mortality_rate,
+    cv_reporting_rate = cv_reporting_rate,
+    cv_selectivity = cv_selectivity,
+    cv_initial_loss_rate = cv_initial_loss_rate,
+    cv_ongoing_loss_rate = cv_ongoing_loss_rate,
+    cv_dispersion = cv_dispersion,
+    cv_movement_time_deviation = cv_movement_time_deviation,
+    cv_movement_term_deviation = cv_movement_term_deviation,
+    cv_movement_size_deviation = cv_movement_size_deviation,
+    tolerance_expected = tolerance_expected,
+    tolerance_movement = tolerance_movement,
+    tolerance_fishing = tolerance_fishing,
+    data = data,
+    chains = chains,
+    step_size = step_size,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    use_reduce_sum = use_reduce_sum,
+    threads_per_chain = threads_per_chain)
   }
 
 ```
