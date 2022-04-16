@@ -281,11 +281,14 @@ vector assemble_fishing_mean (
   }
   // Possibly convert stepwise to rate
   fishing_mean = fishing_mean * fmult;
+
+  print("fishing_mean: ", fishing_mean);
+
   // Return fishing mean
   return fishing_mean;
 }
 
-array[] vector assemble_fishing_time_rate (
+array[] vector assemble_fishing_rate (
   array[] vector fstep,
   int ntime,
   int nterm
@@ -333,7 +336,7 @@ array[] vector assemble_fishing_term_mean (
   return fishing_term_mean;
 }
 
-array[,] vector assemble_fishing_term_deviation (
+array[,] vector assemble_fishing_deviation (
   array[] vector fstep,
   int ntime,
   int nterm
@@ -344,27 +347,48 @@ array[,] vector assemble_fishing_term_deviation (
   int I = nterm;
   int X = dims(fstep)[2];
   // Declare values
-  array[T, I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0, X), T, I);
-  array[T] vector[X] fishing_time_mean_step = rep_array(rep_vector(0.0, X), T);
+  array[T, I] vector[X] fishing_deviation = rep_array(rep_vector(0.0, X), T, I);
+  array[T] vector[X] fishing_mean = rep_array(rep_vector(0.0, X), T);
   int n = 1;
-  // Populate fishing time step
+  // Populate fishing mean
   for (t in 1:T) {
     for (i in 1:I) {
-      fishing_time_mean_step[t] = fishing_time_mean_step[t] + fstep[n] / (I * 1.0);
+      fishing_mean[t] = fishing_mean[t] + fstep[n] / (I * 1.0);
       n += 1;
     }
   }
   n = 1;
-  // Populate fishing term deviation
+  // Populate fishing deviation
   for (t in 1:T) {
     for (i in 1:I) {
-      fishing_term_deviation[t, i] = fstep[n] - fishing_time_mean_step[t];
+      fishing_deviation[t, i] = fstep[n] - fishing_mean[t];
       n += 1;
     }
+  }
+  // Return fishing deviation
+  return fishing_deviation;
+}
+
+array[] vector assemble_fishing_term_deviation (
+  array[] vector fstep,
+  array[] vector fterm,
+  int nterm
+) {
+  // Get dimensions
+  int N = dims(fstep)[1];
+  int I = nterm;
+  int X = dims(fstep)[2];
+  // Declare values
+  vector[X] fishing_mean = assemble_fishing_mean(fstep, 1);
+  array[I] vector[X] fishing_term_deviation = rep_array(rep_vector(0.0, X), I);
+  // Populate fishing term deviation
+  for (i in 1:I) {
+    fishing_term_deviation[i] = fterm[i] - fishing_mean;
   }
   // Return fishing term deviation
   return fishing_term_deviation;
 }
+
 
 /**
 * Assemble Matrices That Indicate Possible Movement at Each Liberty Step

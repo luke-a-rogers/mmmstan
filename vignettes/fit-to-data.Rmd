@@ -66,19 +66,21 @@ if (FALSE) {
   )
   mu_mortality_rate <- rep(0.1, length(list_regions))
   mu_reporting_rate <- rep(1, length(list_regions))
+  mu_selectivity <- rep(1, length(list_sizes) - 1L)
   mu_initial_loss_rate <- 0.1
   mu_ongoing_loss_rate <- 0.02
   mu_dispersion <- 1
   cv_fishing_rate <- 0.1
   cv_mortality_rate <- 0.1
   cv_reporting_rate <- 0.1
+  cv_selectivity <- 0.1
   cv_initial_loss_rate <- 0.1
   cv_ongoing_loss_rate <- 0.1
   cv_dispersion <- 0.25
   cv_movement_time_deviation <- 0.1
   cv_movement_term_deviation <- 0.1
   cv_movement_size_deviation <- 0.1
-  sd_fishing_term_deviation <- 0.25
+  cv_fishing_term_deviation <- 0.25
   tolerance_expected <- 1e-12
   tolerance_movement <- 1e-12
   tolerance_fishing <- 1e-6
@@ -115,6 +117,7 @@ if (FALSE) {
     ),
     mu_mortality_rate = rep(0.1, length(list_regions)),
     mu_reporting_rate = rep(1, length(list_regions)),
+    mu_selectivity = rep(1, length(list_sizes) - 1L),
     mu_initial_loss_rate = 0.1,
     mu_ongoing_loss_rate = 0.02,
     mu_dispersion = 1,
@@ -122,13 +125,14 @@ if (FALSE) {
     cv_fishing_rate = 0.1,
     cv_mortality_rate = 0.1,
     cv_reporting_rate = 0.1,
+    cv_selectivity = 0.1,
     cv_initial_loss_rate = 0.1,
     cv_ongoing_loss_rate = 0.1,
     cv_dispersion = 0.25,
     cv_movement_time_deviation = 0.1,
     cv_movement_term_deviation = 0.1,
     cv_movement_size_deviation = 0.1,
-    sd_fishing_term_deviation = 0.25,
+    cv_fishing_term_deviation = 0.25,
     tolerance_expected = 1e-12,
     tolerance_movement = 1e-12,
     tolerance_fishing = 1e-12,
