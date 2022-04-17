@@ -166,7 +166,7 @@ model {
   // Declare index values
   int count;
   // Populate released abundance
-  for (n in 1:(N - 1)) { // Study step
+  for (n in 1:(N - 1)) { // Released step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Released region
         abundance[n, s, 1, x, x] = tags[n, s, 1, x, x] // Integer scalar
@@ -302,5 +302,3 @@ model {
   // Sampling statement (var = mu + mu^2 / dispersion)
   observed[1:count] ~ neg_binomial_2(expected[1:count], dispersion);
 }
-
-generated quantities {}
