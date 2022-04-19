@@ -98,7 +98,7 @@ if (FALSE) {
   iter_warmup <- 250
   iter_sampling <- 750
   use_reduce_sum <- FALSE
-  threads_per_chain <- 8  
+  threads_per_chain <- parallel::detectCores() / 2  
   
   # Fit ------------------------------------------------------------------------
   

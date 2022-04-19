@@ -76,7 +76,7 @@ parameters {
   // Selectivity
   vector<lower=0, upper=1>[S - 1] selectivity_short;
   // Fishing term weights
-  array[X] simplex[I] fishing_simplex;
+  // array[X] simplex[I] fishing_simplex;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -108,7 +108,14 @@ transformed parameters {
   // Selectivity
   vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
   // Fishing term weight
-  array[I] matrix[X, X] fishing_term = assemble_fishing_term(fishing_simplex);
+  // array[I] matrix[X, X] fishing_term = assemble_fishing_term(fishing_simplex);
+
+  // Fix fishing_term
+  array[I] matrix[X, X] fishing_term = rep_array(
+    diag_matrix(rep_vector(1.0, X)),
+    I
+  );
+
   // Assemble movement step [N, S] [X, X]
   movement_step = assemble_movement_step(
     a1, a2, a3, a4, a5, a6,

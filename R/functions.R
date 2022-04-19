@@ -503,7 +503,8 @@ fit <- function (tag_data,
     step_size = step_size,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
-    threads_per_chain = threads_per_chain # ,
+    threads_per_chain = threads_per_chain,
+    refresh = 1 # ,
     # ...
   )
 
