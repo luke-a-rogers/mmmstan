@@ -6,78 +6,32 @@
 * @return an array of dimension [V] that sums to one
 */
 array[] real inv_multi_logit (array[] real params) {
-  // Get dimension
+  // Get dimensions
   int U = size(params); // Number of parameters (in a given mindex row)
   int V = U + 1; // Number of resultant movement rates
-  // Declare scalars
-  real sum_exp_params = 0.0;
+  // Declare values
+  real summation;
   real sum_movements_u = 0.0;
-  // Declare simplex
   array[V] real movements = rep_array(0.0, V);
-  // Populate sum
-  for (u in 1:U) {
-    sum_exp_params += exp(params[u]);
-  }
   // Populate movement rates
-  for (u in 1:U) {
-    movements[u] = exp(params[u]) / (1.0 + sum_exp_params);
-    sum_movements_u += movements[u];
+  for (v in 1:U) {
+    summation = 0.0;
+    for (u in 1:U) {
+      summation += exp(params[u] - params[v]);
+    }
+    movements[v] = 1.0 / (exp(-params[v]) + summation);
+    sum_movements_u += movements[v];
   }
+  // Populate final movement rate
   movements[V] = 1.0 - sum_movements_u;
   // Check movement rates
-  if (sum(movements) > 1) {
+  if (sum_movements_u > 1.0) {
+    print("sum_movements_u: ", sum_movements_u);
     print("params: ", params);
-    print("movements: ", movements);
-    reject("sum(movements): ", sum(movements));
-  }
-  if (sum(movements) < 0) {
-    print("params: ", params);
-    print("movements: ", movements);
-    reject("sum(movements): ", sum(movements));
-  }
-  if (max(movements) > 1) {
-    print("params: ", params);
-    print("movements: ", movements);
-    reject("max(movements): ", max(movements));
-  }
-  if (min(movements) < 0) {
-    print("params: ", params);
-    print("movements: ", movements);
-    reject("min(movements): ", min(movements));
+    reject("sum_movements_u > 1.0: ", sum_movements_u);
   }
   // Return movement rates
   return movements;
-}
-
-/**
-* Inverse multi-logit
-*
-* @param arg, an array of dimension [P]
-*
-* @return an array of dimension [P + 1] that sums to one
-*/
-array[] real inverse_multi_logit (array[] real arg) {
-  // Get dimensions
-  int P = size(arg);
-  // Instantiate sums
-  real sum_exp_arg = 0;
-  real sum_value = 0;
-  // Instantiate value
-  array[P + 1] real value = rep_array(0.0, P + 1);
-  // Check dimensions
-  if (P < 1) {reject("P must not be < 1; found P = ", P);}
-  // Get sum of exponential
-  for (p in 1:P) {
-    sum_exp_arg += exp(arg[p]);
-  }
-  // Populate value
-  for (p in 1:P) {
-    value[p] = exp(arg[p]) / (1 + sum_exp_arg);
-    sum_value += value[p];
-  }
-  value[P + 1] = 1 - sum_value;
-  // Return value
-  return value;
 }
 
 /**
@@ -704,6 +658,101 @@ array[] matrix assemble_movement_possible_transpose (
 }
 
 /**
+* Assemble a survival step array [N, S] of diagonal matrices [X, X]
+*
+* @param fstep, an array [T] of vector [X] stepwise fishing rates
+* @param fterm, an array [I] of vector [X] stepwise fishing term weights
+* @param sstep, a vector [S] of fishing selectivity
+* @param mstep, a vector [X] of stepwise natural mortality rates
+* @param ostep, a real ongoing stepwise tag loss rate
+*
+* @return an array [N, S] of matrices [X, X]
+*/
+array[,] matrix assemble_survival_step (
+  array [] vector fstep,
+  array [] vector fterm,
+  vector sstep,
+  vector mstep,
+  real ostep
+) {
+  // Get dimensions
+  int T = dims(fstep)[1];
+  int I = dims(fterm)[1];
+  int S = dims(sstep)[1];
+  int X = dims(fstep)[2];
+  int N = T * I;
+  // Initialize values
+  array[N, S] matrix[X, X] survival_step = rep_array(rep_matrix(0.0, X, X),N,S);
+  array[I] matrix[X, X] fdiag = rep_array(rep_matrix(0.0, X, X), I);
+  int n = 1;
+  // Populate fishing term
+  for (i in 1:I) {
+    fdiag[i] = diag_matrix(fterm[i]);
+  }
+  // Populate survival step
+  for (t in 1:T) {
+    for (i in 1:I) {
+      for (s in 1:S) {
+        survival_step[n, s] = diag_matrix(exp(-fdiag[i] * fstep[t] * sstep[s]))
+        * diag_matrix(exp(-mstep))
+        * exp(-ostep);
+      }
+      n += 1;
+    }
+  }
+  // Return survival step
+  return survival_step;
+}
+
+/**
+* Assemble an observation step array [N, S] of diagonal matrices [X, X]
+*
+* @param fstep, an array [T] of vector [X] stepwise fishing rates
+* @param fterm, an array [I] of vector [X] stepwise fishing term weights
+* @param sstep, a vector [X] of selectivity fractions
+* @param rstep, a vector [X] of tag reporting steps
+*
+* @return an array [N, S] of matrices [X, X]
+*/
+array[,] matrix assemble_observed_step (
+  array [] vector fstep,
+  array [] vector fterm,
+  vector sstep,
+  vector rstep
+) {
+  // Get dimensions
+  int T = dims(fstep)[1];
+  int I = dims(fterm)[1];
+  int S = dims(sstep)[1];
+  int X = dims(fstep)[2];
+  int N = T * I;
+  // Initialize values
+  array[N, S] matrix[X, X] observed_step = rep_array(rep_matrix(0.0, X, X),N,S);
+  array[I] matrix[X, X] fdiag = rep_array(rep_matrix(0.0, X, X), I);
+  int n = 1;
+  // Populate fishing term
+  for (i in 1:I) {
+    fdiag[i] = diag_matrix(fterm[i]);
+  }
+  // Populate observed step
+  for (t in 1:T) {
+    for (i in 1:I) {
+      for (s in 1:S) {
+        observed_step[n, s] = diag_matrix(1 - exp(-fdiag[i] * fstep[t] * sstep[s]))
+        * diag_matrix(rstep);
+      }
+      n += 1;
+    }
+  }
+  // Return observed step
+  return observed_step;
+}
+
+// Current above here ----------------------------------------------------------
+
+
+
+/**
 * Assemble a fishing rate array
 *
 * @param fstep, an array [N] of vectors [X]
@@ -742,60 +791,6 @@ array[] vector assemble_fishing_rate (
   }
   // Return fishing rate
   return fishing_rate;
-}
-
-/**
-* Assemble a survival step array [N] of diagonal matrices [X, X]
-*
-* @param fstep, an array [N] of vector [X] stepwise fishing rates
-* @param mstep, a vector [X] of stepwise natural mortality rates
-* @param ostep, a real ongoing stepwise tag loss rate
-*
-* @return an array [N] of matrices [X, X]
-*/
-array[] matrix assemble_survival_step (
-  array [] vector fstep,
-  vector mstep,
-  real ostep
-) {
-  // Get dimensions
-  int N = dims(fstep)[1];
-  int X = dims(fstep)[2];
-  // Initialize values
-  array[N] matrix[X, X] survival_step = rep_array(rep_matrix(0.0, X, X), N);
-  // Populate survival step
-  for (n in 1:N) {
-    survival_step[n] = diag_matrix(exp(-fstep[n]))
-    * diag_matrix(exp(-mstep))
-    * exp(-ostep);
-  }
-  // Return survival step
-  return survival_step;
-}
-
-/**
-* Assemble an observation step array [N] of diagonal matrices [X, X]
-*
-* @param fstep, an array [N] of vector [X] stepwise fishing rates
-* @param rstep, a vector [X] of tag reporting steps
-*
-* @return an array [N] of matrices [X, X]
-*/
-array[] matrix assemble_observal_step (
-  array [] vector fstep,
-  vector rstep
-) {
-  // Get dimensions
-  int N = dims(fstep)[1];
-  int X = dims(fstep)[2];
-  // Initialize values
-  array[N] matrix[X, X] observal_step = rep_array(rep_matrix(0.0, X, X), N);
-  // Populate reporting step
-  for (n in 1:N) {
-    observal_step[n] = diag_matrix(1 - exp(-fstep[n])) * diag_matrix(rstep);
-  }
-  // Return observal step
-  return observal_step;
 }
 
 /**

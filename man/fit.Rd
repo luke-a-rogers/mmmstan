@@ -20,23 +20,26 @@ fit(
   movement_pattern = 2,
   movement_allow = NULL,
   movement_disallow = NULL,
+  mu_retention_rate = rep(0.7, length(list_regions)),
   mu_fishing_rate = array(0.1, dim = c(year_recovered_end - year_released_start + 1,
     length(list_regions))),
   mu_mortality_rate = rep(0.1, length(list_regions)),
   mu_reporting_rate = rep(1, length(list_regions)),
+  mu_selectivity = rep(1, length(list_sizes) - 1L),
   mu_initial_loss_rate = 0.1,
   mu_ongoing_loss_rate = 0.02,
   mu_dispersion = 1,
+  cv_retention_rate = 0.2,
   cv_fishing_rate = 0.1,
   cv_mortality_rate = 0.1,
   cv_reporting_rate = 0.1,
+  cv_selectivity = 0.1,
   cv_initial_loss_rate = 0.1,
   cv_ongoing_loss_rate = 0.1,
   cv_dispersion = 0.25,
   cv_movement_time_deviation = 0.1,
   cv_movement_term_deviation = 0.1,
   cv_movement_size_deviation = 0.1,
-  sd_fishing_term_deviation = 0.25,
   tolerance_expected = 1e-12,
   tolerance_movement = 1e-12,
   tolerance_fishing = 1e-12,
@@ -46,7 +49,7 @@ fit(
   iter_warmup = 250,
   iter_sampling = 750,
   use_reduce_sum = FALSE,
-  threads_per_chain = 8,
+  threads_per_chain = ceiling(parallel::detectCores()/2),
   ...
 )
 }
@@ -86,11 +89,15 @@ directional movement between a pair of regions}
 \item{movement_disallow}{\code{\link[=integer]{integer()}} \code{\link[=matrix]{matrix()}} As for
 \code{movement_allow}, but specified movement is disallowed}
 
+\item{mu_retention_rate}{\link[=array]{numeric()}}
+
 \item{mu_fishing_rate}{\link[=array]{numeric()}}
 
 \item{mu_mortality_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{mu_reporting_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_selectivity}{\code{\link[=numeric]{numeric()}}}
 
 \item{mu_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
@@ -98,11 +105,15 @@ directional movement between a pair of regions}
 
 \item{mu_dispersion}{\code{\link[=numeric]{numeric()}}}
 
+\item{cv_retention_rate}{\link[=array]{numeric()}}
+
 \item{cv_fishing_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_mortality_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_reporting_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{cv_selectivity}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
@@ -115,8 +126,6 @@ directional movement between a pair of regions}
 \item{cv_movement_term_deviation}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_movement_size_deviation}{\code{\link[=numeric]{numeric()}}}
-
-\item{sd_fishing_term_deviation}{\code{\link[=numeric]{numeric()}}}
 
 \item{tolerance_expected}{\code{\link[=numeric]{numeric()}}}
 
