@@ -58,7 +58,7 @@ transformed data {
 parameters {
   // Movement parameters
   array[P] real movement_parameter_mean_step; // Mean across dimensions
-//  array[T, P] real movement_parameter_time_step; // Deviation by 'year'
+  array[T, P] real movement_parameter_time_step; // Deviation by 'year'
 //  array[I, P] real movement_parameter_term_step; // Deviation by 'season'
 //  array[S, P] real movement_parameter_size_step; // Deviation by 'size'
   // Stepwise instantaneous rate parameters
@@ -70,6 +70,8 @@ parameters {
 //  real<lower=0, upper=1> initial_loss_step; // Fraction (per tag)
   // Selectivity
 //  vector<lower=0, upper=1>[S - 1] selectivity_short;
+  // Autoregressive process parameters
+  real<lower=0, upper=1> ar_movement_time_deviation;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -99,6 +101,9 @@ transformed parameters {
   // Declare movement values (for priors)
   matrix<lower=0, upper=1>[X, X] movement_mean_step = rep_matrix(0.0, X, X);
   matrix<lower=0, upper=1>[X, X] movement_mean_rate = rep_matrix(0.0, X, X);
+  array[T] matrix<lower=0, upper=1>[X,X] movement_time_step = rep_array(rep_matrix(0.0, X, X), T);
+  array[T] matrix<lower=0, upper=1>[X,X] movement_time_rate = rep_array(rep_matrix(0.0, X, X), T);
+  matrix<lower=0, upper=1>[X, X] movement_time_product = rep_matrix(0.0, X, X);
 //  array[T] matrix<lower=-1, upper=1>[X,X] movement_time_deviation=rep_array(rep_matrix(0.0,X,X),T);
 //  array[I] matrix<lower=-1, upper=1>[X,X] movement_term_deviation=rep_array(rep_matrix(0.0,X,X),I);
 //  array[S] matrix<lower=-1, upper=1>[X,X] movement_size_deviation=rep_array(rep_matrix(0.0,X,X),S);
@@ -114,7 +119,7 @@ transformed parameters {
   // Assemble movement step [N, S] [X, X]
   movement_step = assemble_movement_step(
     movement_parameter_mean_step,
-    rep_array(0.0, N, P), // movement_parameter_time_step,
+    movement_parameter_time_step,
     rep_array(0.0, 1, P), // movement_parameter_term_step,
     rep_array(0.0, 1, P), // movement_parameter_size_step,
     movement_index
@@ -131,6 +136,22 @@ transformed parameters {
     movement_index,
     I // nterm = I for movement mean rate
   );
+  // Assemble movement time step [T] [X, X]
+//  movement_time_step = assemble_movement_time_rate(
+//    movement_parameter_mean_step,
+//    movement_parameter_time_step,
+//    movement_index,
+//    1 // nterm = 1 for movement time step
+//  );
+  // Assemble movement time rate [T] [X, X]
+  movement_time_rate = assemble_movement_time_rate(
+    movement_parameter_mean_step,
+    movement_parameter_time_step,
+    movement_index,
+    I
+  );
+  // Assemble movement time product [X, X]
+  // movement_time_product = assemble_movement_time_product(movement_time_step);
 
   /**
 
@@ -240,6 +261,30 @@ model {
       } // End l
     } // End s
   } // End n
+
+//  // Movement time prior: matrix product constraint
+//  to_vector(movement_time_product) ~ normal(
+//    to_vector(matrix_power(movement_mean_step, T)),
+//    0.01
+//  );
+  // Movement time prior: AR1 process
+  to_vector(movement_time_rate[1]) ~ normal(
+    to_vector(movement_mean_rate),
+    cv_movement_time_deviation
+    * to_vector(movement_mean_rate)
+    + tolerance_movement
+  );
+  for (t in 2:T) {
+    to_vector(movement_time_rate[t]) ~ normal(
+      to_vector(movement_mean_rate)
+      + ar_movement_time_deviation
+      * to_vector(movement_time_rate[t - 1]),
+      cv_movement_time_deviation
+      * to_vector(movement_mean_rate)
+      + tolerance_movement
+    );
+  }
+
 
   // Movement retention prior
   /**
@@ -382,13 +427,7 @@ generated quantities {
   array[T, X] real fishing_time_rate = rep_array(0.0, T, X);
   array[I, X] real fishing_term_rate = rep_array(0.0, I, X);
   array[S, X] real fishing_size_rate = rep_array(0.0, S, X);
-  // Assemble movement time rate [T] [X, X]
-  movement_time_rate = assemble_movement_time_rate(
-    movement_parameter_mean_step,
-    movement_parameter_time_step,
-    movement_index,
-    I
-  );
+
   // Assemble movement term rate [I] [X, X]
   movement_term_rate = assemble_movement_term_rate(
     movement_parameter_mean_step,

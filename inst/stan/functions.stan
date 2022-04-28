@@ -339,6 +339,32 @@ array[] matrix assemble_movement_time_rate (
 }
 
 /**
+* Assemble the matrix product of movement time rates
+*
+* @param mtime, an array [T] holding matrices [X, X]
+*
+* @return a matrix [X, X]
+*/
+matrix assemble_movement_time_product (array[] matrix mtime) {
+  // Get dimensions
+  int T = dims(mtime)[1];
+  int X = dims(mtime)[2];
+  // Declare value
+  matrix[X, X] movement_time_product = diag_matrix(rep_vector(1.0, X));
+  // Populate value
+  for (t in 1:T) {
+    movement_time_product = movement_time_product * mtime[t];
+  }
+  // Return value
+  return movement_time_product;
+}
+
+// Current above here ----------------------------------------------------------
+
+
+
+
+/**
 * Assemble a movement term rate array
 *
 * @param pmean, an array of dimension [P]
@@ -826,3 +852,4 @@ array[,] vector assemble_fishing_term_deviation(
   // Return fishing term deviation
   return fishing_term_deviation;
 }
+

@@ -59,6 +59,7 @@
 #' @param data [list()] See details
 #' @param chains [integer()] number of chains
 #' @param step_size [numeric()] initial step size
+#' @param adapt_delta [numeric()] the adaptation target acceptance statistic
 #' @param iter_warmup [integer()] number of warmup iterations
 #' @param iter_sampling [integer()] number of sampling iterations
 #' @param use_reduce_sum [logical()] use within chain parallel threading
@@ -67,67 +68,68 @@
 #'
 #' @details TBD
 #'
-#' @return [mmmstan::fit()]
+#' @return [mmmstan::mmmstan()]
 #' @export
 #'
-fit <- function (tag_data,
-                 # Tag arguments
-                 list_regions,
-                 list_sizes,
-                 year_released_start,
-                 year_recovered_end,
-                 step_liberty_max = NULL,
-                 term_interval = "quarter",
-                 colname_date_released = "date_released",
-                 colname_date_recovered = "date_recovered",
-                 colname_region_released = "region_released",
-                 colname_region_recovered = "region_recovered",
-                 colname_size_released = "size_released",
-                 # Movement index
-                 movement_pattern = 2,
-                 movement_allow = NULL,
-                 movement_disallow = NULL,
-                 # Prior means
-                 mu_retention_rate = rep(0.7, length(list_regions)),
-                 mu_fishing_rate = array(
-                   0.1,
-                   dim = c(
-                     year_recovered_end - year_released_start + 1,
-                     length(list_regions)
-                   )
-                 ),
-                 mu_mortality_rate = rep(0.1, length(list_regions)),
-                 mu_reporting_rate = rep(1, length(list_regions)),
-                 mu_selectivity = rep(1, length(list_sizes) - 1L),
-                 mu_initial_loss_rate = 0.1,
-                 mu_ongoing_loss_rate = 0.02,
-                 mu_dispersion = 1,
-                 # Prior coefficients of variation
-                 cv_retention_rate = 0.2,
-                 cv_fishing_rate = 0.1,
-                 cv_mortality_rate = 0.1,
-                 cv_reporting_rate = 0.1,
-                 cv_selectivity = 0.1,
-                 cv_initial_loss_rate = 0.1,
-                 cv_ongoing_loss_rate = 0.1,
-                 cv_dispersion = 0.25,
-                 # Movement prior coefficients of variation
-                 cv_movement_time_deviation = 0.1,
-                 cv_movement_term_deviation = 0.1,
-                 cv_movement_size_deviation = 0.1,
-                 # Tolerance value
-                 tolerance_expected = 1e-12,
-                 tolerance_movement = 1e-12,
-                 tolerance_fishing = 1e-12,
-                 # CmdStanR
-                 data = NULL,
-                 chains = 1,
-                 step_size = 0.01,
-                 iter_warmup = 250,
-                 iter_sampling = 750,
-                 use_reduce_sum = FALSE,
-                 threads_per_chain = ceiling(parallel::detectCores() / 2),
-                 ...) {
+mmmstan <- function (tag_data,
+                     # Tag arguments
+                     list_regions,
+                     list_sizes,
+                     year_released_start,
+                     year_recovered_end,
+                     step_liberty_max = NULL,
+                     term_interval = "quarter",
+                     colname_date_released = "date_released",
+                     colname_date_recovered = "date_recovered",
+                     colname_region_released = "region_released",
+                     colname_region_recovered = "region_recovered",
+                     colname_size_released = "size_released",
+                     # Movement index
+                     movement_pattern = 2,
+                     movement_allow = NULL,
+                     movement_disallow = NULL,
+                     # Prior means
+                     mu_retention_rate = rep(0.7, length(list_regions)),
+                     mu_fishing_rate = array(
+                       0.1,
+                       dim = c(
+                         year_recovered_end - year_released_start + 1,
+                         length(list_regions)
+                       )
+                     ),
+                     mu_mortality_rate = rep(0.1, length(list_regions)),
+                     mu_reporting_rate = rep(1, length(list_regions)),
+                     mu_selectivity = rep(1, length(list_sizes) - 1L),
+                     mu_initial_loss_rate = 0.1,
+                     mu_ongoing_loss_rate = 0.02,
+                     mu_dispersion = 1,
+                     # Prior coefficients of variation
+                     cv_retention_rate = 0.2,
+                     cv_fishing_rate = 0.1,
+                     cv_mortality_rate = 0.1,
+                     cv_reporting_rate = 0.1,
+                     cv_selectivity = 0.1,
+                     cv_initial_loss_rate = 0.1,
+                     cv_ongoing_loss_rate = 0.1,
+                     cv_dispersion = 0.25,
+                     # Movement prior coefficients of variation
+                     cv_movement_time_deviation = 0.1,
+                     cv_movement_term_deviation = 0.1,
+                     cv_movement_size_deviation = 0.1,
+                     # Tolerance value
+                     tolerance_expected = 1e-12,
+                     tolerance_movement = 1e-12,
+                     tolerance_fishing = 1e-12,
+                     # CmdStanR
+                     data = NULL,
+                     chains = 1,
+                     step_size = 0.01,
+                     adapt_delta = 0.9,
+                     iter_warmup = 250,
+                     iter_sampling = 750,
+                     use_reduce_sum = FALSE,
+                     threads_per_chain = ceiling(parallel::detectCores() / 2),
+                     ...) {
 
   # Check arguments ------------------------------------------------------------
 
@@ -366,6 +368,12 @@ fit <- function (tag_data,
     lower = 0,
     finite = TRUE
   )
+  checkmate::assert_number(
+    adapt_delta,
+    lower = 0,
+    upper = 1,
+    finite = TRUE
+  )
   checkmate::assert_integerish(
     iter_warmup,
     lower = 1,
@@ -518,6 +526,7 @@ fit <- function (tag_data,
     data = data,
     chains = chains,
     step_size = step_size,
+    adapt_delta = adapt_delta,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     threads_per_chain = threads_per_chain # ,
@@ -529,5 +538,5 @@ fit <- function (tag_data,
   structure(list(
     data = data,
     fit = fit),
-    class = "mmmstan::fit")
+    class = "mmmstan")
 }

@@ -107,6 +107,7 @@ if (FALSE) {
   data <- NULL
   chains <- 1
   step_size <- 0.01
+  adapt_delta <- 0.8
   iter_warmup <- 250
   iter_sampling <- 750
   use_reduce_sum <- FALSE
@@ -114,7 +115,7 @@ if (FALSE) {
   
   # Fit ------------------------------------------------------------------------
   
-  m1 <- fit(
+  m1 <- mmmstan(
     tag_data = tag_data,
     list_regions = list_regions,
     list_sizes = list_sizes,
@@ -156,6 +157,7 @@ if (FALSE) {
     data = data,
     chains = chains,
     step_size = step_size,
+    adapt_delta = adapt_delta,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     use_reduce_sum = use_reduce_sum,
