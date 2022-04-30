@@ -10,8 +10,10 @@ mmmstan(
   list_sizes,
   year_released_start,
   year_recovered_end,
+  step_interval = "month",
   step_liberty_max = NULL,
-  term_interval = "quarter",
+  terms_unique_movement = 1L,
+  nest_terms_within_times = FALSE,
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
@@ -63,9 +65,13 @@ mmmstan(
 
 \item{year_recovered_end}{\code{\link[=integer]{integer()}} year that the last tag was recovered}
 
+\item{step_interval}{\code{\link[=character]{character()}} in \code{c("month", "quarter", "year")}}
+
 \item{step_liberty_max}{\code{\link[=integer]{integer()}}}
 
-\item{term_interval}{\code{\link[=character]{character()}} in \code{c("year", "month", "quarter")}}
+\item{terms_unique_movement}{\code{\link[=integer]{integer()}}}
+
+\item{nest_terms_within_times}{\code{\link[=logical]{logical()}} nest terms within times?}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
 

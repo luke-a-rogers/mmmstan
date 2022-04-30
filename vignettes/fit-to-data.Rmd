@@ -51,16 +51,20 @@ if (FALSE) {
   
   # Three regions
   list_regions <- list(ak = 1:6, bc = 7, cc = 8)
-  # movement_pattern <- 2
+  movement_pattern <- 2
   movement_allow <- NULL
   movement_disallow <- NULL
   
-  # Term arguments -------------------------------------------------------------
+  # Terms unique movement ------------------------------------------------------
   
-  # term_interval <- "quarter"
-  term_interval <- "year"
-  movement_pattern <- 1
+  terms_unique_movement <- 1
+  nest_terms_within_times <- FALSE
   
+  # Step arguments -------------------------------------------------------------
+  
+  step_interval <- "year"
+  step_liberty_max <- NULL
+
   # Size arguments -------------------------------------------------------------
   
   # list_sizes <- list(s = 400:499, m = 500:599, l = 600:699, xl = 700:799)
@@ -70,8 +74,6 @@ if (FALSE) {
   
   year_released_start <- 1979
   year_recovered_end <- 2015 # Go to 2017 with present data
-  step_liberty_max <- NULL
-  term_interval <- "quarter"
   colname_date_released <- "released_date" # "date_released"
   colname_date_recovered <- "recovered_date" # "date_recovered"
   colname_region_released <- "released_region" # "region_released"
@@ -120,8 +122,10 @@ if (FALSE) {
     list_sizes = list_sizes,
     year_released_start = year_released_start,
     year_released_end = year_released_end,
+    step_interval = step_interval,
     step_liberty_max = step_liberty_max,
-    term_interval = term_interval,
+    terms_unique_movement = terms_unique_movement,
+    nest_terms_within_times = nest_terms_within_times,
     colname_date_released = colname_date_released, # "date_released",
     colname_date_recovered = colname_date_recovered, # "date_recovered",
     colname_region_released = colname_region_released, # "region_released",
