@@ -19,8 +19,10 @@
 #' @param list_sizes [list()]
 #' @param year_released_start [integer()] year that the first tag was released
 #' @param year_recovered_end [integer()] year that the last tag was recovered
+#' @param step_interval [character()] in \code{c("month", "quarter", "year")}
 #' @param step_liberty_max [integer()]
-#' @param term_interval [character()] in \code{c("year", "month", "quarter")}
+#' @param terms_unique_movement [integer()]
+#' @param nest_terms_within_times [logical()] nest terms within times?
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
@@ -75,8 +77,10 @@ mmmstan <- function (tag_data,
                      list_sizes,
                      year_released_start,
                      year_recovered_end,
+                     step_interval = "month",
                      step_liberty_max = NULL,
-                     term_interval = "quarter",
+                     terms_unique_movement = 1L,
+                     nest_terms_within_times = FALSE,
                      colname_date_released = "date_released",
                      colname_date_recovered = "date_recovered",
                      colname_region_released = "region_released",
@@ -141,23 +145,32 @@ mmmstan <- function (tag_data,
   checkmate::assert_list(
     list_regions,
     any.missing = FALSE,
-    min.len = 2
+    min.len = 2,
+    null.ok = has_data
   )
   checkmate::assert_list(
     list_sizes,
     any.missing = FALSE,
-    min.len = 4
+    min.len = 1,
+    null.ok = has_data
   )
   checkmate::assert_integerish(
     year_released_start,
     any.missing = FALSE,
-    len = 1L
+    len = 1L,
+    null.ok = has_data
   )
   checkmate::assert_integerish(
     year_recovered_end,
     lower = year_released_start + 1L,
     any.missing = FALSE,
-    len = 1L
+    len = 1L,
+    null.ok = has_data
+  )
+  checkmate::assert_choice(
+    step_interval,
+    choices = c("year", "quarter", "month"),
+    null.ok = has_data
   )
   checkmate::assert_integerish(
     step_liberty_max,
@@ -166,39 +179,56 @@ mmmstan <- function (tag_data,
     len = 1,
     null.ok = TRUE
   )
-  checkmate::assert_choice(
-    term_interval,
-    choices = c("year", "quarter", "month")
+  checkmate::assert_integerish(
+    terms_unique_movement,
+    lower = 1L,
+    upper = (year_recovered_end - year_released_start + 1) *
+      compute_steps_per_year(step_interval),
+    any.missing = FALSE,
+    len = 1L,
+    null.ok = has_data
+  )
+  checkmate::assert_logical(
+    nest_terms_within_times,
+    any.missing = FALSE,
+    len = 1L,
+    null.ok = has_data
   )
   checkmate::assert_character(
     colname_date_released,
     any.missing = FALSE,
-    len = 1
+    len = 1,
+    null.ok = has_data
   )
   checkmate::assert_character(
     colname_date_recovered,
     any.missing = FALSE,
-    len = 1
+    len = 1,
+    null.ok = has_data
   )
   checkmate::assert_character(
     colname_region_released,
     any.missing = FALSE,
-    len = 1
+    len = 1,
+    null.ok = has_data
   )
   checkmate::assert_character(
     colname_region_recovered,
     any.missing = FALSE,
-    len = 1
+    len = 1,
+    null.ok = has_data
   )
   checkmate::assert_character(
     colname_size_released,
     any.missing = FALSE,
-    len = 1
+    len = 1,
+    null.ok = has_data
   )
   # Movement index
   checkmate::assert_choice(
     movement_pattern,
-    choices =  c(1L, 2L)
+    choices =  c(1L, 2L),
+    null.ok = has_data
   )
   checkmate::assert_matrix(
     movement_allow,
@@ -389,28 +419,15 @@ mmmstan <- function (tag_data,
     cat("\nfit(): data argument present--ignoring most other arguments\n")
   }
 
-  # Compute dates --------------------------------------------------------------
-
-  if (is.null(data)) {
-    # Initial date of the first released step
-    date_released_start <- lubridate::as_date(
-      paste0(year_released_start, "-01-01")
-    )
-    # Final date of the last released step
-    date_recovered_end <- lubridate::as_date(
-      paste0(year_recovered_end, "-12-31")
-    )
-  }
-
   # Assemble index limits ------------------------------------------------------
 
   if (is.null(data)) {
-    n_regions <- length(list_regions)
-    n_times <- compute_n_times(date_released_start, date_recovered_end)
-    n_terms <- compute_n_terms(term_interval)
+    n_times <- year_recovered_end - year_released_start + 1L
+    n_steps <- n_times * compute_steps_per_year(step_interval)
+    n_terms <- terms_unique_movement
     n_sizes <- length(list_sizes)
-    n_steps <- n_times * n_terms
     n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
+    n_regions <- length(list_regions)
   }
 
   # Assemble tag data ----------------------------------------------------------
@@ -423,7 +440,7 @@ mmmstan <- function (tag_data,
       year_released_start = year_released_start,
       year_recovered_end = year_recovered_end,
       step_liberty_max = n_liberty,
-      term_interval = term_interval,
+      step_interval = step_interval,
       colname_date_released = colname_date_released,
       colname_date_recovered = colname_date_recovered,
       colname_region_released = colname_region_released,
@@ -443,22 +460,36 @@ mmmstan <- function (tag_data,
     )
   }
 
+  # Assemble index vectors -----------------------------------------------------
+
+  if (is.null(data)) {
+    step_to_time <- create_step_to_time(n_steps, n_times)
+    step_to_term <- create_step_to_term(
+      n_steps,
+      n_times,
+      n_terms,
+      nest_terms_within_times
+    )
+  }
+
   # Assemble data --------------------------------------------------------------
 
   if (is.null(data)) {
     data <- list(
       # Index limits
-      X = n_regions, # Number of geographic regions
-      T = n_times, # Number of times (usually years; release only)
-      I = n_terms, # Number of terms per unit of time
+      N = n_steps, # Number of model steps
+      T = n_times, # Number of times (years)
+      I = n_terms, # Number of unique terms (seasons)
       S = n_sizes, # Number of size classes
-      N = n_steps, # Number of release steps (T * I)
       L = n_liberty, # Number of maximum steps at liberty
+      X = n_regions, # Number of geographic regions
       P = sum(movement_index) - n_regions, # Number of movement rate mean parameters
       # Tag data
       tags = tag_array, # [N, S, L, X, X]
       # Movement index array
       movement_index = movement_index, # [X, X]
+      step_to_time = step_to_time, # [N]
+      step_to_term = step_to_term, # [N]
       # Prior means
       mu_fishing_rate = mu_fishing_rate, # [T, X]
       mu_mortality_rate = mu_mortality_rate, # [X]
@@ -488,7 +519,6 @@ mmmstan <- function (tag_data,
 
   # Check dimensions data elements ---------------------------------------------
 
-  checkmate::assert_true(data$N == data$T * data$I)
   checkmate::assert_true(data$P == sum(data$movement_index) - data$X)
 
   # Initialize the model -------------------------------------------------------
@@ -513,7 +543,7 @@ mmmstan <- function (tag_data,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     threads_per_chain = threads_per_chain,
-    refresh = 1 # ,
+    # refresh = 100 # ,
     # ...
   )
 

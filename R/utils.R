@@ -1,4 +1,4 @@
-#' Compute The Number of Terms Per Year
+#' Compute The Number of Model Steps Per Year
 #'
 #' @param x [character()] one of \code{"year"}, \code{"quarter"}
 #'   or \code{"month"}
@@ -8,17 +8,17 @@
 #'
 #' @examples
 #'
-#' compute_n_terms("year")
-#' compute_n_terms("quarter")
-#' compute_n_terms("month")
+#' compute_steps_per_year("year")
+#' compute_steps_per_year("quarter")
+#' compute_steps_per_year("month")
 #'
-compute_n_terms <- function (x) {
+compute_steps_per_year <- function (x) {
 
   # Check arguments ------------------------------------------------------------
 
   checkmate::assert_choice(x = x, choices = c("year", "quarter", "month"))
 
-  # Return the number of terms -------------------------------------------------
+  # Return the number of steps per time ----------------------------------------
 
   ifelse(x == "year", 1L, ifelse(x == "quarter", 4L, 12L))
 }
@@ -33,9 +33,9 @@ compute_n_terms <- function (x) {
 #'
 #' @examples
 #'
-#' compute_n_times("2011-01-01", "2014-12-31")
+#' compute_n_years("2011-01-01", "2014-12-31")
 #'
-compute_n_times <- function (a, b) {
+compute_n_years <- function (a, b) {
 
   # Check arguments ------------------------------------------------------------
 
@@ -212,7 +212,7 @@ create_group <- function (x, list_x) {
 #' @param date_recovered [character()] [vector()] dates as \code{"\%Y-\%m-\%d"}
 #' @param date_released_start [character()] date as \code{"\%Y-\%m-\%d"}
 #' @param date_recovered_end [character()] date as \code{"\%Y-\%m-\%d"}
-#' @param term_interval [character()] one of \code{"year"}, \code{"quarter"}
+#' @param step_interval [character()] one of \code{"year"}, \code{"quarter"}
 #'   or \code{"month"}
 #' @param step_liberty_max [integer()] maximum steps at liberty
 #'
@@ -252,7 +252,7 @@ create_step_liberty <- function (date_released,
                                  date_recovered,
                                  date_released_start,
                                  date_recovered_end,
-                                 term_interval,
+                                 step_interval,
                                  step_liberty_max) {
 
   # Check arguments ------------------------------------------------------------
@@ -282,16 +282,16 @@ create_step_liberty <- function (date_released,
 
   # Create step liberty --------------------------------------------------------
 
-  if (term_interval == "year") {
+  if (step_interval == "year") {
     step_liberty <- year_recovered - year_released + 1
-  } else if (term_interval == "quarter") {
+  } else if (step_interval == "quarter") {
     step_liberty <- 4 * (year_recovered - year_released) +
       (quarter_recovered - quarter_released) + 1
-  } else if (term_interval == "month") {
+  } else if (step_interval == "month") {
     step_liberty <- 12 * (year_recovered - year_released) +
       (month_recovered - month_released) + 1
   } else {
-    stop("term_interval must be 'year', 'quarter', or 'month'")
+    stop("step_interval must be 'year', 'quarter', or 'month'")
   }
 
   # Replace disallowed dates by NAs --------------------------------------------
@@ -309,7 +309,7 @@ create_step_liberty <- function (date_released,
 #' @param date_released [character()] [vector()] dates as \code{"\%Y-\%m-\%d"}
 #' @param date_released_start [character()] date as \code{"\%Y-\%m-\%d"}
 #' @param date_recovered_end [character()] date as \code{"\%Y-\%m-\%d"}
-#' @param term_interval [character()] one of \code{"year"}, \code{"quarter"}
+#' @param step_interval [character()] one of \code{"year"}, \code{"quarter"}
 #'   or \code{"month"}
 #'
 #' @return [integer()] [vector()] step released
@@ -327,7 +327,7 @@ create_step_liberty <- function (date_released,
 create_step_released <- function (date_released,
                                   date_released_start,
                                   date_recovered_end,
-                                  term_interval) {
+                                  step_interval) {
 
   # Check arguments ------------------------------------------------------------
 
@@ -355,21 +355,91 @@ create_step_released <- function (date_released,
 
   # Create step released -------------------------------------------------------
 
-  if (term_interval == "year") {
+  if (step_interval == "year") {
     step_released <- year_released - year_start + 1
-  } else if (term_interval == "quarter") {
+  } else if (step_interval == "quarter") {
     step_released <- 4 * (year_released - year_start) +
       (quarter_released - quarter_start) + 1
-  } else if (term_interval == "month") {
+  } else if (step_interval == "month") {
     step_released <- 12 * (year_released - year_start) +
       (month_released - month_start) + 1
   } else {
-    stop("term_interval must be 'year', 'quarter', or 'month'")
+    stop("step_interval must be 'year', 'quarter', or 'month'")
   }
 
   # Return step released -------------------------------------------------------
 
   return(as.integer(step_released))
+}
+
+#' Create Step to Time Index
+#'
+#' @param n_steps [integer()] number of model steps
+#' @param n_times [integer()] number of times (years)
+#'
+#' @return [integer()][vector()]
+#' @export
+#'
+create_step_to_time <- function (n_steps, n_times) {
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_true(magrittr::mod(n_steps, n_times) == 0L)
+
+  # Assemble step to time ------------------------------------------------------
+
+  step_to_time <- rep(
+    seq_len(n_times),
+    each = ceiling(n_steps / n_times)
+  )[seq_len(n_steps)]
+
+  # Return step to time --------------------------------------------------------
+
+  return(step_to_time)
+}
+
+#' Create Step to Term Index
+#'
+#' @param n_steps [integer()] number of model steps
+#' @param n_times [integer()] number of times (years)
+#' @param n_terms [integer()] number of unique terms (seasons)
+#' @param nest_terms_within_times [logical()] nest terms within times?
+#'
+#' @return [integer()][vector()]
+#' @export
+#'
+create_step_to_term <- function (n_steps,
+                                 n_times,
+                                 n_terms,
+                                 nest_terms_within_times = FALSE) {
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_true(magrittr::mod(n_steps, n_times) == 0L)
+  checkmate::assert_true(magrittr::mod(n_steps, n_terms) == 0L)
+  checkmate::assert_logical(
+    nest_terms_within_times,
+    any.missing = FALSE,
+    len = 1L
+  )
+
+  # Assemble step to term ------------------------------------------------------
+
+  if (nest_terms_within_times) {
+    step_to_term <- rep(
+      rep(seq_len(n_terms), n_times),
+      each  = ceiling(n_steps / (n_times * n_terms))
+    )[seq_len(n_steps)]
+  } else {
+    step_to_term <- rep(
+      seq_len(n_terms),
+      each = ceiling(n_steps / n_terms)
+    )[seq_len(n_steps)]
+  }
+
+  # Return step to term --------------------------------------------------------
+
+  return(step_to_term)
 }
 
 #' Create Tag Array
@@ -379,10 +449,10 @@ create_step_released <- function (date_released,
 #' @param list_sizes [list()]
 #' @param year_released_start [integer()] year that the first tag was released
 #' @param year_recovered_end [integer()] year the last tag was recovered
+#' @param step_interval [character()] one of \code{"year"}, \code{"quarter"}
+#'   or \code{"month"}
 #' @param step_liberty_max [integer()] optional constraint on the maximum
 #'   steps at liberty
-#' @param term_interval [character()] one of \code{"year"}, \code{"quarter"}
-#'   or \code{"month"}
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
@@ -399,8 +469,8 @@ create_tag_array <- function (tag_data,
                               list_sizes,
                               year_released_start,
                               year_recovered_end,
+                              step_interval = "month",
                               step_liberty_max = NULL,
-                              term_interval = "quarter",
                               colname_date_released = "date_released",
                               colname_date_recovered = "date_recovered",
                               colname_region_released = "region_released",
@@ -423,16 +493,16 @@ create_tag_array <- function (tag_data,
     any.missing = FALSE,
     len = 1L
   )
+  checkmate::assert_choice(
+    x = step_interval,
+    choices = c("year", "quarter", "month")
+  )
   checkmate::assert_integerish(
     step_liberty_max,
     lower = 2,
     len = 1,
     any.missing = FALSE,
     null.ok = TRUE
-  )
-  checkmate::assert_choice(
-    x = term_interval,
-    choices = c("year", "quarter", "month")
   )
   checkmate::assert_choice(
     x = colname_date_released,
@@ -477,9 +547,8 @@ create_tag_array <- function (tag_data,
 
   # Compute index limits -------------------------------------------------------
 
-  n_times <- compute_n_times(date_released_start, date_recovered_end)
-  n_terms <- compute_n_terms(term_interval)
-  n_steps <- n_times * n_terms
+  n_times <- compute_n_years(date_released_start, date_recovered_end)
+  n_steps <- n_times * compute_steps_per_year(step_interval)
   n_sizes <- length(list_sizes)
   n_regions <- length(list_regions)
   n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
@@ -507,7 +576,7 @@ create_tag_array <- function (tag_data,
         date_released = .data$date_released,
         date_released_start = date_released_start,
         date_recovered_end = date_recovered_end,
-        term_interval = term_interval
+        step_interval = step_interval
       ),
       s = create_group(x = .data$size_released, list_x = list_sizes),
       x = create_group(x = .data$region_released, list_x = list_regions)
@@ -516,13 +585,12 @@ create_tag_array <- function (tag_data,
       #   date_recovered = .data$date_recovered,
       #   date_released_start = date_released_start,
       #   date_released_end = date_released_end,
-      #   term_interval = term_interval,
+      #   step_interval = step_interval,
       #   step_liberty_max = step_liberty_max
       # ),
       # y = create_group(x = .data$region_recovered, list_x = list_regions)
     ) %>%
-    # dplyr::filter(.data$n + .data$l - 1L <= n_times * n_terms) %>%
-    dplyr::filter(.data$n < n_steps) %>% # n_steps = T * I
+    dplyr::filter(.data$n < n_steps) %>% # n_steps = N
     dplyr::select(
       .data$n,
       .data$s,
@@ -572,7 +640,7 @@ create_tag_array <- function (tag_data,
         date_released = .data$date_released,
         date_released_start = date_released_start,
         date_recovered_end = date_recovered_end,
-        term_interval = term_interval
+        step_interval = step_interval
       ),
       s = create_group(x = .data$size_released, list_x = list_sizes),
       x = create_group(x = .data$region_released, list_x = list_regions),
@@ -581,13 +649,13 @@ create_tag_array <- function (tag_data,
         date_recovered = .data$date_recovered,
         date_released_start = date_released_start,
         date_recovered_end = date_recovered_end,
-        term_interval = term_interval,
+        step_interval = step_interval,
         step_liberty_max = step_liberty_max
       ),
       y = create_group(x = .data$region_recovered, list_x = list_regions)
     ) %>%
     tidyr::drop_na() %>%
-    dplyr::filter(.data$n < n_steps) %>% # n_steps = T * I
+    dplyr::filter(.data$n < n_steps) %>% # n_steps = N
     dplyr::filter(.data$l > 1L) %>%
     dplyr::filter(.data$l <= n_liberty) %>%
     dplyr::filter(.data$n + .data$l - 2L < n_steps) %>% # One beyond released
