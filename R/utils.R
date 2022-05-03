@@ -442,6 +442,66 @@ create_step_to_term <- function (n_steps,
   return(step_to_term)
 }
 
+#' Create Step to Rate Power
+#'
+#' @param step_interval [character()] in \code{c("month", "quarter", "year")}
+#' @param rate_interval [character()] in \code{c("month", "quarter", "year")}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' create_step_to_rate_power("month", "month")
+#' create_step_to_rate_power("month", "quarter")
+#' create_step_to_rate_power("month", "year")
+#' create_step_to_rate_power("quarter", "month")
+#' create_step_to_rate_power("quarter", "quarter")
+#' create_step_to_rate_power("quarter", "year")
+#' create_step_to_rate_power("year", "month")
+#' create_step_to_rate_power("year", "quarter")
+#' create_step_to_rate_power("year", "year")
+#'
+create_step_to_rate_power <- function (step_interval, rate_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_choice(
+    step_interval,
+    choices = c("year", "quarter", "month")
+  )
+  checkmate::assert_choice(
+    rate_interval,
+    choices = c("year", "quarter", "month")
+  )
+
+  # Compute power --------------------------------------------------------------
+
+  if (step_interval == rate_interval) {
+    n_power <- 1L
+  } else {
+    if (step_interval == "month") {
+      if (rate_interval == "quarter") {
+        n_power <- 3L
+      } else {
+        n_power <- 12L
+      }
+    } else if (step_interval == "quarter") {
+      if (rate_interval == "year") {
+        n_power <- 4L
+      } else {
+        stop("rate_interval must be equal or longer than step_interval")
+      }
+    } else {
+      stop("rate_interval must be equal or longer than step_interval")
+    }
+  }
+
+  # Return power ---------------------------------------------------------------
+
+  return(n_power)
+}
+
 #' Create Tag Array
 #'
 #' @param tag_data [data.frame()]

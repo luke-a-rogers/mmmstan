@@ -13,6 +13,7 @@ mmmstan(
   step_interval = "month",
   step_liberty_max = NULL,
   terms_unique_movement = 1L,
+  rate_interval = "year",
   nest_terms_within_times = FALSE,
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
@@ -36,10 +37,8 @@ mmmstan(
   cv_selectivity = 0.1,
   cv_initial_loss_rate = 0.1,
   cv_ongoing_loss_rate = 0.1,
+  cv_movement_deviation = 0.1,
   cv_dispersion = 0.25,
-  cv_movement_time_deviation = 0.1,
-  cv_movement_term_deviation = 0.1,
-  cv_movement_size_deviation = 0.1,
   tolerance_expected = 1e-12,
   tolerance_movement = 1e-12,
   tolerance_fishing = 1e-12,
@@ -51,6 +50,7 @@ mmmstan(
   iter_sampling = 750,
   use_reduce_sum = FALSE,
   threads_per_chain = 8,
+  refresh = 100,
   ...
 )
 }
@@ -70,6 +70,8 @@ mmmstan(
 \item{step_liberty_max}{\code{\link[=integer]{integer()}}}
 
 \item{terms_unique_movement}{\code{\link[=integer]{integer()}}}
+
+\item{rate_interval}{\code{\link[=character]{character()}} in \code{c("month", "quarter", "year")}}
 
 \item{nest_terms_within_times}{\code{\link[=logical]{logical()}} nest terms within times?}
 
@@ -120,13 +122,9 @@ directional movement between a pair of regions}
 
 \item{cv_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
+\item{cv_movement_deviation}{\code{\link[=numeric]{numeric()}}}
+
 \item{cv_dispersion}{\code{\link[=numeric]{numeric()}}}
-
-\item{cv_movement_time_deviation}{\code{\link[=numeric]{numeric()}}}
-
-\item{cv_movement_term_deviation}{\code{\link[=numeric]{numeric()}}}
-
-\item{cv_movement_size_deviation}{\code{\link[=numeric]{numeric()}}}
 
 \item{tolerance_expected}{\code{\link[=numeric]{numeric()}}}
 

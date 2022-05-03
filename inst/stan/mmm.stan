@@ -11,12 +11,15 @@ data {
   int<lower=2> L; // Number of maximum model steps at liberty
   int<lower=2> X; // Number of geographic regions
   int<lower=1> P; // Number of movement step parameters in one [N, S] slice
+  int<lower=1> K; // Matrix power to convert movement step to movement rate
   // Tag data
   array[N - 1, S, L, X, X] int<lower=0> tags;
   // Indexes
   array[X, X] int<lower=0, upper=1> movement_index;
   array[N] int<lower=1, upper=T> step_to_time;
   array[N] int<lower=1, upper=I> step_to_term;
+  // Structure
+  int<lower=0, upper=1> nest_term_within_time;
   // Prior means
   array[T] vector<lower=0>[X] mu_fishing_rate;
   vector<lower=0>[X] mu_mortality_rate;
@@ -24,6 +27,7 @@ data {
   vector<lower=0, upper=1>[S - 1] mu_selectivity;
   real<lower=0, upper=1> mu_initial_loss_rate; // Fraction
   real<lower=0> mu_ongoing_loss_rate; // Instantaneous
+//  real<lower=0> mu_random_walk_sigma;
   real<lower=0> mu_dispersion;
   // Prior coefficients of variation
   real<lower=0> cv_fishing_rate;
@@ -32,11 +36,8 @@ data {
   real<lower=0> cv_selectivity;
   real<lower=0> cv_initial_loss_rate;
   real<lower=0> cv_ongoing_loss_rate;
+//  real<lower=0> sd_random_walk_sigma;
   real<lower=0> cv_dispersion;
-  // Movement prior coefficients of variation
-  real<lower=0> cv_movement_time_deviation;
-  real<lower=0> cv_movement_term_deviation;
-  real<lower=0> cv_movement_size_deviation;
   // Tolerance values
   real<lower=0> tolerance_expected;
   real<lower=0> tolerance_movement;
@@ -84,14 +85,29 @@ parameters {
   vector<lower=0, upper=1>[S - 1] selectivity_short;
 
   */
-
+  // Random walk sigma
+  //real<lower=0> random_walk_sigma;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
 
 transformed parameters {
   // Declare step values (for computation)
-  array[N, S] matrix<lower=0, upper=1>[X, X] movement_step;
+  array[I, S] matrix<lower=0, upper=1>[X, X] movement_step;
+  array[I, S] matrix<lower=0, upper=1>[X, X] movement_rate;
+
+  // Assemble movement step [I, S] [X, X]
+  movement_step = assemble_movement_step(
+    a1, a2, a3, a4, a5, a6, a7, a8,
+    movement_index,
+    I, S, 8 // Currently ndims <= 8
+  );
+  // Assemble movement rate [I, S] [X, X]
+  movement_rate = assemble_movement_rate(
+    movement_step,
+    K // Matrix power to convert movement step to movement rate
+  );
+
   // array[N, S] matrix<lower=0, upper=1>[X, X] survival_step = rep_array(rep_matrix(0.0,X,X),N,S);
   // array[N, S] matrix<lower=0, upper=1>[X, X] observed_step = rep_array(rep_matrix(0.0,X,X),N,S);
   // Declare movement means (for priors)
@@ -124,13 +140,6 @@ transformed parameters {
   //   I
   // );
 
-  // Assemble movement step [N, S] [X, X]
-  movement_step = assemble_movement_step(
-    a1, a2, a3, a4, a5, a6, a7, a8,
-    movement_index,
-    step_to_term,
-    N, I, S, 8 // Currently ndims <= 8
-  );
 
   // Assemble survival step [N, S] [X, X]
   // survival_step = assemble_survival_step(
@@ -200,7 +209,7 @@ model {
         abundance[n, s, l] = abundance[n, s, l - 1]
 //        * survival_step[n + l - 2, s] // Previous step; diagonal matrix [X, X]
         * 0.85
-        * movement_step[n + l - 2, s]; // Prevous step; square matrix [X, X]
+        * movement_step[step_to_term[n + l - 2], s]; // Prevous step; square matrix [X, X]
         // Compute predicted
         predicted[n, s, l] = abundance[n, s, l] // Square matrix [X, X]
         * 0.05;
@@ -223,6 +232,43 @@ model {
       } // End l
     } // End s
   } // End n
+
+/**
+  random_walk_sigma ~ normal(mu_random_walk_sigma, sd_random_walk_sigma);
+
+  if (I > 1) {
+    // Cyclic movement prior deviation
+    if (nest_term_within_time == 1) {
+      for (s in 1:S) {
+        for (y in 1:X) {
+          for (x in 1:X) {
+            if (movement_index[x, y] == 1) {
+              movement_step[1, s][x, y] ~ normal(
+                movement_step[I, s][x, y],
+                cv_movement_deviation * movement_step[I, s][x, y]
+              );
+            }
+          }
+        }
+      }
+    }
+    // Movement deviation prior
+    for (i in 2:I) {
+      for (s in 1:S) {
+        for (y in 1:X) {
+          for (x in 1:X) {
+            if (movement_index[x, y] == 1) {
+              movement_step[i, s][x, y] ~ normal(
+                movement_step[i - 1, s][x, y],
+                cv_movement_deviation * movement_step[i - 1, s][x, y]
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+  */
 
   /**
   // Movement time deviation prior

@@ -22,7 +22,8 @@
 #' @param step_interval [character()] in \code{c("month", "quarter", "year")}
 #' @param step_liberty_max [integer()]
 #' @param terms_unique_movement [integer()]
-#' @param nest_terms_within_times [logical()] nest terms within times?
+#' @param rate_interval [character()] in \code{c("month", "quarter", "year")}
+#' @param nest_term_within_time [logical()] nest terms within times?
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
@@ -49,10 +50,8 @@
 #' @param cv_selectivity [numeric()]
 #' @param cv_initial_loss_rate [numeric()]
 #' @param cv_ongoing_loss_rate [numeric()]
+#' @param cv_movement_deviation [numeric()]
 #' @param cv_dispersion [numeric()]
-#' @param cv_movement_time_deviation [numeric()]
-#' @param cv_movement_term_deviation [numeric()]
-#' @param cv_movement_size_deviation [numeric()]
 #' @param tolerance_expected [numeric()]
 #' @param tolerance_movement [numeric()]
 #' @param tolerance_fishing [numeric()]
@@ -80,7 +79,8 @@ mmmstan <- function (tag_data,
                      step_interval = "month",
                      step_liberty_max = NULL,
                      terms_unique_movement = 1L,
-                     nest_terms_within_times = FALSE,
+                     rate_interval = "year",
+                     nest_term_within_time = FALSE,
                      colname_date_released = "date_released",
                      colname_date_recovered = "date_recovered",
                      colname_region_released = "region_released",
@@ -111,11 +111,8 @@ mmmstan <- function (tag_data,
                      cv_selectivity = 0.1,
                      cv_initial_loss_rate = 0.1,
                      cv_ongoing_loss_rate = 0.1,
+                     cv_movement_deviation = 0.1,
                      cv_dispersion = 0.25,
-                     # Movement prior coefficients of variation
-                     cv_movement_time_deviation = 0.1,
-                     cv_movement_term_deviation = 0.1,
-                     cv_movement_size_deviation = 0.1,
                      # Tolerance value
                      tolerance_expected = 1e-12,
                      tolerance_movement = 1e-12,
@@ -129,6 +126,7 @@ mmmstan <- function (tag_data,
                      iter_sampling = 750,
                      use_reduce_sum = FALSE,
                      threads_per_chain = 8,
+                     refresh = 100,
                      ...) {
 
   # Check arguments ------------------------------------------------------------
@@ -189,7 +187,7 @@ mmmstan <- function (tag_data,
     null.ok = has_data
   )
   checkmate::assert_logical(
-    nest_terms_within_times,
+    nest_term_within_time,
     any.missing = FALSE,
     len = 1L,
     null.ok = has_data
@@ -328,23 +326,12 @@ mmmstan <- function (tag_data,
     null.ok = has_data
   )
   checkmate::assert_number(
+    cv_movement_deviation,
+    lower = 0,
+    null.ok = has_data
+  )
+  checkmate::assert_number(
     cv_dispersion,
-    lower = 0,
-    null.ok = has_data
-  )
-  # Movement prior coefficients of variation
-  checkmate::assert_number(
-    cv_movement_time_deviation,
-    lower = 0,
-    null.ok = has_data
-  )
-  checkmate::assert_number(
-    cv_movement_term_deviation,
-    lower = 0,
-    null.ok = has_data
-  )
-  checkmate::assert_number(
-    cv_movement_size_deviation,
     lower = 0,
     null.ok = has_data
   )
@@ -412,6 +399,12 @@ mmmstan <- function (tag_data,
     any.missing = FALSE,
     len = 1
   )
+  checkmate::assert_integerish(
+    refresh,
+    lower = 1,
+    any.missing = FALSE,
+    len = 1
+  )
 
   # Print messages -------------------------------------------------------------
 
@@ -428,6 +421,7 @@ mmmstan <- function (tag_data,
     n_sizes <- length(list_sizes)
     n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
     n_regions <- length(list_regions)
+    n_power <- create_step_to_rate_power(step_interval, rate_interval)
   }
 
   # Assemble tag data ----------------------------------------------------------
@@ -468,7 +462,7 @@ mmmstan <- function (tag_data,
       n_steps,
       n_times,
       n_terms,
-      nest_terms_within_times
+      nest_term_within_time
     )
   }
 
@@ -484,12 +478,14 @@ mmmstan <- function (tag_data,
       L = n_liberty, # Number of maximum steps at liberty
       X = n_regions, # Number of geographic regions
       P = sum(movement_index) - n_regions, # Number of movement rate mean parameters
+      K = n_power,
       # Tag data
       tags = tag_array, # [N, S, L, X, X]
       # Movement index array
       movement_index = movement_index, # [X, X]
       step_to_time = step_to_time, # [N]
       step_to_term = step_to_term, # [N]
+      nest_term_within_time = as.integer(nest_term_within_time),
       # Prior means
       mu_fishing_rate = mu_fishing_rate, # [T, X]
       mu_mortality_rate = mu_mortality_rate, # [X]
@@ -505,11 +501,8 @@ mmmstan <- function (tag_data,
       cv_selectivity = cv_selectivity,
       cv_initial_loss_rate = cv_initial_loss_rate,
       cv_ongoing_loss_rate = cv_ongoing_loss_rate,
+      # cv_movement_deviation = cv_movement_deviation,
       cv_dispersion = cv_dispersion,
-      # Movement prior coefficients of variation
-      cv_movement_time_deviation = cv_movement_time_deviation,
-      cv_movement_term_deviation = cv_movement_term_deviation,
-      cv_movement_size_deviation = cv_movement_size_deviation,
       # Tolerance values
       tolerance_expected = tolerance_expected,
       tolerance_movement = tolerance_movement,
@@ -543,14 +536,44 @@ mmmstan <- function (tag_data,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     threads_per_chain = threads_per_chain,
-    # refresh = 100 # ,
+    refresh = refresh # ,
     # ...
+  )
+
+  # Extract draws --------------------------------------------------------------
+
+  # Movement rate
+  movement_rate_draws <- fit$draws() %>%
+    tidybayes::spread_draws(movement_rate[i,s,x,y])
+  # Dispersion
+  dispersion_draws <- fit$draws() %>%
+    tidybayes::spread_draws(dispersion)
+  # List
+  draws <- list(
+    movement_rate = movement_rate_draws,
+    dispersion = dispersion_draws
+  )
+
+  # Assemble summaries ---------------------------------------------------------
+
+  # Movement rate
+  movement_rate_summary <- movement_rate_draws %>%
+    tidybayes::summarise_draws()
+  # Dispersion
+  dispersion_summary <- dispersion_draws %>%
+    tidybayes::summarise_draws()
+  # List
+  summary <- list(
+    movement_rate = movement_rate_summary,
+    dipsersion = dispersion_summary
   )
 
   # Return values --------------------------------------------------------------
 
   structure(list(
     data = data,
-    fit = fit),
+    fit = fit,
+    draws = draws,
+    summary = summary),
     class = "mmmstan")
 }

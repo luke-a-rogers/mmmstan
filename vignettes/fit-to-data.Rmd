@@ -55,16 +55,20 @@ if (FALSE) {
   movement_allow <- NULL
   movement_disallow <- NULL
   
-  # Terms unique movement ------------------------------------------------------
-  
-  terms_unique_movement <- 1
-  nest_terms_within_times <- FALSE
-  
   # Step arguments -------------------------------------------------------------
   
-  step_interval <- "year"
+  step_interval <- "quarter"
   step_liberty_max <- NULL
 
+  # Terms unique movement ------------------------------------------------------
+  
+  terms_unique_movement <- 4
+  nest_term_within_time <- TRUE
+  
+  # Rate arguments -------------------------------------------------------------
+  
+  rate_interval <- "year"
+  
   # Size arguments -------------------------------------------------------------
   
   # list_sizes <- list(s = 400:499, m = 500:599, l = 600:699, xl = 700:799)
@@ -98,10 +102,8 @@ if (FALSE) {
   cv_selectivity <- 0.1
   cv_initial_loss_rate <- 0.1
   cv_ongoing_loss_rate <- 0.1
+  cv_movement_deviation <- 0.1
   cv_dispersion <- 0.25
-  cv_movement_time_deviation <- 0.1
-  cv_movement_term_deviation <- 0.1
-  cv_movement_size_deviation <- 0.1
   tolerance_expected <- 1e-12
   tolerance_movement <- 1e-12
   tolerance_fishing <- 1e-6
@@ -112,7 +114,8 @@ if (FALSE) {
   iter_warmup <- 250
   iter_sampling <- 750
   use_reduce_sum <- FALSE
-  threads_per_chain <- parallel::detectCores() / 2  
+  threads_per_chain <- parallel::detectCores() / 2
+  refresh <- 10
   
   # Fit ------------------------------------------------------------------------
   
@@ -121,11 +124,12 @@ if (FALSE) {
     list_regions = list_regions,
     list_sizes = list_sizes,
     year_released_start = year_released_start,
-    year_released_end = year_released_end,
+    year_recovered_end = year_recovered_end,
     step_interval = step_interval,
     step_liberty_max = step_liberty_max,
     terms_unique_movement = terms_unique_movement,
-    nest_terms_within_times = nest_terms_within_times,
+    rate_interval = rate_interval,
+    nest_term_within_time = nest_term_within_time,
     colname_date_released = colname_date_released, # "date_released",
     colname_date_recovered = colname_date_recovered, # "date_recovered",
     colname_region_released = colname_region_released, # "region_released",
@@ -148,21 +152,24 @@ if (FALSE) {
     cv_selectivity = cv_selectivity,
     cv_initial_loss_rate = cv_initial_loss_rate,
     cv_ongoing_loss_rate = cv_ongoing_loss_rate,
+    cv_movement_deviation = cv_movement_deviation,
     cv_dispersion = cv_dispersion,
-    cv_movement_time_deviation = cv_movement_time_deviation,
-    cv_movement_term_deviation = cv_movement_term_deviation,
-    cv_movement_size_deviation = cv_movement_size_deviation,
     tolerance_expected = tolerance_expected,
     tolerance_movement = tolerance_movement,
     tolerance_fishing = tolerance_fishing,
-    data = data,
+    data = NULL,
     chains = chains,
     step_size = step_size,
     adapt_delta = adapt_delta,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     use_reduce_sum = use_reduce_sum,
-    threads_per_chain = threads_per_chain)
+    threads_per_chain = threads_per_chain,
+    refresh = refresh)
+    # View
+    tibble::view(fit$summary$movement_rate)
+    # Plot
+    plot(fit)
   }
 
 ```

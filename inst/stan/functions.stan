@@ -75,7 +75,7 @@ array[] matrix assemble_movement_possible_transpose (
   return movement_possible_transpose;
 }
 
-array[,] matrix assemble_movement_term_step (
+array[,] matrix assemble_movement_step (
   array[] vector a1,
   array[] vector a2,
   array[] vector a3,
@@ -95,7 +95,7 @@ array[,] matrix assemble_movement_term_step (
   int X = dims(mindex)[1];
   int D = ndims;
   // Declare values
-  array[I, S] matrix[X, X] movement_term_step = rep_array(rep_matrix(0.0,X,X),I,S);
+  array[I, S] matrix[X, X] movement_step = rep_array(rep_matrix(0.0,X,X),I,S);
   array[D] int index = rep_array(0, D); // Simplex array row index
   int row_sum; // Movement index row sum
   int column; // Simplex index (column)
@@ -111,21 +111,21 @@ array[,] matrix assemble_movement_term_step (
             if (mindex[x, y] == 1) {
               column += 1;
               if (row_sum == 1) {
-                movement_term_step[i, s, x, y] = a1[index[row_sum], column];
+                movement_step[i, s, x, y] = a1[index[row_sum], column];
               } else if (row_sum == 2) {
-                movement_term_step[i, s, x, y] = a2[index[row_sum], column];
+                movement_step[i, s, x, y] = a2[index[row_sum], column];
               } else if (row_sum == 3) {
-                movement_term_step[i, s, x, y] = a3[index[row_sum], column];
+                movement_step[i, s, x, y] = a3[index[row_sum], column];
               } else if (row_sum == 4) {
-                movement_term_step[i, s, x, y] = a4[index[row_sum], column];
+                movement_step[i, s, x, y] = a4[index[row_sum], column];
               } else if (row_sum == 5) {
-                movement_term_step[i, s, x, y] = a5[index[row_sum], column];
+                movement_step[i, s, x, y] = a5[index[row_sum], column];
               } else if (row_sum == 6) {
-                movement_term_step[i, s, x, y] = a6[index[row_sum], column];
+                movement_step[i, s, x, y] = a6[index[row_sum], column];
               } else if (row_sum == 7) {
-                movement_term_step[i, s, x, y] = a7[index[row_sum], column];
+                movement_step[i, s, x, y] = a7[index[row_sum], column];
               } else if (row_sum == 8) {
-                movement_term_step[i, s, x, y] = a8[index[row_sum], column];
+                movement_step[i, s, x, y] = a8[index[row_sum], column];
               } else {
                 reject("row_sum: ", row_sum);
               }
@@ -136,46 +136,27 @@ array[,] matrix assemble_movement_term_step (
     }
   }
   // Return movement term
-  return movement_term_step;
+  return movement_step;
 }
 
-array[,] matrix assemble_movement_step (
-  array[] vector a1,
-  array[] vector a2,
-  array[] vector a3,
-  array[] vector a4,
-  array[] vector a5,
-  array[] vector a6,
-  array[] vector a7,
-  array[] vector a8,
-  array[,] int mindex,
-  array[] int n_to_i,
-  int nstep,
-  int nterm,
-  int nsize,
-  int ndims
+array[,] matrix assemble_movement_rate (
+  array[,] matrix mstep,
+  int mpower
 ) {
   // Get dimensions
-  int N = nstep;
-  int I = nterm;
-  int S = nsize;
-  int X = dims(mindex)[1];
-  int D = ndims;
+  int I = dims(mstep)[1];
+  int S = dims(mstep)[2];
+  int X = dims(mstep)[3];
   // Initialize values
-  array[N, S] matrix[X, X] movement_step = rep_array(rep_matrix(0.0,X,X),N,S);
-  array[I, S] matrix[X, X] movement_term_step = assemble_movement_term_step(
-    a1, a2, a3, a4, a5, a6, a7, a8,
-    mindex,
-    I, S, D
-  );
-  // Populate movement step
-  for (n in 1:N) {
+  array[I, S] matrix[X, X] movement_rate = rep_array(rep_matrix(0.0,X,X),I,S);
+  // Populate movement rate
+  for (i in 1:I) {
     for (s in 1:S) {
-      movement_step[n, s] = movement_term_step[n_to_i[n], s];
+      movement_rate[i, s] = matrix_power(mstep[i, s], mpower);
     }
   }
-  // Return movement step
-  return movement_step;
+  // Return movement rate
+  return movement_rate;
 }
 
 
