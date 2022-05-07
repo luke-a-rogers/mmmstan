@@ -1,3 +1,302 @@
+#' Fit Markov Movement Models Using CmdStan and CmdStanR
+#'
+#' @param tag_data [data.frame()]
+#' @param list_regions [list()]
+#' @param list_sizes [list()]
+#' @param year_released_start [integer()] year that the first tag was released
+#' @param year_recovered_end [integer()] year that the last tag was recovered
+#' @param step_interval [character()] in \code{c("month", "quarter", "year")}
+#' @param step_liberty_max [integer()]
+#' @param term_interval [character()] in \code{c("month", "quarter", "year")}
+#' @param rate_interval [character()] in \code{c("month", "quarter", "year")}
+#' @param colname_date_released [character()]
+#' @param colname_date_recovered [character()]
+#' @param colname_region_released [character()]
+#' @param colname_region_recovered [character()]
+#' @param colname_size_released [character()]
+#' @param movement_pattern [integer()] One of \code{1}: movement between
+#'   all pairs of regions at each step, or \code{2}:
+#'   movement between numerically sequential regions (the default)
+#' @param movement_allow [integer()] [matrix()] Adjusts the movement pattern
+#'   to allow additional movement between regions. Each row indicates
+#'   directional movement between a pair of regions
+#' @param movement_disallow [integer()] [matrix()] As for
+#'   \code{movement_allow}, but specified movement is disallowed
+#' @param mu_fishing_rate [numeric()][array()]
+#' @param mu_mortality_rate [numeric()]
+#' @param mu_reporting_rate [numeric()]
+#' @param mu_selectivity [numeric()]
+#' @param mu_initial_loss_rate [numeric()]
+#' @param mu_ongoing_loss_rate [numeric()]
+#' @param mu_dispersion [numeric()]
+#' @param cv_fishing_rate [numeric()]
+#' @param cv_mortality_rate [numeric()]
+#' @param cv_reporting_rate [numeric()]
+#' @param cv_selectivity [numeric()]
+#' @param cv_initial_loss_rate [numeric()]
+#' @param cv_ongoing_loss_rate [numeric()]
+#' @param cv_movement_deviation [numeric()]
+#' @param cv_dispersion [numeric()]
+#' @param tolerance_expected [numeric()]
+#' @param tolerance_movement [numeric()]
+#' @param tolerance_fishing [numeric()]
+#' @param data [list()] See details
+#' @param chains [integer()] number of chains
+#' @param step_size [numeric()] initial step size
+#' @param adapt_delta [numeric()] the adaptation target acceptance statistic
+#' @param iter_warmup [integer()] number of warmup iterations
+#' @param iter_sampling [integer()] number of sampling iterations
+#' @param use_reduce_sum [logical()] use within chain parallel threading
+#' @param threads_per_chain [integer()] number of threads per chain
+#' @param refresh [integer()]
+#' @param ... additional arguments to pass to \code{$sample()} method
+#'
+#' @details TBD
+#'
+#' @return [mmmstan::mmmstan()]
+#' @export
+#'
+mmmstan <- function (tag_data,
+                     # Tag arguments
+                     list_regions,
+                     list_sizes,
+                     year_released_start,
+                     year_recovered_end,
+                     step_interval = "month",
+                     step_liberty_max = NULL,
+                     term_interval = "quarter",
+                     rate_interval = "year",
+                     colname_date_released = "date_released",
+                     colname_date_recovered = "date_recovered",
+                     colname_region_released = "region_released",
+                     colname_region_recovered = "region_recovered",
+                     colname_size_released = "size_released",
+                     # Movement index
+                     movement_pattern = 2,
+                     movement_allow = NULL,
+                     movement_disallow = NULL,
+                     # Prior means
+                     mu_fishing_rate = array(
+                       0.1,
+                       dim = c(
+                         year_recovered_end - year_released_start + 1,
+                         length(list_regions)
+                       )
+                     ),
+                     mu_mortality_rate = rep(0.1, length(list_regions)),
+                     mu_reporting_rate = rep(1, length(list_regions)),
+                     mu_selectivity = rep(1, length(list_sizes) - 1L),
+                     mu_initial_loss_rate = 0.1,
+                     mu_ongoing_loss_rate = 0.02,
+                     mu_dispersion = 1,
+                     # Prior coefficients of variation
+                     cv_fishing_rate = 0.1,
+                     cv_mortality_rate = 0.1,
+                     cv_reporting_rate = 0.1,
+                     cv_selectivity = 0.1,
+                     cv_initial_loss_rate = 0.1,
+                     cv_ongoing_loss_rate = 0.1,
+                     cv_movement_deviation = 0.1,
+                     cv_dispersion = 0.25,
+                     # Tolerance value
+                     tolerance_expected = 1e-12,
+                     tolerance_movement = 1e-12,
+                     tolerance_fishing = 1e-12,
+                     # CmdStanR
+                     data = NULL,
+                     chains = 1,
+                     step_size = 0.01,
+                     adapt_delta = 0.8,
+                     iter_warmup = 250,
+                     iter_sampling = 750,
+                     use_reduce_sum = FALSE,
+                     threads_per_chain = 8,
+                     refresh = 100,
+                     ...) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Assemble data --------------------------------------------------------------
+
+  if (is.null(data)) {
+
+    # Assemble index limits ----------------------------------------------------
+
+    # Nested temporal limits
+    n_terms_per_year <- compute_terms_per_year(term_interval) # I
+    n_steps_per_year <- compute_steps_per_year(step_interval) # J
+    n_steps_per_term <- compute_steps_per_term(step_interval, term_interval) # K
+    # Temporal limits
+    n_times <- year_recovered_end - year_released_start + 1L # T
+    n_steps <- n_times * n_steps_per_year
+    n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
+    # Remaining limits
+    n_sizes <- length(list_sizes)
+    n_regions <- length(list_regions)
+
+    # Assemble tag data --------------------------------------------------------
+
+    tag_array <- create_tag_array(
+      tag_data = tag_data,
+      list_regions = list_regions,
+      list_sizes = list_sizes,
+      year_released_start = year_released_start,
+      year_recovered_end = year_recovered_end,
+      step_liberty_max = n_liberty,
+      step_interval = step_interval,
+      colname_date_released = colname_date_released,
+      colname_date_recovered = colname_date_recovered,
+      colname_region_released = colname_region_released,
+      colname_region_recovered = colname_region_recovered,
+      colname_size_released = colname_size_released
+    )
+
+    # Assemble movement index --------------------------------------------------
+
+    movement_index <- create_movement_index(
+      n_regions = n_regions,
+      movement_pattern = movement_pattern,
+      movement_allow = movement_allow,
+      movement_disallow = movement_disallow
+    )
+
+    # Assemble data ------------------------------------------------------------
+
+    data <- list(
+      # Index limits
+      N = n_steps, # Number of model steps
+      S = n_sizes, # Number of size classes
+      L = n_liberty, # Number of maximum steps at liberty
+      X = n_regions, # Number of geographic regions
+      T = n_times, # Number of times (years)
+      I = n_terms_per_year, # Number of terms (seasons) per time (year)
+      J = n_steps_per_year, # Number of steps per time (year)
+      K = n_steps_per_term, # Number of steps per term (season)
+      P = sum(movement_index) - n_regions, # Number of movement rate mean parameters
+      # Tag data
+      tags = tag_array, # [N, S, L, X, X]
+      # Movement index array
+      movement_index = movement_index, # [X, X]
+      # Prior means
+      mu_movement_mean = matrix(0.0, nrow = n_regions, ncol = n_regions),
+      mu_movement_total = matrix(0.0, nrow = n_regions, ncol = n_regions),
+      # mu_fishing_rate = mu_fishing_rate, # [T, X]
+      # mu_mortality_rate = mu_mortality_rate, # [X]
+      # mu_reporting_rate = mu_reporting_rate, # [X]
+      # mu_selectivity = mu_selectivity, # [S - 1]
+      # mu_initial_loss_rate = mu_initial_loss_rate,
+      # mu_ongoing_loss_rate = mu_ongoing_loss_rate,
+      mu_dispersion = mu_dispersion,
+      # Prior standard deviations
+      sd_movement_mean = matrix(0.0, nrow = n_regions, ncol = n_regions),
+      sd_movement_total = matrix(0.0, nrow = n_regions, ncol = n_regions),
+      # Prior coefficients of variation
+      # cv_fishing_rate = cv_fishing_rate,
+      # cv_mortality_rate = cv_mortality_rate,
+      # cv_reporting_rate = cv_reporting_rate,
+      # cv_selectivity = cv_selectivity,
+      # cv_initial_loss_rate = cv_initial_loss_rate,
+      # cv_ongoing_loss_rate = cv_ongoing_loss_rate,
+      cv_dispersion = cv_dispersion,
+      # Tolerance values
+      tolerance_expected = tolerance_expected #,
+      # tolerance_movement = tolerance_movement,
+      # tolerance_fishing = tolerance_fishing
+    )
+  }
+
+  # Check dimensions data elements ---------------------------------------------
+
+  checkmate::assert_true(data$P == sum(data$movement_index) - data$X)
+
+  # Initialize mean model ------------------------------------------------------
+
+  mod_mean <- cmdstanr::cmdstan_model(
+    system.file("stan", "mmm_mean.stan", package = "mmmstan"),
+    include_path = system.file("stan", package = "mmmstan"),
+    cpp_options = list(stan_threads = TRUE)
+  )
+
+  # Fit mean model -------------------------------------------------------------
+
+  fit_mean <- mod_mean$sample(
+    data = data,
+    chains = chains,
+    step_size = step_size,
+    adapt_delta = adapt_delta,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    threads_per_chain = threads_per_chain,
+    refresh = refresh,
+    ...
+  )
+
+  # Assemble fit mean summaries ------------------------------------------------
+
+  # Movement mean
+  movement_mean_summary <- fit_mean$draws() %>%
+    tidybayes::spread_draws(movement_mean[x,y]) %>%
+    tidybayes::summarise_draws()
+  mu_movement_mean <- movement_mean_summary %>%
+    dplyr::pull(.data$mean) %>%
+    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
+  sd_movement_mean <- movement_mean_summary %>%
+    dplyr::pull(.data$sd) %>%
+    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
+  # Movement total
+  movement_total_summary <- fit_mean$draws() %>%
+    tidybayes::spread_draws(movement_total[x,y]) %>%
+    tidybayes::summarise_draws()
+  mu_movement_total <- movement_total_summary %>%
+    dplyr::pull(.data$mean) %>%
+    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
+  sd_movement_total <- movement_total_summary %>%
+    dplyr::pull(.data$sd) %>%
+    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
+
+  # Update data ----------------------------------------------------------------
+
+  # Prior means
+  data$mu_movement_mean <- mu_movement_mean
+  data$mu_movement_total <- mu_movement_total
+  # Prior standard deviations
+  data$sd_movement_mean <- sd_movement_mean
+  data$sd_movement_total <- sd_movement_total
+
+
+
+
+
+
+
+  # Assemble draws -------------------------------------------------------------
+
+  # TBD
+
+  # Assemble summary -----------------------------------------------------------
+
+  summary_list <- list(
+    movement_mean = movement_mean_summary,
+    movement_total = movement_total_summary
+  )
+
+  # Return values --------------------------------------------------------------
+
+  structure(list(
+    data = data,
+    draws = list(),
+    summary = summary_list),
+    class = "mmmstan")
+}
+
+
+
+
+
+
+
+
+
 #' Fit A Markov Movement Model via CmdStanR
 #'
 #' Stan model data may be specified in two ways: via arguments \code{tag_data}
@@ -70,7 +369,7 @@
 #' @return [mmmstan::mmmstan()]
 #' @export
 #'
-mmmstan <- function (tag_data,
+mmmstan_2 <- function (tag_data,
                      # Tag arguments
                      list_regions,
                      list_sizes,

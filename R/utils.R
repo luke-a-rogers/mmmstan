@@ -1,3 +1,28 @@
+#' Compute The Number of Model Terms Per Year
+#'
+#' @param x [character()] one of \code{"year"}, \code{"quarter"}
+#'   or \code{"month"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' compute_terms_per_year("year")
+#' compute_terms_per_year("quarter")
+#' compute_terms_per_year("month")
+#'
+compute_terms_per_year <- function (x) {
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_choice(x = x, choices = c("year", "quarter", "month"))
+
+  # Return the number of terms per time ----------------------------------------
+
+  return(c(1L, 4L, 12L)[match(x, c("year", "quarter", "month"))[1]])
+}
+
 #' Compute The Number of Model Steps Per Year
 #'
 #' @param x [character()] one of \code{"year"}, \code{"quarter"}
@@ -20,7 +45,57 @@ compute_steps_per_year <- function (x) {
 
   # Return the number of steps per time ----------------------------------------
 
-  ifelse(x == "year", 1L, ifelse(x == "quarter", 4L, 12L))
+  return(c(1L, 4L, 12L)[match(x, c("year", "quarter", "month"))[1]])
+}
+
+#' Compute The Number of Model Steps Per Term
+#'
+#' @param x [character()] step interval. Cne of \code{"year"}, \code{"quarter"}
+#'   or \code{"month"}
+#' @param x [character()] term interval. One of \code{"year"}, \code{"quarter"}
+#'   or \code{"month"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' compute_steps_per_term("month", "month")
+#' compute_steps_per_term("month", "quarter")
+#' compute_steps_per_term("month", "year")
+#' compute_steps_per_term("quarter", "month")
+#' compute_steps_per_term("quarter", "quarter")
+#' compute_steps_per_term("quarter", "year")
+#' compute_steps_per_term("year", "month")
+#' compute_steps_per_term("year", "quarter")
+#' compute_steps_per_term("year", "year")
+#'
+compute_steps_per_term <- function (x, y) {
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_choice(x = x, choices = c("year", "quarter", "month"))
+  checkmate::assert_choice(x = y, choices = c("year", "quarter", "month"))
+
+  # Compute the number of steps per term ---------------------------------------
+
+  if (x == "month") {
+    value <- c(1L, 3L, 12L)[match(y, c("month", "quarter", "year"))]
+  } else if (x == "quarter") {
+    value <- c(NA, 1L, 4L)[match(y, c("month", "quarter", "year"))]
+  } else {
+    value <- c(NA, NA, 1L)[match(y, c("month", "quarter", "year"))]
+  }
+
+  # Check value ----------------------------------------------------------------
+
+  if (is.na(value)) {
+    stop("step_interval must be <= term_interval")
+  }
+
+  # Return the number of steps per term ----------------------------------------
+
+  return(value)
 }
 
 #' Compute The Number of Years
