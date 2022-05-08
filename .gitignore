@@ -29,5 +29,13 @@ inst/stan/mmm_term
 inst/stan/mmm_term_threads
 inst/stan/mmm_size
 inst/stan/mmm_size_threads
+inst/stan/mmm_mean_reduce_sum
+inst/stan/mmm_mean_reduce_sum_threads
+inst/stan/mmm_time_reduce_sum
+inst/stan/mmm_time_reduce_sum_threads
+inst/stan/mmm_term_reduce_sum
+inst/stan/mmm_term_reduce_sum_threads
+inst/stan/mmm_size_reduce_sum
+inst/stan/mmm_size_reduce_sum_threads
 inst/stan/mmm_reduce_sum
 inst/stan/mmm_reduce_sum_threads

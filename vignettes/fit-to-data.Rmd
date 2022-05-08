@@ -57,9 +57,9 @@ if (FALSE) {
   
   # Step arguments -------------------------------------------------------------
   
-  step_interval <- "month"
+  step_interval <- "quarter"
   # step_liberty_max <- NULL
-  step_liberty_max <- 36
+  step_liberty_max <- 12
 
   # Terms unique movement ------------------------------------------------------
   
