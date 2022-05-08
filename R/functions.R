@@ -122,17 +122,22 @@ mmmstan <- function (tag_data,
 
     # Assemble index limits ----------------------------------------------------
 
-    # Nested temporal limits
-    n_terms_per_year <- compute_terms_per_year(term_interval) # I
-    n_steps_per_year <- compute_steps_per_year(step_interval) # J
-    n_steps_per_term <- compute_steps_per_term(step_interval, term_interval) # K
-    # Temporal limits
+    # Common to all four models
     n_times <- year_recovered_end - year_released_start + 1L # T
-    n_steps <- n_times * n_steps_per_year
-    n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
-    # Remaining limits
+    n_steps <- compute_n_steps(n_times, step_interval)
     n_sizes <- length(list_sizes)
+    n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
     n_regions <- length(list_regions)
+    # Specific to the movement mean
+    n_movement_steps <- 1L
+    n_movement_sizes <- 1L
+    n_power <- compute_steps_per_year(step_interval)
+
+    # Assemble index arrays ----------------------------------------------------
+
+    # Specific to the movement mean
+    n_to_i <- rep(1L, n_steps)
+    s_to_d <- rep(1L, n_sizes)
 
     # Assemble tag data --------------------------------------------------------
 
@@ -168,11 +173,13 @@ mmmstan <- function (tag_data,
       S = n_sizes, # Number of size classes
       L = n_liberty, # Number of maximum steps at liberty
       X = n_regions, # Number of geographic regions
-      T = n_times, # Number of times (years)
-      I = n_terms_per_year, # Number of terms (seasons) per time (year)
-      J = n_steps_per_year, # Number of steps per time (year)
-      K = n_steps_per_term, # Number of steps per term (season)
+      # T = n_times, # Number of times (years)
+      I = n_movement_steps, # Number of movement steps
+      D = n_movement_sizes, # Number of movement sizes
       P = sum(movement_index) - n_regions, # Number of movement rate mean parameters
+      K = n_power, # Matrix power to convert movement steps to rates
+      n_to_i = n_to_i, # Array index mapping model steps to movement steps
+      s_to_d = s_to_d, # Array index mapping model sizes to movement sizes
       # Tag data
       tags = tag_array, # [N, S, L, X, X]
       # Movement index array
@@ -212,7 +219,11 @@ mmmstan <- function (tag_data,
   # Initialize mean model ------------------------------------------------------
 
   mod_mean <- cmdstanr::cmdstan_model(
-    system.file("stan", "mmm_mean.stan", package = "mmmstan"),
+    ifelse(
+      use_reduce_sum,
+      system.file("stan", "mmm_mean_reduce_sum.stan", package = "mmmstan"),
+      system.file("stan", "mmm_mean.stan", package = "mmmstan")
+    ),
     include_path = system.file("stan", package = "mmmstan"),
     cpp_options = list(stan_threads = TRUE)
   )
@@ -227,8 +238,8 @@ mmmstan <- function (tag_data,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     threads_per_chain = threads_per_chain,
-    refresh = refresh,
-    ...
+    refresh = refresh #,
+    #...
   )
 
   # Assemble fit mean summaries ------------------------------------------------

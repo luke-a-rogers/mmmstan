@@ -2,7 +2,8 @@
 * Assemble An Integer Array of Simplex Dimensions
 *
 * @param mindex, an array of dimension [X, X]
-* @param D, a positive integer
+* @param I, positive integer number of movement steps
+* @param D, positive integer number of movement sizes
 *
 * @return an integer array of dimension [A] giving the number of simplexes
 * of each dimension 1:A
@@ -10,17 +11,15 @@
 * The argument mindex is a square integer array of zeros and ones indicating
 * that movement is permitted (one) or not permitted (zero) between a given
 * source region (row) and destination region (column) in one model step.
-*
-* The argument D is the number of times (years), terms (seasons), or sizes
-* that have distinct stepwise movement rates.
 */
 array[] int assemble_simplex_dimensions (
   array[,] int mindex,
+  int I,
   int D
 ) {
   // Get dimensions
   int X = dims(mindex)[1];
-  int A = 8;
+  int A = 6;
   // Declare values
   array[A] int simplex_dimensions = rep_array(0, A);
   int row_sum;
@@ -34,7 +33,7 @@ array[] int assemble_simplex_dimensions (
       if (row_sum > A) {
         reject("row_sum: ", row_sum);
       }
-      simplex_dimensions[row_sum] += D;
+      simplex_dimensions[row_sum] += I * D;
     }
   }
   // Return simplex dimensions
@@ -45,23 +44,20 @@ array[] int assemble_simplex_dimensions (
 * Assemble Matrices That Indicate Possible Movement at Each Liberty Step
 *
 * @param mindex, an array of dimension [X, X]
-* @param nliberty, an integer giving the maximum steps at liberty
+* @param L, an integer giving the maximum steps at liberty
 *
 * @return an array of dimension [L] holding matrices of dimension [X, X]
 *
 * The argument mindex is a square integer array of zeros and ones indicating
 * that movement is permitted (one) or not permitted (zero) between a given
 * source region (row) and destination region (column) in one model step.
-*
-* The argument nliberty is the maximum number of steps at liberty
 */
 array[] matrix assemble_movement_possible_transpose (
   array[,] int mindex,
-  int nliberty
+  int L
 ) {
   // Get dimensions
   int X = dims(mindex)[1];
-  int L = nliberty;
   // Initialize values
   array[L] matrix[X, X] movement_possible_transpose;
   matrix[X, X] movement_transpose;
@@ -88,13 +84,57 @@ array[] matrix assemble_movement_possible_transpose (
 }
 
 /**
+* Assemble Matrices That Indicate Possible Movement at Each Liberty Step
+*
+* @param mindex, an array of dimension [X, X]
+* @param L, an integer giving the maximum steps at liberty
+*
+* @return an array of dimension [L] holding matrices of dimension [X, X]
+*
+* The argument mindex is a square integer array of zeros and ones indicating
+* that movement is permitted (one) or not permitted (zero) between a given
+* source region (row) and destination region (column) in one model step.
+*/
+array[] matrix assemble_movement_possible (
+  array[,] int mindex,
+  int L
+) {
+  // Get dimensions
+  int X = dims(mindex)[1];
+  // Initialize values
+  array[L] matrix[X, X] movement_possible;
+  matrix[X, X] movement_index;
+  // Populate movement transpose
+  for (x in 1:X) {
+    for (y in 1:X) {
+      movement_index[x, y] = mindex[x, y] * 1.0;
+    }
+  }
+  // Populate movement possible
+  movement_possible[1] = rep_matrix(0.0, X, X);
+  movement_possible[2] = movement_index;
+  // Iterate higher indexes
+  for (l in 3:L) {
+    if (min(movement_possible[l - 1]) > 0.0) {
+      movement_possible[l] = movement_possible[l - 1];
+    } else {
+      movement_possible[l] = movement_possible[l - 1]
+      * movement_index;
+    }
+  }
+  // Return movement possible
+  return movement_possible;
+}
+
+/**
 * Assemble An Array of Stepwise Movement Rate Matrices
 *
 * @param a1, ..., a8, arrays of stepwise movement rate simplexes
 * @param mindex, an array of dimension [X, X]
-* @param D, a positive integer
+* @param I, positive integer number of movement steps
+* @param D, positive integer number of movement sizes
 *
-* @return an array of dimension [D] holding stepwise movement rate
+* @return an array of dimension [I, D] holding stepwise movement rate
 * matrices [X, X]
 *
 * The arguments a1, ..., a8 are arrays of stepwise movement rate simplexes
@@ -102,58 +142,52 @@ array[] matrix assemble_movement_possible_transpose (
 * The argument mindex is a square integer array of zeros and ones indicating
 * that movement is permitted (one) or not permitted (zero) between a given
 * source region (row) and destination region (column) in one model step.
-*
-* The argument D is the number of times (years), terms (seasons), or sizes
-* that have distinct stepwise movement rates.
 */
-array[] matrix assemble_movement_step (
+array[,] matrix assemble_movement_step (
   array[] vector a1,
   array[] vector a2,
   array[] vector a3,
   array[] vector a4,
   array[] vector a5,
   array[] vector a6,
-  array[] vector a7,
-  array[] vector a8,
   array[,] int mindex,
+  int I,
   int D
 ) {
   // Get dimensions
   int X = dims(mindex)[1];
-  int A = 8;
+  int A = 6;
   // Declare values
-  array[D] matrix[X, X] movement_step = rep_array(rep_matrix(0.0, X, X), D);
+  array[I, D] matrix[X, X] movement_step = rep_array(rep_matrix(0.0,X,X),I,D);
   array[A] int index = rep_array(0, A); // Simplex array row index
   int row_sum; // Movement index row sum
   int column; // Simplex index (column)
   // Populate
-  for (d in 1:D) {
-    for (x in 1:X) {
-      row_sum = sum(mindex[x, 1:X]);
-      if (row_sum > 0) {
-        index[row_sum] += 1;
-        column = 0;
-        for (y in 1:X) {
-          if (mindex[x, y] == 1) {
-            column += 1;
-            if (row_sum == 1) {
-              movement_step[d, x, y] = a1[index[row_sum], column];
-            } else if (row_sum == 2) {
-              movement_step[d, x, y] = a2[index[row_sum], column];
-            } else if (row_sum == 3) {
-              movement_step[d, x, y] = a3[index[row_sum], column];
-            } else if (row_sum == 4) {
-              movement_step[d, x, y] = a4[index[row_sum], column];
-            } else if (row_sum == 5) {
-              movement_step[d, x, y] = a5[index[row_sum], column];
-            } else if (row_sum == 6) {
-              movement_step[d, x, y] = a6[index[row_sum], column];
-            } else if (row_sum == 7) {
-              movement_step[d, x, y] = a7[index[row_sum], column];
-            } else if (row_sum == 8) {
-              movement_step[d, x, y] = a8[index[row_sum], column];
-            } else {
-              reject("row_sum: ", row_sum);
+  for (i in 1:I) {
+    for (d in 1:D) {
+      for (x in 1:X) {
+        row_sum = sum(mindex[x, 1:X]);
+        if (row_sum > 0) {
+          index[row_sum] += 1;
+          column = 0;
+          for (y in 1:X) {
+            if (mindex[x, y] == 1) {
+              column += 1;
+              if (row_sum == 1) {
+                movement_step[i, d, x, y] = a1[index[row_sum], column];
+              } else if (row_sum == 2) {
+                movement_step[i, d, x, y] = a2[index[row_sum], column];
+              } else if (row_sum == 3) {
+                movement_step[i, d, x, y] = a3[index[row_sum], column];
+              } else if (row_sum == 4) {
+                movement_step[i, d, x, y] = a4[index[row_sum], column];
+              } else if (row_sum == 5) {
+                movement_step[i, d, x, y] = a5[index[row_sum], column];
+              } else if (row_sum == 6) {
+                movement_step[i, d, x, y] = a6[index[row_sum], column];
+              } else {
+                reject("row_sum: ", row_sum);
+              }
             }
           }
         }
@@ -162,6 +196,30 @@ array[] matrix assemble_movement_step (
   }
   // Return movement term
   return movement_step;
+}
+
+array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
+  // Get dimensions
+  int N = dims(tags)[1];
+  int S = dims(tags)[2];
+  int L = dims(tags)[3];
+  int X = dims(tags)[4];
+  // Declare values
+  array[N, S, L, X, X] int tags_transpose;
+  // Populate tag array
+  for (n in 1:N) {
+    for (s in 1:S) {
+      for (l in 1:L) {
+        for (x in 1:X) {
+          for (y in 1:X) {
+            tags_transpose[n, s, l, y, x] = tags[n, s, l, x, y];
+          }
+        }
+      }
+    }
+  }
+  // Return tag array
+  return tags_transpose;
 }
 
 real partial_sum_lpmf (
@@ -173,6 +231,8 @@ real partial_sum_lpmf (
   int L,
   int X,
   int C,
+  array[] int n_to_i,
+  array[] int s_to_d,
   array[,,,,] int tags,
   array[,] matrix movement_step,
   array[,] matrix survival_step,
@@ -207,7 +267,7 @@ real partial_sum_lpmf (
         // Propagate abundance
         abundance[n, s, l] = abundance[n, s, l - 1]
         * survival_step[n + l - 2, s] // Previous step; diagonal matrix [X, X]
-        * movement_step[n + l - 2, s]; // Previous step; diagonal matrix [X, X]
+        * movement_step[n_to_i[n + l - 2], s_to_d[s]]; // Previous step; [X, X]
         // Compute predicted
         predicted[n, s, l] = abundance[n, s, l] // Square matrix [X, X]
         * observed_step[n + l - 1, s]; // Current step; diagonal matrix [X, X]

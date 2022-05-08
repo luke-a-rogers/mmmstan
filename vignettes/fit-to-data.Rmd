@@ -57,8 +57,9 @@ if (FALSE) {
   
   # Step arguments -------------------------------------------------------------
   
-  step_interval <- "quarter"
-  step_liberty_max <- NULL
+  step_interval <- "month"
+  # step_liberty_max <- NULL
+  step_liberty_max <- 36
 
   # Terms unique movement ------------------------------------------------------
   
@@ -71,6 +72,7 @@ if (FALSE) {
   # Size arguments -------------------------------------------------------------
   
   # list_sizes <- list(s = 400:499, m = 500:599, l = 600:699, xl = 700:799)
+  # list_sizes <- list(s = 400:549, l = 550:799)
   list_sizes <- list(sml = 400:799)
   
   # Arguments ------------------------------------------------------------------
@@ -106,6 +108,7 @@ if (FALSE) {
   tolerance_expected <- 1e-12
   tolerance_movement <- 1e-12
   tolerance_fishing <- 1e-6
+  data <- NULL
   chains <- 1
   step_size <- 0.01
   adapt_delta <- 0.8

@@ -2,8 +2,8 @@
 
 S3method(plot,mmmstan)
 export("%>%")
+export(compute_n_steps)
 export(compute_n_years)
-export(compute_steps_per_term)
 export(compute_steps_per_year)
 export(compute_terms_per_year)
 export(create_group)

@@ -28,7 +28,8 @@ Imports:
     reshape2,
     stringr,
     checkmate,
-    tidybayes
+    tidybayes,
+    methods
 Suggests: 
     knitr,
     rmarkdown

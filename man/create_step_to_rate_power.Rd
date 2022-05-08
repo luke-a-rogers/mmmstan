@@ -22,11 +22,8 @@ Create Step to Rate Power
 create_step_to_rate_power("month", "month")
 create_step_to_rate_power("month", "quarter")
 create_step_to_rate_power("month", "year")
-create_step_to_rate_power("quarter", "month")
 create_step_to_rate_power("quarter", "quarter")
 create_step_to_rate_power("quarter", "year")
-create_step_to_rate_power("year", "month")
-create_step_to_rate_power("year", "quarter")
 create_step_to_rate_power("year", "year")
 
 }
