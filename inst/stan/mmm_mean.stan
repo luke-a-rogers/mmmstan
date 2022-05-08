@@ -44,23 +44,15 @@ transformed data {
     movement_index,
     I, D // Each set to one
   );
-  // Declare tag array
+  // Declare tags released
+  array[N - 1, S] vector[X] tags_released = assemble_tags_released(tags);
+  // Declare tags transpose (permute x and y)
   array[N - 1, S, L, X, X] int tags_transpose = assemble_tags_transpose(tags);
-
   // Declare movement possible values
   array[L] matrix[X, X] movement_possible = assemble_movement_possible(
     movement_index,
     L
   );
-  /**
-  // Declare movement possible transpose values
-  array[L] matrix[X, X] movement_possible_transpose;
-  // Populate movement possible transpose
-  movement_possible_transpose = assemble_movement_possible_transpose(
-    movement_index,
-    L
-  );
-  */
 }
 
 parameters {
@@ -82,8 +74,6 @@ transformed parameters {
   array[I, D] matrix<lower=0, upper=1>[X, X] movement_step; // [1, 1][X, X]
   array[N, S] vector<lower=0, upper=1>[X] survival_step; // [N, S][X]
   array[N, S] vector<lower=0, upper=1>[X] observed_step; // [N, S][X]
-//  array[N, S] matrix<lower=0, upper=1>[X, X] survival_step; // [N, S][X, X]
-//  array[N, S] matrix<lower=0, upper=1>[X, X] observed_step; // [N, S][X, X]
   // Assemble movement step [X, X]
   movement_step = assemble_movement_step(
     a1, a2, a3, a4, a5, a6,
@@ -98,21 +88,20 @@ transformed parameters {
 
 model {
   // Declare enumeration values
-  array[N-1,S,L] matrix[X,X] abundance;
-  array[N-1,S,L] matrix[X,X] predicted;
+  array[N - 1, S, L] matrix[X, X] abundance;
+  array[N - 1, S, L] matrix[X, X] predicted;
   array[C] int observed;
   array[C] real expected;
   // Declare index values
   int count;
-  // Declare released
-  vector[X] released;
   // Populate released abundance
-  for (n in 1:(N - 1)) { // Partial sum index range within released step
+  for (n in 1:(N - 1)) { // Model step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Released region
-        released[x] = tags[n, s, 1, x, x] * (1 - initial_loss_step);
+        abundance[n, s, 1] = diag_matrix(
+          tags_released[n, s] * (1 - initial_loss_step)
+        );
       }
-      abundance[n, s, 1] = diag_matrix(released);
     }
   }
   // Initialize count
@@ -124,30 +113,23 @@ model {
         // Propagate abundance
         abundance[n, s, l] = abundance[n, s, l - 1]
         * diag_post_multiply(
-//            movement_step[n_to_i[n + l - 2], s_to_d[s]],
-            movement_step[1, 1],
+            movement_step[n_to_i[n], s_to_d[s]],
             survival_step[n + l - 2, s]
           );
-//        * survival_step[n + l - 2, s] // Previous step; diagonal matrix [X, X]
-//        * movement_step[n_to_i[n + l - 2], s_to_d[s]]; // Previous step; [X, X]
         // Compute predicted
         predicted[n, s, l] = diag_post_multiply(
           abundance[n, s, l],
           observed_step[n + l - 1, s]
         );
-//        abundance[n, s, l] // Square matrix [X, X]
-//        * observed_step[n + l - 1, s]; // Current step; diagonal matrix [X, X]
         // Compute vectors
         for (y in 1:X) { // Current region
           for (x in 1:X) { // Released region
-            if (tags[n, s, 1, x, x] > 0) { // Were any tags released?
-//              if (movement_possible_transpose[l][y, x] > 0) {
+            if (tags_released[n, s, x] > 0) { // Were any tags released?
               if (movement_possible[l][x, y] > 0) {
                 // Increment observation count
                 count += 1;
                 // Populate observed and expected values
                 observed[count] = tags_transpose[n, s, l, y, x]; // Integer
-//                observed[count] = tags[n, s, l, x, y]; // Integer
                 expected[count] = predicted[n, s, l, x, y]
                 + tolerance_expected; // Real
               } // End if

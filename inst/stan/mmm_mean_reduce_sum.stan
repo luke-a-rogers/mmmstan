@@ -39,22 +39,24 @@ data {
 transformed data {
   // Upper bound on number of observations
   int<lower=0> C = N * S * L * X * X;
+  // Declare simplex dimensions
+  array[6] int simplex_dimensions = assemble_simplex_dimensions(
+    movement_index,
+    I, D // Each set to one
+  );
+  // Declare tags released
+  array[N - 1, S] vector[X] tags_released = assemble_tags_released(tags);
+  // Declare tags transpose (permute x and y)
+  array[N - 1, S, L, X, X] int tags_transpose = assemble_tags_transpose(tags);
+  // Declare movement possible values
+  array[L] matrix[X, X] movement_possible = assemble_movement_possible(
+    movement_index,
+    L
+  );
   // Declare partial sum index
   array[N - 1] int partial_sum_index = rep_array(1, N - 1);
   // Declare partial sum grainsize
   int grainsize = 1;
-  // Declare simplex dimensions
-  array[8] int simplex_dimensions = assemble_simplex_dimensions(
-    movement_index,
-    I, D // Each set to one
-  );
-  // Declare movement possible transpose values
-  array[L] matrix[X, X] movement_possible_transpose;
-  // Populate movement possible transpose
-  movement_possible_transpose = assemble_movement_possible_transpose(
-    movement_index,
-    L
-  );
 }
 
 parameters {
@@ -65,8 +67,6 @@ parameters {
   array[simplex_dimensions[4]] simplex[4] a4;
   array[simplex_dimensions[5]] simplex[5] a5;
   array[simplex_dimensions[6]] simplex[6] a6;
-  array[simplex_dimensions[7]] simplex[7] a7;
-  array[simplex_dimensions[8]] simplex[8] a8;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -76,18 +76,19 @@ transformed parameters {
   real<lower=0, upper=1> initial_loss_step = 0.1;
   // Declare stepwise rates
   array[I, D] matrix<lower=0, upper=1>[X, X] movement_step; // [1, 1][X, X]
-  array[N, S] matrix<lower=0, upper=1>[X, X] survival_step; // [N, S][X, X]
-  array[N, S] matrix<lower=0, upper=1>[X, X] observed_step; // [N, S][X, X]
+  array[N, S] vector<lower=0, upper=1>[X] survival_step; // [N, S][X]
+  array[N, S] vector<lower=0, upper=1>[X] observed_step; // [N, S][X]
+
   // Assemble movement step [X, X]
   movement_step = assemble_movement_step(
-    a1, a2, a3, a4, a5, a6, a7, a8,
+    a1, a2, a3, a4, a5, a6,
     movement_index,
     I, D // Each set to one
   );
   // Assemble survival step
-  survival_step = rep_array(diag_matrix(rep_vector(0.85, X)), N, S);
+  survival_step = rep_array(rep_vector(0.85, X), N, S);
   // Assemble observed step
-  observed_step = rep_array(diag_matrix(rep_vector(0.05, X)), N, S);
+  observed_step = rep_array(rep_vector(0.05, X), N, S);
 }
 
 model {
@@ -98,14 +99,15 @@ model {
     partial_sum_lpmf, // Partial sum function
     partial_sum_index, // Each element corresponds to a summand
     grainsize, // Set to one to leave partitioning up to scheduler
-    N, S, L, X, C, // Arguments shared in every term...
+    N, S, L, X, // Arguments shared by every term...
     n_to_i,
     s_to_d,
-    tags,
+    tags_transpose,
+    tags_released,
     movement_step,
     survival_step,
     observed_step,
-    movement_possible_transpose,
+    movement_possible,
     initial_loss_step,
     tolerance_expected,
     dispersion

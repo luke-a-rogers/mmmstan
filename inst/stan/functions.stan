@@ -198,6 +198,25 @@ array[,] matrix assemble_movement_step (
   return movement_step;
 }
 
+array[,] vector assemble_tags_released(array[,,,,] int tags) {
+  // Get dimensions
+  int N = dims(tags)[1];
+  int S = dims(tags)[2];
+  int X = dims(tags)[4];
+  // Declare values
+  array[N, S] vector[X] tags_released;
+  // Populate tags released
+  for (n in 1:N) { // Here N = model N - 1
+    for (s in 1:S) { // Released size
+      for (x in 1:X) { // Released region
+        tags_released[n, s, x] = tags[n, s, 1, x, x] * 1.0;
+      }
+    }
+  }
+  // Return tags released
+  return tags_released;
+}
+
 array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
   // Get dimensions
   int N = dims(tags)[1];
@@ -222,6 +241,19 @@ array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
   return tags_transpose;
 }
 
+array[] int assemble_n_to_r (int start, int end) {
+  // Declare values
+  array[end] int n_to_r;
+  int r = 1;
+  // Populate index array
+  for (n in start:end) {
+    n_to_r[n] = r;
+    r += 1;
+  }
+  // Return array
+  return n_to_r;
+}
+
 real partial_sum_lpmf (
   array[] int index,
   int start,
@@ -230,31 +262,37 @@ real partial_sum_lpmf (
   int S,
   int L,
   int X,
-  int C,
   array[] int n_to_i,
   array[] int s_to_d,
-  array[,,,,] int tags,
+  array[,,,,] int tags_transpose,
+  array[,] vector tags_released,
   array[,] matrix movement_step,
-  array[,] matrix survival_step,
-  array[,] matrix observed_step,
-  array[] matrix movement_possible_transpose,
+  array[,] vector survival_step,
+  array[,] vector observed_step,
+  array[] matrix movement_possible,
   real initial_loss_step,
   real tolerance_expected,
   real dispersion
 ) {
+  // Declare index limits
+  int R = (end - start + 1); // R stands in for N - 1
+  int C = R * S * L * X * X;
+  // Declare index arrays
+  array[end] int n_to_r = assemble_n_to_r(start, end);
   // Declare enumeration values
-  array[N-1,S,L] matrix[X,X] abundance = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
-  array[N-1,S,L] matrix[X,X] predicted = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
-  array[C] int observed = rep_array(0, C);
-  array[C] real expected = rep_array(0.0, C);
+  array[R, S, L] matrix[X, X] abundance;
+  array[R, S, L] matrix[X, X] predicted;
+  array[C] int observed;
+  array[C] real expected;
   // Declare index values
   int count;
   // Populate released abundance
-  for (n in start:end) { // Partial sum index range within released step
+  for (n in start:end) { // Model step
     for (s in 1:S) { // Released size
       for (x in 1:X) { // Released region
-        abundance[n, s, 1, x, x] = tags[n, s, 1, x, x] // Integer scalar
-        * (1 - initial_loss_step); // Real scalar
+        abundance[n_to_r[n], s, 1] = diag_matrix(
+          tags_released[n, s] * (1 - initial_loss_step)
+        );
       }
     }
   }
@@ -265,22 +303,26 @@ real partial_sum_lpmf (
     for (s in 1:S) { // Released size
       for (l in 2:min(N - n + 1, L)) { // Liberty step
         // Propagate abundance
-        abundance[n, s, l] = abundance[n, s, l - 1]
-        * survival_step[n + l - 2, s] // Previous step; diagonal matrix [X, X]
-        * movement_step[n_to_i[n + l - 2], s_to_d[s]]; // Previous step; [X, X]
+        abundance[n_to_r[n], s, l] = abundance[n_to_r[n], s, l - 1]
+        * diag_post_multiply(
+            movement_step[n_to_i[n], s_to_d[s]],
+            survival_step[n + l - 2, s]
+          );
         // Compute predicted
-        predicted[n, s, l] = abundance[n, s, l] // Square matrix [X, X]
-        * observed_step[n + l - 1, s]; // Current step; diagonal matrix [X, X]
+        predicted[n_to_r[n], s, l] = diag_post_multiply(
+          abundance[n_to_r[n], s, l],
+          observed_step[n + l - 1, s]
+        );
         // Compute vectors
         for (y in 1:X) { // Current region
           for (x in 1:X) { // Released region
-            if (tags[n, s, 1, x, x] > 0) { // Were any tags released?
-              if (movement_possible_transpose[l][y, x] > 0) {
+            if (tags_released[n, s, x] > 0) { // Were any tags released?
+              if (movement_possible[l][x, y] > 0) {
                 // Increment observation count
                 count += 1;
                 // Populate observed and expected values
-                observed[count] = tags[n, s, l, x, y]; // Integer
-                expected[count] = predicted[n, s, l, x, y]
+                observed[count] = tags_transpose[n, s, l, y, x]; // Integer
+                expected[count] = predicted[n_to_r[n], s, l, x, y]
                 + tolerance_expected; // Real
               } // End if
             } // End if
@@ -289,7 +331,6 @@ real partial_sum_lpmf (
       } // End l
     } // End s
   } // End n
-  // Return partial sum
   return neg_binomial_2_lupmf(observed[1:count] | expected[1:count],dispersion);
 }
 
