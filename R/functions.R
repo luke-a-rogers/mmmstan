@@ -167,7 +167,7 @@ mmmstan <- function (tag_data,
 
     # Assemble data ------------------------------------------------------------
 
-    data <- list(
+    data_mean <- list(
       # Index limits
       N = n_steps, # Number of model steps
       S = n_sizes, # Number of size classes
@@ -185,8 +185,7 @@ mmmstan <- function (tag_data,
       # Movement index array
       movement_index = movement_index, # [X, X]
       # Prior means
-      mu_movement_mean = matrix(0.0, nrow = n_regions, ncol = n_regions),
-      mu_movement_total = matrix(0.0, nrow = n_regions, ncol = n_regions),
+      mu_movement_step_mean = matrix(0.0, nrow = n_regions, ncol = n_regions),
       # mu_fishing_rate = mu_fishing_rate, # [T, X]
       # mu_mortality_rate = mu_mortality_rate, # [X]
       # mu_reporting_rate = mu_reporting_rate, # [X]
@@ -195,8 +194,7 @@ mmmstan <- function (tag_data,
       # mu_ongoing_loss_rate = mu_ongoing_loss_rate,
       mu_dispersion = mu_dispersion,
       # Prior standard deviations
-      sd_movement_mean = matrix(0.0, nrow = n_regions, ncol = n_regions),
-      sd_movement_total = matrix(0.0, nrow = n_regions, ncol = n_regions),
+      sd_movement_step_mean = matrix(0.0, nrow = n_regions, ncol = n_regions),
       # Prior coefficients of variation
       # cv_fishing_rate = cv_fishing_rate,
       # cv_mortality_rate = cv_mortality_rate,
@@ -214,7 +212,9 @@ mmmstan <- function (tag_data,
 
   # Check dimensions data elements ---------------------------------------------
 
-  checkmate::assert_true(data$P == sum(data$movement_index) - data$X)
+  checkmate::assert_true(
+    data_mean$P == sum(data_mean$movement_index) - data_mean$X
+  )
 
   # Initialize mean model ------------------------------------------------------
 
@@ -231,7 +231,7 @@ mmmstan <- function (tag_data,
   # Fit mean model -------------------------------------------------------------
 
   fit_mean <- mod_mean$sample(
-    data = data,
+    data = data_mean,
     chains = chains,
     step_size = step_size,
     adapt_delta = adapt_delta,
@@ -244,6 +244,20 @@ mmmstan <- function (tag_data,
 
   # Assemble fit mean summaries ------------------------------------------------
 
+  # Movement step
+  test_summary <- fit_mean$draws() %>%
+    tidybayes::spread_draws(B) %>%
+    tidybayes::summarise_draws()
+  # Movement step
+  movement_step_mean_summary <- fit_mean$draws() %>%
+    tidybayes::spread_draws(movement_step_mean[x,y]) %>%
+    tidybayes::summarise_draws()
+  mu_movement_step_mean <- movement_step_mean_summary %>%
+    dplyr::pull(.data$mean) %>%
+    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
+  sd_movement_step_mean <- movement_step_mean_summary %>%
+    dplyr::pull(.data$sd) %>%
+    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
   # Movement mean
   movement_mean_summary <- fit_mean$draws() %>%
     tidybayes::spread_draws(movement_mean[x,y]) %>%
@@ -254,27 +268,206 @@ mmmstan <- function (tag_data,
   sd_movement_mean <- movement_mean_summary %>%
     dplyr::pull(.data$sd) %>%
     matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
-  # Movement total
-  movement_total_summary <- fit_mean$draws() %>%
-    tidybayes::spread_draws(movement_total[x,y]) %>%
-    tidybayes::summarise_draws()
-  mu_movement_total <- movement_total_summary %>%
-    dplyr::pull(.data$mean) %>%
-    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
-  sd_movement_total <- movement_total_summary %>%
-    dplyr::pull(.data$sd) %>%
-    matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
 
   # Update data ----------------------------------------------------------------
 
+  data_term <- data_mean
+
   # Prior means
-  data$mu_movement_mean <- mu_movement_mean
-  data$mu_movement_total <- mu_movement_total
+  data_term$mu_movement_step_mean <- mu_movement_step_mean
   # Prior standard deviations
-  data$sd_movement_mean <- sd_movement_mean
-  data$sd_movement_total <- sd_movement_total
+  data_term$sd_movement_step_mean <- sd_movement_step_mean
+  # Index limits
+  data_term$I <- 4L
+  data_term$K <- compute_steps_per_term(step_interval, term_interval)
+  # Random walk coefficient of variation priors
+  data_term$mu_cv_random_walk <- 0.15
+  data_term$sd_cv_random_walk <- 0.01
 
+  # Update index arrays ----------------------------------------------------
 
+  # Specific to the movement term
+  data_term$n_to_i <- rep(seq_len(4L), n_steps)[seq_len(n_steps)]
+  data_term$s_to_d <- rep(1L, n_sizes)
+
+  # Initialize term model ------------------------------------------------------
+
+  mod_term <- cmdstanr::cmdstan_model(
+    ifelse(
+      use_reduce_sum,
+      system.file("stan", "mmm_term_reduce_sum.stan", package = "mmmstan"),
+      system.file("stan", "mmm_term.stan", package = "mmmstan")
+    ),
+    include_path = system.file("stan", package = "mmmstan"),
+    cpp_options = list(stan_threads = TRUE)
+  )
+
+  # Fit term model -------------------------------------------------------------
+
+  fit_term <- mod_term$sample(
+    data = data_term,
+    chains = chains,
+    step_size = step_size,
+    adapt_delta = adapt_delta,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    threads_per_chain = threads_per_chain,
+    refresh = refresh #,
+    #...
+  )
+
+  # Assemble fit term summaries ------------------------------------------------
+
+  # Movement term
+  movement_term_summary <- fit_term$draws() %>%
+    tidybayes::spread_draws(movement_term[i,x,y]) %>%
+    tidybayes::summarise_draws()
+
+  ggplot2::ggplot(
+    data = movement_term_summary,
+    mapping = ggplot2::aes(
+      x = .data$i,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
+
+  # Update data ----------------------------------------------------------------
+
+  data_time <- data_term
+
+  # Index limits
+  data_time$I <- n_times
+  data_time$K <- compute_steps_per_year(step_interval)
+  # Random walk coefficient of variation priors
+  data_time$mu_cv_random_walk <- 0.1
+  data_time$sd_cv_random_walk <- 0.01
+
+  # Update index arrays ----------------------------------------------------
+
+  # Specific to the movement term
+  data_time$n_to_i <- rep(seq_len(n_times), each = 4)[seq_len(n_steps)]
+  data_time$s_to_d <- rep(1L, n_sizes)
+
+  # Initialize term model ------------------------------------------------------
+
+  mod_time <- cmdstanr::cmdstan_model(
+    ifelse(
+      use_reduce_sum,
+      system.file("stan", "mmm_time_reduce_sum.stan", package = "mmmstan"),
+      system.file("stan", "mmm_time.stan", package = "mmmstan")
+    ),
+    include_path = system.file("stan", package = "mmmstan"),
+    cpp_options = list(stan_threads = TRUE)
+  )
+
+  # Fit term model -------------------------------------------------------------
+
+  fit_time <- mod_time$sample(
+    data = data_time,
+    chains = chains,
+    step_size = step_size,
+    adapt_delta = adapt_delta,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    threads_per_chain = threads_per_chain,
+    refresh = refresh #,
+    #...
+  )
+
+  # Assemble fit time summaries ------------------------------------------------
+
+  # Movement time
+  movement_time_summary <- fit_time$draws() %>%
+    tidybayes::spread_draws(movement_time[t,x,y]) %>%
+    tidybayes::summarise_draws()
+
+  ggplot2::ggplot(
+    data = movement_time_summary,
+    mapping = ggplot2::aes(
+      x = .data$t,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
+
+  # Update data ----------------------------------------------------------------
+
+  data_size <- data_mean
+
+  # Prior means
+  data_size$mu_movement_step_mean <- mu_movement_step_mean
+  # Prior standard deviations
+  data_size$sd_movement_step_mean <- sd_movement_step_mean
+  # Index limits
+  data_size$I <- 1
+  data_size$K <- compute_steps_per_year(step_interval)
+  # Random walk coefficient of variation priors
+  data_size$mu_cv_random_walk <- 0.1
+  data_size$sd_cv_random_walk <- 0.01
+
+  # Update index arrays ----------------------------------------------------
+
+  # Specific to the movement term
+  data_size$n_to_i <- rep(1L, n_steps)[seq_len(n_steps)]
+  data_size$s_to_d <- seq_len(n_sizes)
+
+  # Initialize term model ------------------------------------------------------
+
+  mod_size <- cmdstanr::cmdstan_model(
+    ifelse(
+      use_reduce_sum,
+      system.file("stan", "mmm_size_reduce_sum.stan", package = "mmmstan"),
+      system.file("stan", "mmm_size.stan", package = "mmmstan")
+    ),
+    include_path = system.file("stan", package = "mmmstan"),
+    cpp_options = list(stan_threads = TRUE)
+  )
+
+  # Fit term model -------------------------------------------------------------
+
+  fit_size <- mod_size$sample(
+    data = data_size,
+    chains = chains,
+    step_size = step_size,
+    adapt_delta = adapt_delta,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    threads_per_chain = threads_per_chain,
+    refresh = refresh #,
+    #...
+  )
+
+  # Assemble fit term summaries ------------------------------------------------
+
+  # Movement term
+  movement_size_summary <- fit_size$draws() %>%
+    tidybayes::spread_draws(movement_size[d,x,y]) %>%
+    tidybayes::summarise_draws()
+
+  ggplot2::ggplot(
+    data = movement_size_summary,
+    mapping = ggplot2::aes(
+      x = .data$d,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
 
 
 
@@ -300,10 +493,15 @@ mmmstan <- function (tag_data,
     class = "mmmstan")
 }
 
-
-
-
-
+mod <- cmdstanr::cmdstan_model(
+  ifelse(
+    use_reduce_sum,
+    system.file("stan", "mmm_reduce_sum.stan", package = "mmmstan"),
+    system.file("stan", "mmm.stan", package = "mmmstan")
+  ),
+  include_path = system.file("stan", package = "mmmstan"),
+  cpp_options = list(stan_threads = TRUE)
+)
 
 
 

@@ -24,10 +24,12 @@ data {
   // Indexes
   array[X, X] int<lower=0, upper=1> movement_index;
   // Prior means
-  matrix<lower=0, upper=1>[X, X] mu_movement_step_mean; // Not used
+  matrix<lower=0, upper=1>[X, X] mu_movement_step_mean;
+  real<lower=0> mu_cv_random_walk;
   real<lower=0> mu_dispersion;
   // Prior standard deviations
   matrix<lower=0, upper=1>[X, X] sd_movement_step_mean; // Not used
+  real<lower=0> sd_cv_random_walk;
   // Prior coefficients of variation
   real<lower=0> cv_dispersion;
   // Tolerance values
@@ -37,8 +39,6 @@ data {
 transformed data {
   // Upper bound on number of observations
   int<lower=0> C = N * S * L * X * X;
-  // Declare movement matrix version of movement index
-  matrix[X, X] movement_matrix = assemble_movement_matrix(movement_index);
   // Declare simplex dimensions
   array[6] int simplex_dimensions = assemble_simplex_dimensions(
     movement_index,
@@ -50,9 +50,14 @@ transformed data {
   array[N - 1, S, L, X, X] int tags_transpose = assemble_tags_transpose(tags);
   // Declare movement possible values
   array[L] matrix[X, X] movement_possible = assemble_movement_possible(
-    movement_matrix,
+    movement_index,
     L
   );
+  // Fix for now
+//  real<lower=0, upper=1> mu_autoregress = 0.5;
+//  real<lower=0, upper=1> sd_autoregress = 0.05;
+  real<lower=0> mu_cv_movement_step_deviation = 0.1;
+  real<lower=0> sd_cv_movement_step_deviation = 0.05;
 }
 
 parameters {
@@ -63,6 +68,10 @@ parameters {
   array[simplex_dimensions[4]] simplex[4] a4;
   array[simplex_dimensions[5]] simplex[5] a5;
   array[simplex_dimensions[6]] simplex[6] a6;
+  // Random walk coefficient of variation
+//  real<lower=0> cv_random_walk;
+//  real<lower=0, upper=1> autoregress;
+  real<lower=0> cv_movement_step;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -71,7 +80,8 @@ transformed parameters {
   // Fix some parameters
   real<lower=0, upper=1> initial_loss_step = 0.1;
   // Declare stepwise rates
-  array[I, D] matrix<lower=0, upper=1>[X, X] movement_step; // [1, 1][X, X]
+  array[I, D] matrix<lower=0, upper=1>[X, X] movement_step; // [I, 1][X, X]
+  array[I, D] matrix<lower=-1, upper=1>[X, X] movement_step_deviation;
   array[N, S] vector<lower=0, upper=1>[X] survival_step; // [N, S][X]
   array[N, S] vector<lower=0, upper=1>[X] observed_step; // [N, S][X]
   // Assemble movement step [X, X]
@@ -79,6 +89,11 @@ transformed parameters {
     a1, a2, a3, a4, a5, a6,
     movement_index,
     I, D // Each set to one
+  );
+  // Assemble movement step deviation
+  movement_step_deviation = assemble_movement_step_deviation(
+    movement_step,
+    mu_movement_step_mean // Change to movement_step_mean?
   );
   // Assemble survival step
   survival_step = rep_array(rep_vector(0.85, X), N, S);
@@ -139,6 +154,27 @@ model {
       } // End l
     } // End s
   } // End n
+
+  // Random walk coefficient of variation prior
+//  cv_random_walk ~ normal(mu_cv_random_walk, sd_cv_random_walk);
+//  autoregress ~ normal(mu_autoregress, sd_autoregress);
+  cv_movement_step ~ normal(mu_cv_movement_step, sd_cv_movement_step);
+  // Movement step deviation priors
+  for (i in 1:I) {
+    for (d in 1:D) {
+      for (y in 1:X) {
+        for (x in 1:X) {
+          if (movement_index[x, y] == 1) {
+            movement_step_deviation[i, d, x, y] ~ normal(
+              0.0,
+              mu_movement_step_mean[x, y] * cv_movement_step
+            );
+          }
+        }
+      }
+    }
+  }
+
   // Dispersion prior
   dispersion ~ normal(mu_dispersion, cv_dispersion * mu_dispersion);
   // Sampling statement (var = mu + mu^2 / dispersion)
@@ -147,12 +183,8 @@ model {
 
 generated quantities {
   // Assemble movement mean
-  matrix[X, X] movement_mean = matrix_power(movement_step[1, 1], K); // [X, X]
-  // Assemble movement step mean
-  matrix[X, X] movement_step_mean = movement_step[1, 1]; // [X, X]
-  // Test
-  int B = 0;
-  if (1 == 2) {
-    B = 1;
-  }
+  array[I] matrix[X, X] movement_time = assemble_movement_term(
+    movement_step,
+    K
+  );
 }

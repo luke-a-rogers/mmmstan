@@ -1,3 +1,21 @@
+matrix assemble_movement_matrix (array[,] int mindex) {
+  // Get dimensions
+  int X = dims(mindex)[1];
+  // Declare movement matrix
+  matrix[X, X] movement_matrix;
+  matrix[X, X] movement_matrix_transpose;
+  // Populate movement matrix transpose
+  for (x in 1:X) {
+    for (y in 1:X) {
+      movement_matrix_transpose[y, x] = mindex[x, y] * 1.0;
+    }
+  }
+  // Populate movement matrix
+  movement_matrix = movement_matrix_transpose';
+  // Return movement matrix
+  return movement_matrix;
+}
+
 /**
 * Assemble An Integer Array of Simplex Dimensions
 *
@@ -40,53 +58,53 @@ array[] int assemble_simplex_dimensions (
   return simplex_dimensions;
 }
 
-/**
-* Assemble Matrices That Indicate Possible Movement at Each Liberty Step
-*
-* @param mindex, an array of dimension [X, X]
-* @param L, an integer giving the maximum steps at liberty
-*
-* @return an array of dimension [L] holding matrices of dimension [X, X]
-*
-* The argument mindex is a square integer array of zeros and ones indicating
-* that movement is permitted (one) or not permitted (zero) between a given
-* source region (row) and destination region (column) in one model step.
-*/
-array[] matrix assemble_movement_possible_transpose (
-  array[,] int mindex,
-  int L
-) {
+array[,] vector assemble_tags_released(array[,,,,] int tags) {
   // Get dimensions
-  int X = dims(mindex)[1];
-  // Initialize values
-  array[L] matrix[X, X] movement_possible_transpose;
-  matrix[X, X] movement_transpose;
-  // Populate movement transpose
-  for (x in 1:X) {
-    for (y in 1:X) {
-      movement_transpose[y, x] = mindex[x, y] * 1.0;
+  int N = dims(tags)[1]; // Here N = model N - 1
+  int S = dims(tags)[2];
+  int X = dims(tags)[4];
+  // Declare values
+  array[N, S] vector[X] tags_released;
+  // Populate tags released
+  for (n in 1:N) { // Here N = model N - 1
+    for (s in 1:S) { // Released size
+      for (x in 1:X) { // Released region
+        tags_released[n, s, x] = tags[n, s, 1, x, x] * 1.0;
+      }
     }
   }
-  // Populate movement possible transpose
-  movement_possible_transpose[1] = rep_matrix(0.0, X, X);
-  movement_possible_transpose[2] = movement_transpose;
-  // Iterate higher indexes
-  for (l in 3:L) {
-    if (min(movement_possible_transpose[l - 1]) > 0.0) {
-      movement_possible_transpose[l] = movement_possible_transpose[l - 1];
-    } else {
-      movement_possible_transpose[l] = movement_possible_transpose[l - 1]
-      * movement_transpose;
+  // Return tags released
+  return tags_released;
+}
+
+array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
+  // Get dimensions
+  int N = dims(tags)[1]; // Here N = model N - 1
+  int S = dims(tags)[2];
+  int L = dims(tags)[3];
+  int X = dims(tags)[4];
+  // Declare values
+  array[N, S, L, X, X] int tags_transpose;
+  // Populate tag array
+  for (n in 1:N) { // Here N = model N - 1
+    for (s in 1:S) {
+      for (l in 1:L) {
+        for (x in 1:X) {
+          for (y in 1:X) {
+            tags_transpose[n, s, l, y, x] = tags[n, s, l, x, y];
+          }
+        }
+      }
     }
   }
-  // Return movement possible transpose
-  return movement_possible_transpose;
+  // Return tag array
+  return tags_transpose;
 }
 
 /**
 * Assemble Matrices That Indicate Possible Movement at Each Liberty Step
 *
-* @param mindex, an array of dimension [X, X]
+* @param movement_matrix, a matrix of dimension [X, X]
 * @param L, an integer giving the maximum steps at liberty
 *
 * @return an array of dimension [L] holding matrices of dimension [X, X]
@@ -96,30 +114,23 @@ array[] matrix assemble_movement_possible_transpose (
 * source region (row) and destination region (column) in one model step.
 */
 array[] matrix assemble_movement_possible (
-  array[,] int mindex,
+  matrix movement_matrix,
   int L
 ) {
   // Get dimensions
-  int X = dims(mindex)[1];
+  int X = dims(movement_matrix)[1];
   // Initialize values
   array[L] matrix[X, X] movement_possible;
-  matrix[X, X] movement_index;
-  // Populate movement transpose
-  for (x in 1:X) {
-    for (y in 1:X) {
-      movement_index[x, y] = mindex[x, y] * 1.0;
-    }
-  }
   // Populate movement possible
   movement_possible[1] = rep_matrix(0.0, X, X);
-  movement_possible[2] = movement_index;
+  movement_possible[2] = movement_matrix;
   // Iterate higher indexes
   for (l in 3:L) {
     if (min(movement_possible[l - 1]) > 0.0) {
       movement_possible[l] = movement_possible[l - 1];
     } else {
       movement_possible[l] = movement_possible[l - 1]
-      * movement_index;
+      * movement_matrix;
     }
   }
   // Return movement possible
@@ -198,48 +209,63 @@ array[,] matrix assemble_movement_step (
   return movement_step;
 }
 
-array[,] vector assemble_tags_released(array[,,,,] int tags) {
+array[,] matrix assemble_movement_deviation (
+  array[,] matrix mstep,
+  matrix mmean
+) {
   // Get dimensions
-  int N = dims(tags)[1];
-  int S = dims(tags)[2];
-  int X = dims(tags)[4];
-  // Declare values
-  array[N, S] vector[X] tags_released;
-  // Populate tags released
-  for (n in 1:N) { // Here N = model N - 1
-    for (s in 1:S) { // Released size
-      for (x in 1:X) { // Released region
-        tags_released[n, s, x] = tags[n, s, 1, x, x] * 1.0;
-      }
+  int I = dims(mstep)[1];
+  int D = dims(mstep)[2];
+  int X = dims(mstep)[3];
+  // Initialize values
+  array[I, D] matrix[X, X] movement_deviation;
+  // Populate movement deviation
+  for (i in 1:I) {
+    for (d in 1:D) {
+      movement_deviation[i, d] = mstep[i, d] - mmean;
     }
   }
-  // Return tags released
-  return tags_released;
+  // Return movement deviation
+  return movement_deviation;
 }
 
-array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
+array[] vector assemble_fishing_weight (array[] vector fweight) {
   // Get dimensions
-  int N = dims(tags)[1];
-  int S = dims(tags)[2];
-  int L = dims(tags)[3];
-  int X = dims(tags)[4];
-  // Declare values
-  array[N, S, L, X, X] int tags_transpose;
-  // Populate tag array
-  for (n in 1:N) {
-    for (s in 1:S) {
-      for (l in 1:L) {
-        for (x in 1:X) {
-          for (y in 1:X) {
-            tags_transpose[n, s, l, y, x] = tags[n, s, l, x, y];
-          }
-        }
-      }
+  int W = dims(fweight)[2];
+  int X = dims(fweight)[1];
+  // Declare fishing weight
+  array[W] vector[X] fishing_weight;
+  // Populate fishing weight
+  for (w in 1:W) {
+    for (x in 1:X) {
+      fishing_weight[w, x] = fweight[x, w];
     }
   }
-  // Return tag array
-  return tags_transpose;
+  // Return fishing weight
+  return fishing_weight;
 }
+
+array[] vector assemble_fishing_rate (
+  array[] vector fstep,
+  int J
+) {
+  // Get dimensions
+  int T = dims(fstep)[1];
+  int X = dims(fstep)[2];
+  // Declare values
+  array[T] vector[X] fishing_rate;
+  // Populate fishing rate
+  for (t in 1:T) {
+    fishing_rate[t] = fstep[t] * J;
+  }
+  // Return fishing rate
+  return fishing_rate;
+}
+
+
+// New current above here ------------------------------------------------------
+
+
 
 array[] int assemble_n_to_r (int start, int end) {
   // Declare values
@@ -332,6 +358,24 @@ real partial_sum_lpmf (
     } // End s
   } // End n
   return neg_binomial_2_lupmf(observed[1:count] | expected[1:count],dispersion);
+}
+
+array[] matrix assemble_movement_term (
+  array[,] matrix mstep,
+  int K
+) {
+  // Get dimensions
+  int I = dims(mstep)[1];
+  int D = dims(mstep)[2];
+  int X = dims(mstep)[3];
+  // Declare values
+  array[I] matrix[X, X] movement_term;
+  // Populate movement term
+  for (i in 1:I) {
+    movement_term[i] = matrix_power(mstep[i, 1], K);
+  }
+  // Return movement term
+  return movement_term;
 }
 
 
@@ -546,23 +590,7 @@ array[] matrix assemble_movement_size_deviation (
   return movement_deviation;
 }
 
-array[] vector assemble_fishing_rate (
-  array[] vector fstep,
-  int nterm
-) {
-  // Get dimensions
-  int T = dims(fstep)[1];
-  int X = dims(fstep)[2];
-  int I = nterm;
-  // Declare values
-  array[T] vector[X] fishing_rate = rep_array(rep_vector(0.0, X), T);
-  // Populate fishing rate
-  for (t in 1:T) {
-    fishing_rate[t] = fstep[t] * (I * 1.0);
-  }
-  // Return fishing rate
-  return fishing_rate;
-}
+
 
 array[] matrix assemble_fishing_term (array[] vector fsimp) {
   // Get dimensions

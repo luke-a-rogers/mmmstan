@@ -37,12 +37,10 @@ data {
 transformed data {
   // Upper bound on number of observations
   int<lower=0> C = N * S * L * X * X;
-  // Declare movement matrix version of movement index
-  matrix[X, X] movement_matrix = assemble_movement_matrix(movement_index);
   // Declare simplex dimensions
   array[6] int simplex_dimensions = assemble_simplex_dimensions(
     movement_index,
-    I, D // Each set to one
+    I, D
   );
   // Declare tags released
   array[N - 1, S] vector[X] tags_released = assemble_tags_released(tags);
@@ -50,7 +48,7 @@ transformed data {
   array[N - 1, S, L, X, X] int tags_transpose = assemble_tags_transpose(tags);
   // Declare movement possible values
   array[L] matrix[X, X] movement_possible = assemble_movement_possible(
-    movement_matrix,
+    movement_index,
     L
   );
 }
@@ -71,14 +69,14 @@ transformed parameters {
   // Fix some parameters
   real<lower=0, upper=1> initial_loss_step = 0.1;
   // Declare stepwise rates
-  array[I, D] matrix<lower=0, upper=1>[X, X] movement_step; // [1, 1][X, X]
+  array[I, D] matrix<lower=0, upper=1>[X, X] movement_step; // [I, D][X, X]
   array[N, S] vector<lower=0, upper=1>[X] survival_step; // [N, S][X]
   array[N, S] vector<lower=0, upper=1>[X] observed_step; // [N, S][X]
   // Assemble movement step [X, X]
   movement_step = assemble_movement_step(
     a1, a2, a3, a4, a5, a6,
     movement_index,
-    I, D // Each set to one
+    I, D
   );
   // Assemble survival step
   survival_step = rep_array(rep_vector(0.85, X), N, S);
@@ -146,13 +144,10 @@ model {
 }
 
 generated quantities {
-  // Assemble movement mean
-  matrix[X, X] movement_mean = matrix_power(movement_step[1, 1], K); // [X, X]
-  // Assemble movement step mean
-  matrix[X, X] movement_step_mean = movement_step[1, 1]; // [X, X]
-  // Test
-  int B = 0;
-  if (1 == 2) {
-    B = 1;
+  // Declare movement size
+  array[D] matrix[X, X] movement_size;
+  // Populate movement size
+  for (d in 1:D) {
+    movement_size[d] = matrix_power(movement_step[1, d], K); // [X, X]
   }
 }

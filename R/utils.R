@@ -31,6 +31,41 @@ compute_n_steps <- function (n_times, step_interval) {
   return(n_times * n)
 }
 
+#' Compute Steps Per Term
+#'
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#' @param term_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#' compute_steps_per_term("month", "quarter")
+#' compute_steps_per_term("quarter", "quarter")
+#' compute_steps_per_term("quarter", "year")
+#'
+compute_steps_per_term <- function (step_interval, term_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_choice(step_interval, c("year", "quarter", "month"))
+  checkmate::assert_choice(term_interval, c("year", "quarter", "month"))
+
+  # Compute steps per term -----------------------------------------------------
+
+  steps_per_year <- compute_steps_per_year(step_interval)
+  terms_per_year <- compute_terms_per_year(term_interval)
+  steps_per_term <- steps_per_year / terms_per_year
+  if (steps_per_term < 1L) {
+    stop("step_interval must be <= term_interval")
+  }
+
+  # Return steps per term ------------------------------------------------------
+
+  return(as.integer(steps_per_term))
+}
 
 
 
