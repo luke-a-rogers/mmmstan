@@ -5,14 +5,14 @@
 \title{Create A Movement Index Matrix}
 \usage{
 create_movement_index(
-  n_regions,
+  number_of_regions,
   movement_pattern = 2,
   movement_allow = NULL,
   movement_disallow = NULL
 )
 }
 \arguments{
-\item{n_regions}{\code{\link[=integer]{integer()}} Number of regions}
+\item{number_of_regions}{\code{\link[=integer]{integer()}} Number of regions}
 
 \item{movement_pattern}{\code{\link[=integer]{integer()}} One of \code{1}: movement between
 all pairs of regions at each step, or \code{2}:

@@ -15,7 +15,7 @@ data {
   int<lower=1> D; // Number of movement sizes
   // Fishing index limits
   int<lower=1> T; // Number of fishing steps (almost always years)
-  int<lower=1> W; // Number of fishing weight steps (seasons per year)
+//  int<lower=1> W; // Number of fishing weight steps (seasons per year)
   // Conversion index limits
   int<lower=1> J; // Factor to convert instantaneous stepwise rates to rates
   int<lower=1> K; // Matrix power to convert movement steps (to rates)
@@ -24,8 +24,8 @@ data {
   array[N] int<lower=1> n_to_i; // Model step to movement step index
   array[S] int<lower=1> s_to_d; // Model size to movement size index
   // Fishing index arrays
-  array[N] int<lower=1> n_to_t; // Model step to fishing step index
-  array[N] int<lower=1> n_to_w; // Model step to fishing weight step index
+//  array[N] int<lower=1> n_to_t; // Model step to fishing step index
+//  array[N] int<lower=1> n_to_w; // Model step to fishing weight step index
   // Tag data
   array[N - 1, S, L, X, X] int<lower=0> tags;
   // Movement index (will be paired with a matrix version)
@@ -40,7 +40,7 @@ data {
 //  vector<lower=0, upper=1>[S - 1] mu_selectivity;
 //  real<lower=0> cv_selectivity;
   // Fishing weight priors
-//  array[W] vector<lower=0, upper=1> mu_fishing_weight;
+//  array[W] vector<lower=0, upper=1>[X] mu_fishing_weight;
 //  real<lower=0> cv_fishing_weight;
   // Natural mortality rate priors
 //  vector<lower=0>[X] mu_mortality_rate;
@@ -50,10 +50,15 @@ data {
 //  real<lower=0> cv_reporting_rate;
   // Fractional (per tag) initial loss rate priors
   real<lower=0, upper=1> mu_initial_loss_rate;
-  real<lower=0> cv_initial_loss_rate;
+  real<lower=0> sd_initial_loss_rate;
   // Instantaneous ongoing loss rate priors
 //  real<lower=0> mu_ongoing_loss_rate;
 //  real<lower=0> cv_ongoing_loss_rate;
+  // Autoregression priors
+  real<lower=0, upper=1> mu_autoregress;
+  real<lower=0, upper=1> sd_autoregress;
+  real<lower=0> mu_sigma;
+  real<lower=0> sd_sigma;
   // Dispersion priors
   real<lower=0> mu_dispersion;
   real<lower=0> sd_dispersion;
@@ -104,6 +109,9 @@ parameters {
 //  vector<lower=0, upper=1>[S - 1] selectivity_short;
   // Seasonal fishing weights
 //  array[X] simplex[W] fishing_weight_transpose;
+  // Autoregression priors
+  vector<lower=0, upper=1>[form > 0 ? X : 0] autoregress;
+  vector<lower=0>[form > 0 ? X : 0] sigma;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -114,14 +122,14 @@ transformed parameters {
   array[N, S] vector<lower=0, upper=1>[X] survival_step;
   array[N, S] vector<lower=0, upper=1>[X] observed_step;
   // Declare stepwise movement deviations
-//  array[I, D] matrix<lower=-1, upper=1> movement_deviation;
+  array[I, D] vector<lower=-1, upper=1>[X] movement_deviation;
   // Declare instantaneous rates
 //  array[T] vector<lower=0>[X] fishing_rate;
 //  vector<lower=0>[X] mortality_rate = mortality_step * J;
 //  real<lower=0> ongoing_loss_rate = ongoing_loss_step * J;
   // Declare fractional (per tag) rates
 //  vector<lower=0, upper=1>[X] reporting_rate = reporting_step;
-//  real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
+  real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
   // Selectivity
 //  vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
   // Declare fishing weight
@@ -133,10 +141,15 @@ transformed parameters {
     I, D
   );
   // Assemble movement deviation
-//  movement_deviation = assemble_movement_deviation(
-//    movement_step,
-//    movement_step_mean
-//  );
+  if (form == 0) {
+    movement_deviation = rep_array(rep_vector (0.0, X), I, D);
+  } else {
+    movement_deviation = assemble_movement_deviation(
+      movement_step,
+      mu_movement_step_mean
+//      movement_step_mean
+    );
+  }
   // Assemble fishing rate
 //  fishing_rate = assemble_fishing_rate(fishing_step, J);
   // Assemble fishing weight
@@ -200,6 +213,60 @@ model {
       } // End l
     } // End s
   } // End n
+  // Movement deviation prior
+  if (form == 1) {
+    // Autoregression priors
+    autoregress ~ normal(mu_autoregress, sd_autoregress);
+    sigma ~ normal(mu_sigma, sd_sigma);
+    // Initial value
+    for (d in 1:D) {
+      movement_deviation[1, d] ~ normal(0.0, sigma);
+    }
+    // Autoregressive values
+    for (i in 2:I) {
+      for(d in 1:D) {
+        movement_deviation[i, d] ~ normal(
+         movement_deviation[i - 1, d] .* autoregress,
+         sigma
+        );
+      }
+    }
+  } else if (form == 2) {
+    // Autoregression priors
+    autoregress ~ normal(mu_autoregress, sd_autoregress);
+    sigma ~ normal(mu_sigma, sd_sigma);
+    // Initial value
+    for (d in 1:D) {
+      movement_deviation[1, d] ~ normal(
+        movement_deviation[I, d] .* autoregress,
+        sigma
+      );
+    }
+    // Autoregressive values
+    for (i in 2:I) {
+      for (d in 1:D) {
+        movement_deviation[i, d] ~ normal(
+         movement_deviation[i - 1, d] .* autoregress,
+         sigma
+        );
+      }
+    }
+  } else if (form == 3) {
+    // Autoregression priors
+    autoregress ~ normal(mu_autoregress, sd_autoregress);
+    sigma ~ normal(mu_sigma, sd_sigma);
+    // Autoregressive values
+    for (i in 1:I) {
+      for (d in 2:D) {
+        movement_deviation[i, d] ~ normal(
+         movement_deviation[i, d - 1] .* autoregress,
+         sigma
+        );
+      }
+    }
+  }
+  // Initial loss rate prior
+  initial_loss_rate ~ normal(mu_initial_loss_rate, sd_initial_loss_rate);
   // Dispersion prior
   dispersion ~ normal(mu_dispersion, sd_dispersion);
   // Sampling statement (var = mu + mu^2 / dispersion)
@@ -208,9 +275,30 @@ model {
 
 generated quantities {
   // Declare movement mean
-  matrix[form == 0 ? X : 0, form == 0 ? X : 0] movement_mean;
+  matrix[X, X] movement_mean = rep_matrix(0.0, X, X);
+  array[I] matrix[X, X] movement_time = rep_array(rep_matrix(0.0, X, X), I);
+  array[I] matrix[X, X] movement_term = rep_array(rep_matrix(0.0, X, X), I);
+  array[D] matrix[X, X] movement_size = rep_array(rep_matrix(0.0, X, X), D);
   // Populate movement mean
   if (form == 0) {
     movement_mean = matrix_power(movement_step[1, 1], K);
+  }
+  // Populate movement time
+  if (form == 1) {
+    for (i in 1:I) {
+      movement_time[i] = matrix_power(movement_step[i, 1], K);
+    }
+  }
+  // Populate movement term
+  if (form == 2) {
+    for (i in 1:I) {
+      movement_term[i] = matrix_power(movement_step[i, 1], K);
+    }
+  }
+  // Populate movement size
+  if (form == 3) {
+    for (d in 1:D) {
+      movement_size[d] = matrix_power(movement_step[1, d], K);
+    }
   }
 }

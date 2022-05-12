@@ -1,3 +1,296 @@
+#' Count Model Steps
+#'
+#' @param year_start [integer()] year of first tag release
+#' @param year_end [integer()] year of final tag recovery
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' count_model_steps(2011, 2018, "month")
+#' count_model_steps(2011, 2018, "quarter")
+#' count_model_steps(2011, 2018, "year")
+#'
+count_model_steps <- function (year_start,
+                               year_end,
+                               step_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Compute model steps --------------------------------------------------------
+
+  # Count steps per year
+  steps_per_year <- count_steps_per_year(step_interval)
+  # Count model years
+  years <- year_end - year_start + 1L
+  # Count model steps
+  model_steps <- as.integer(years * steps_per_year)
+
+  # Return model steps ---------------------------------------------------------
+
+  return(model_steps)
+}
+
+#' Count Movement Steps
+#'
+#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
+#' @param year_start [integer()] year of first tag release
+#' @param year_end [integer()] year of final tag recovery
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' count_movement_steps("mean", 2011, 2018)
+#' count_movement_steps("time", 2011, 2018)
+#' count_movement_steps("term", 2011, 2018)
+#'
+count_movement_steps <- function (model_form,
+                                  year_start,
+                                  year_end) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Compute movement steps -----------------------------------------------------
+
+  if (model_form == "mean") {
+    movement_steps <- 1L
+  } else if (model_form == "time") {
+    movement_steps <- year_end - year_start + 1L
+  } else if (model_form == "term") {
+    movement_steps <- 4L
+  } else {
+    movement_steps <- 1L
+  }
+
+  # Return movement steps ------------------------------------------------------
+
+  return(movement_steps)
+}
+
+#' Count Movement Sizes
+#'
+#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
+#' @param list_sizes [list()]
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' count_movement_sizes("mean", list(s = 1:5, m = 6:10, l = 11:15))
+#' count_movement_sizes("time", list(s = 1:5, m = 6:10, l = 11:15))
+#' count_movement_sizes("term", list(s = 1:5, m = 6:10, l = 11:15))
+#' count_movement_sizes("size", list(s = 1:5, m = 6:10, l = 11:15))
+#'
+count_movement_sizes <- function (model_form,
+                                  list_sizes) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Compute movement sizes -----------------------------------------------------
+
+  if (model_form == "size") {
+    movement_sizes <- length(list_sizes)
+  } else {
+    movement_sizes <- 1L
+  }
+
+  # Return movement sizes ------------------------------------------------------
+
+  return(movement_sizes)
+}
+
+#' Count Model Steps Per Year
+#'
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' count_steps_per_year("month")
+#' count_steps_per_year("quarter")
+#' count_steps_per_year("year")
+#'
+count_steps_per_year <- function (step_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_choice(step_interval, c("month", "quarter", "year"))
+
+  # Return the number of steps per year ----------------------------------------
+
+  return(c(1L, 4L, 12L)[match(step_interval, c("year", "quarter", "month"))[1]])
+}
+
+#' Convert Stepwise Rates
+#'
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' convert_stepwise_rates("month")
+#' convert_stepwise_rates("quarter")
+#' convert_stepwise_rates("year")
+#'
+convert_stepwise_rates <- function (step_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Return conversion factor ---------------------------------------------------
+
+  return(c(1, 4, 12)[match(step_interval, c("year", "quarter", "month"))[1]])
+}
+
+#' Convert Movement Steps
+#'
+#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' convert_movement_steps("mean", "month")
+#' convert_movement_steps("mean", "quarter")
+#' convert_movement_steps("mean", "year")
+#' convert_movement_steps("term", "month")
+#' convert_movement_steps("term", "quarter")
+#'
+convert_movement_steps <- function (model_form,
+                                    step_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Compute conversion power ---------------------------------------------------
+
+  if (model_form == "term") {
+    if (step_interval %in% c("month", "quarter")) {
+      k <- c(1, 3)[match(step_interval, c("quarter", "month"))[1]]
+    } else {
+      stop("step_interval must be month or quarter when model_form == term")
+    }
+  } else {
+    k <- count_steps_per_year(step_interval)
+  }
+
+  # Return conversion power ----------------------------------------------------
+
+  return(k)
+}
+
+#' Create N to I Index
+#'
+#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
+#' @param year_start [integer()] year of first tag release
+#' @param year_end [integer()] year of final tag recovery
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' create_n_to_i("mean", 2011, 2018, "month")
+#' create_n_to_i("mean", 2011, 2018, "quarter")
+#' create_n_to_i("mean", 2011, 2018, "year")
+#' create_n_to_i("time", 2011, 2018, "month")
+#' create_n_to_i("time", 2011, 2018, "quarter")
+#' create_n_to_i("time", 2011, 2018, "year")
+#' create_n_to_i("term", 2011, 2018, "month")
+#' create_n_to_i("term", 2011, 2018, "quarter")
+#' create_n_to_i("size", 2011, 2018, "month")
+#' create_n_to_i("size", 2011, 2018, "quarter")
+#' create_n_to_i("size", 2011, 2018, "year")
+#'
+create_n_to_i <- function (model_form,
+                           year_start,
+                           year_end,
+                           step_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Count model intervals ------------------------------------------------------
+
+  model_steps <- count_model_steps(year_start, year_end, step_interval)
+  model_years <- year_end - year_start + 1L
+  steps_per_year <- count_steps_per_year(step_interval)
+
+  # Define index ---------------------------------------------------------------
+
+  if (model_form == "mean") {
+    index <- rep(1L, model_steps)
+  } else if (model_form == "time") {
+    index <- rep(seq_len(model_years), each = steps_per_year)
+  } else if (model_form == "term") {
+    if (step_interval == "month") {
+      index <- rep(rep(1:4, each = 3L), model_years)
+    } else if (step_interval == "quarter") {
+      index <- rep(1:4, model_years)
+    } else {
+      stop("step_interval must be month or quarter when model_form == term")
+    }
+  } else {
+    index <- rep(1L, model_steps)
+  }
+
+  # Return index ---------------------------------------------------------------
+
+  return(as.integer(index))
+}
+
+#' Create S to D Index Array
+#'
+#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
+#' @param list_sizes [list()]
+#'
+#' @return [integer()] [vector()]
+#' @export
+#'
+#' @examples
+#'
+#' create_s_to_d("mean", list(s = 1:5, m = 6:10, l = 11:15))
+#' create_s_to_d("time", list(s = 1:5, m = 6:10, l = 11:15))
+#' create_s_to_d("term", list(s = 1:5, m = 6:10, l = 11:15))
+#' create_s_to_d("size", list(s = 1:5, m = 6:10, l = 11:15))
+#'
+create_s_to_d <- function (model_form,
+                           list_sizes) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Define index ---------------------------------------------------------------
+
+  if (model_form == "size") {
+    index <- seq_along(list_sizes)
+  } else {
+    index <- rep(1L, length(list_sizes))
+  }
+
+  # Return index ---------------------------------------------------------------
+
+  return(index)
+}
+
+
+# Current above here -----------------------------------------------------------
+
+
+
 #' Compute The Number of Model Steps
 #'
 #' @param n_times [integer()] number of model times (years)
@@ -145,7 +438,7 @@ compute_n_years <- function (a, b) {
 
 #' Create A Movement Index Matrix
 #'
-#' @param n_regions [integer()] Number of regions
+#' @param number_of_regions [integer()] Number of regions
 #' @param movement_pattern [integer()] One of \code{1}: movement between
 #'   all pairs of regions at each step, or \code{2}:
 #'   movement between numerically sequential regions (the default)
@@ -174,7 +467,7 @@ compute_n_years <- function (a, b) {
 #' movement_disallow <- matrix(c(1,6), ncol = 2, byrow = TRUE)
 #' create_movement_index(6, 1, movement_disallow = movement_disallow)
 #'
-create_movement_index <- function (n_regions,
+create_movement_index <- function (number_of_regions,
                                    movement_pattern = 2,
                                    movement_allow = NULL,
                                    movement_disallow = NULL) {
@@ -182,7 +475,7 @@ create_movement_index <- function (n_regions,
   # Check arguments ------------------------------------------------------------
 
   checkmate::assert_integerish(
-    n_regions,
+    number_of_regions,
     lower = 2,
     len = 1,
     any.missing = FALSE
@@ -196,7 +489,7 @@ create_movement_index <- function (n_regions,
   checkmate::assert_integerish(
     movement_allow,
     lower = 1,
-    upper = n_regions,
+    upper = number_of_regions,
     any.missing = FALSE,
     null.ok = TRUE
   )
@@ -209,7 +502,7 @@ create_movement_index <- function (n_regions,
   checkmate::assert_integerish(
     movement_disallow,
     lower = 1,
-    upper = n_regions,
+    upper = number_of_regions,
     any.missing = FALSE,
     null.ok = TRUE
   )
@@ -222,17 +515,26 @@ create_movement_index <- function (n_regions,
 
   # Initialize matrix ----------------------------------------------------------
 
-  movement_index <- diag(1L, nrow = n_regions, ncol = n_regions, names = FALSE)
+  movement_index <- diag(
+    1L,
+    nrow = number_of_regions,
+    ncol = number_of_regions,
+    names = FALSE
+  )
 
   # Add movement pattern -------------------------------------------------------
 
   # All pairwise
   if (movement_pattern == 1) {
-    movement_index <- matrix(1L, nrow = n_regions, ncol = n_regions)
+    movement_index <- matrix(
+      1L,
+      nrow = number_of_regions,
+      ncol = number_of_regions
+    )
   }
   # Neighbors only
   if (movement_pattern == 2) {
-    for (i in seq_len(n_regions - 1L)) {
+    for (i in seq_len(number_of_regions - 1L)) {
       movement_index[i, i + 1L] <- 1L
       movement_index[i + 1L, i] <- 1L
     }

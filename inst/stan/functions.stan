@@ -209,7 +209,7 @@ array[,] matrix assemble_movement_step (
   return movement_step;
 }
 
-array[,] matrix assemble_movement_deviation (
+array[,] vector assemble_movement_deviation (
   array[,] matrix mstep,
   matrix mmean
 ) {
@@ -218,11 +218,11 @@ array[,] matrix assemble_movement_deviation (
   int D = dims(mstep)[2];
   int X = dims(mstep)[3];
   // Initialize values
-  array[I, D] matrix[X, X] movement_deviation;
+  array[I, D] vector[X] movement_deviation;
   // Populate movement deviation
   for (i in 1:I) {
     for (d in 1:D) {
-      movement_deviation[i, d] = mstep[i, d] - mmean;
+      movement_deviation[i, d] = diagonal(mstep[i, d]) - diagonal(mmean);
     }
   }
   // Return movement deviation
@@ -261,11 +261,6 @@ array[] vector assemble_fishing_rate (
   // Return fishing rate
   return fishing_rate;
 }
-
-
-// New current above here ------------------------------------------------------
-
-
 
 array[] int assemble_n_to_r (int start, int end) {
   // Declare values
@@ -359,6 +354,14 @@ real partial_sum_lpmf (
   } // End n
   return neg_binomial_2_lupmf(observed[1:count] | expected[1:count],dispersion);
 }
+
+
+
+// New current above here ------------------------------------------------------
+
+
+
+
 
 array[] matrix assemble_movement_term (
   array[,] matrix mstep,

@@ -2,18 +2,17 @@
 % Please edit documentation in R/functions.R
 \name{mmmstan}
 \alias{mmmstan}
-\title{Fit Markov Movement Models Using CmdStan and CmdStanR}
+\title{Fit A Hidden Markov Movement Model via CmdStan and CmdStanR}
 \usage{
 mmmstan(
   tag_data,
+  model_form = "mean",
   list_regions,
   list_sizes,
-  year_released_start,
-  year_recovered_end,
+  year_start,
+  year_end,
   step_interval = "month",
   step_liberty_max = NULL,
-  term_interval = "quarter",
-  rate_interval = "year",
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
@@ -22,33 +21,38 @@ mmmstan(
   movement_pattern = 2,
   movement_allow = NULL,
   movement_disallow = NULL,
-  mu_fishing_rate = array(0.1, dim = c(year_recovered_end - year_released_start + 1,
-    length(list_regions))),
-  mu_mortality_rate = rep(0.1, length(list_regions)),
-  mu_reporting_rate = rep(1, length(list_regions)),
-  mu_selectivity = rep(1, length(list_sizes) - 1L),
-  mu_initial_loss_rate = 0.1,
-  mu_ongoing_loss_rate = 0.02,
-  mu_dispersion = 1,
+  mu_movement_step_mean = NULL,
+  sd_movement_step_mean = NULL,
+  mu_fishing_rate = NULL,
   cv_fishing_rate = 0.1,
+  mu_selectivity = NULL,
+  sd_selectivity = NULL,
+  mu_fishing_weight = NULL,
+  sd_fishing_weight = NULL,
+  mu_mortality_rate = NULL,
   cv_mortality_rate = 0.1,
-  cv_reporting_rate = 0.1,
-  cv_selectivity = 0.1,
-  cv_initial_loss_rate = 0.1,
-  cv_ongoing_loss_rate = 0.1,
-  cv_movement_deviation = 0.1,
-  cv_dispersion = 0.25,
+  mu_reporting_rate = NULL,
+  sd_reporting_rate = NULL,
+  mu_initial_loss_rate = 0.1,
+  sd_initial_loss_rate = 0.01,
+  mu_ongoing_loss_rate = 0.02,
+  sd_ongoing_loss_rate = 0.001,
+  mu_autoregress = 0.5,
+  sd_autoregress = 0.2,
+  mu_sigma = 0.1,
+  sd_sigma = 0.05,
+  mu_dispersion = 1,
+  sd_dispersion = 0.5,
   tolerance_expected = 1e-12,
-  tolerance_movement = 1e-12,
   tolerance_fishing = 1e-12,
   data = NULL,
   chains = 1,
   step_size = 0.01,
-  adapt_delta = 0.8,
+  adapt_delta = 0.95,
   iter_warmup = 250,
   iter_sampling = 750,
   use_reduce_sum = FALSE,
-  threads_per_chain = 8,
+  threads_per_chain = parallel::detectCores()/(2 * chains),
   refresh = 100,
   ...
 )
@@ -56,21 +60,19 @@ mmmstan(
 \arguments{
 \item{tag_data}{\code{\link[=data.frame]{data.frame()}}}
 
+\item{model_form}{\code{\link[=character]{character()}} one of \code{"mean", "time", "term", "size"}}
+
 \item{list_regions}{\code{\link[=list]{list()}}}
 
 \item{list_sizes}{\code{\link[=list]{list()}}}
 
-\item{year_released_start}{\code{\link[=integer]{integer()}} year that the first tag was released}
+\item{year_start}{\code{\link[=integer]{integer()}} year of initial tag released}
 
-\item{year_recovered_end}{\code{\link[=integer]{integer()}} year that the last tag was recovered}
+\item{year_end}{\code{\link[=integer]{integer()}} year of final tag recovered}
 
-\item{step_interval}{\code{\link[=character]{character()}} in \code{c("month", "quarter", "year")}}
+\item{step_interval}{\code{\link[=character]{character()}} one of \code{"month", "quarter", "year"}}
 
 \item{step_liberty_max}{\code{\link[=integer]{integer()}}}
-
-\item{term_interval}{\code{\link[=character]{character()}} in \code{c("month", "quarter", "year")}}
-
-\item{rate_interval}{\code{\link[=character]{character()}} in \code{c("month", "quarter", "year")}}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
 
@@ -82,50 +84,57 @@ mmmstan(
 
 \item{colname_size_released}{\code{\link[=character]{character()}}}
 
-\item{movement_pattern}{\code{\link[=integer]{integer()}} One of \code{1}: movement between
-all pairs of regions at each step, or \code{2}:
-movement between numerically sequential regions (the default)}
+\item{movement_pattern}{\code{\link[=integer]{integer()}}}
 
-\item{movement_allow}{\code{\link[=integer]{integer()}} \code{\link[=matrix]{matrix()}} Adjusts the movement pattern
-to allow additional movement between regions. Each row indicates
-directional movement between a pair of regions}
+\item{movement_allow}{\link[=matrix]{integer()}}
 
-\item{movement_disallow}{\code{\link[=integer]{integer()}} \code{\link[=matrix]{matrix()}} As for
-\code{movement_allow}, but specified movement is disallowed}
+\item{movement_disallow}{\link[=matrix]{integer()}}
 
-\item{mu_fishing_rate}{\link[=array]{numeric()}}
+\item{mu_movement_step_mean}{\link[=matrix]{numeric()}}
 
-\item{mu_mortality_rate}{\code{\link[=numeric]{numeric()}}}
+\item{sd_movement_step_mean}{\link[=matrix]{numeric()}}
 
-\item{mu_reporting_rate}{\code{\link[=numeric]{numeric()}}}
-
-\item{mu_selectivity}{\code{\link[=numeric]{numeric()}}}
-
-\item{mu_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
-
-\item{mu_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
-
-\item{mu_dispersion}{\code{\link[=numeric]{numeric()}}}
+\item{mu_fishing_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_fishing_rate}{\code{\link[=numeric]{numeric()}}}
 
+\item{mu_selectivity}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_selectivity}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_fishing_weight}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_fishing_weight}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_mortality_rate}{\code{\link[=numeric]{numeric()}}}
+
 \item{cv_mortality_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_reporting_rate}{\code{\link[=numeric]{numeric()}}}
+\item{mu_reporting_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_selectivity}{\code{\link[=numeric]{numeric()}}}
+\item{sd_reporting_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
+\item{mu_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
+\item{sd_initial_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_movement_deviation}{\code{\link[=numeric]{numeric()}}}
+\item{mu_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{cv_dispersion}{\code{\link[=numeric]{numeric()}}}
+\item{sd_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_autoregress}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_autoregress}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_sigma}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_sigma}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_dispersion}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_dispersion}{\code{\link[=numeric]{numeric()}}}
 
 \item{tolerance_expected}{\code{\link[=numeric]{numeric()}}}
-
-\item{tolerance_movement}{\code{\link[=numeric]{numeric()}}}
 
 \item{tolerance_fishing}{\code{\link[=numeric]{numeric()}}}
 
@@ -153,8 +162,19 @@ directional movement between a pair of regions}
 \code{\link[=mmmstan]{mmmstan()}}
 }
 \description{
-Fit Markov Movement Models Using CmdStan and CmdStanR
+The Stan model data may be specified by individual arguments or by passing
+a suitable \code{data} argument. The \code{data} argument takes precedence
+when it is non-null.
 }
 \details{
+When the model data are specified by individual arguments, a number of
+helper functions with sensible defaults are used to assemble the \code{data}
+object. This is usually preferable for user convenience.
+
+Passing the \code{data} object directly may be preferred for example when the
+\code{data} object is the output of a simulation model, or when greater
+flexibility is desired. In either event, care must be taken to ensure the
+\code{data} object matches the requirements of the underlying Stan model.
+
 TBD
 }
