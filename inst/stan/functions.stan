@@ -410,15 +410,7 @@ array[,] vector assemble_observed_step (
 
 
 /**
-* Assemble an observation step array [N] of diagonal matrices [X, X]
-*
-* @param fstep, an array [T] of vector [X] stepwise fishing rates
-* @param fterm, an array [I] of matrix [X, X] stepwise fishing term weights
-* @param sstep, a vector [X] of selectivity fractions
-* @param rstep, a vector [X] of tag reporting steps
-*
-* @return an array [N, S] of matrices [X, X]
-*/
+
 array[,] matrix assemble_observed_step_old (
   array [] vector fstep,
   array [] matrix fterm,
@@ -448,18 +440,6 @@ array[,] matrix assemble_observed_step_old (
   return observed_step;
 }
 
-
-/**
-* Assemble a survival step array [N, S] of diagonal matrices [X, X]
-*
-* @param fstep, an array [T] of vector [X] stepwise fishing rates
-* @param fterm, an array [I] of matrix [X, X] stepwise fishing term weights
-* @param sstep, a vector [X] of selectivity fractions
-* @param mstep, a vector [X] of stepwise natural mortality rates
-* @param ostep, a real ongoing stepwise tag loss rate
-*
-* @return an array [N, S] of matrices [X, X]
-*/
 array[,] matrix assemble_survival_step_old (
   array [] vector fstep,
   array [] matrix fterm, // fweight
@@ -535,17 +515,6 @@ array[,] matrix assemble_movement_rate (
   return movement_rate;
 }
 
-
-
-
-/**
-* Assemble a movement mean matrix
-*
-* @param mstep, an array [N, S] of matrices [X, X]
-* @param mpower, matrix power
-*
-* @return a matrix of dimension [X, X]
-*/
 matrix assemble_movement_mean (
   array[,] matrix mstep,
   int mpower
@@ -741,82 +710,4 @@ array[] matrix assemble_fishing_term (array[] vector fsimp) {
   return fishing_weight;
 }
 
-
-
-
-
-
-
-real partial_sum_lpmf (
-  array[] int index,
-  int start,
-  int end,
-  int X,
-  int T,
-  int I,
-  int S,
-  int N,
-  int L,
-  int C,
-  array[,,,,] int tags,
-  array[,] matrix movement_step,
-  array[,] matrix survival_step,
-  array[,] matrix observed_step,
-  array[] matrix movement_possible_transpose,
-  real initial_loss_step,
-  real tolerance_expected,
-  real dispersion
-) {
-  // Declare enumeration values
-  array[N-1,S,L] matrix[X,X] abundance = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
-  array[N-1,S,L] matrix[X,X] predicted = rep_array(rep_matrix(0.0,X,X),N-1,S,L);
-  array[C] int observed = rep_array(0, C);
-  array[C] real expected = rep_array(0.0, C);
-  // Declare index values
-  int count;
-  // Populate released abundance
-  for (n in start:end) { // Partial sum index range within released step
-    for (s in 1:S) { // Released size
-      for (x in 1:X) { // Released region
-        abundance[n, s, 1, x, x] = tags[n, s, 1, x, x] // Integer scalar
-        * (1 - initial_loss_step); // Real scalar
-      }
-    }
-  }
-  // Initialize count
-  count = 0;
-  // Compute expected recoveries
-  for (n in start:end) { // Partial sum index range within released step
-    for (s in 1:S) { // Released size
-      for (l in 2:min(N - n + 1, L)) { // Liberty step
-        // Propagate abundance
-        abundance[n, s, l] = abundance[n, s, l - 1]
-        * survival_step[n + l - 2, s] // Previous step; diagonal matrix [X, X]
-        * movement_step[n + l - 2, s]; // Prevous step; square matrix [X, X]
-        // Compute predicted
-        predicted[n, s, l] = abundance[n, s, l] // Square matrix [X, X]
-        * observed_step[n + l - 1, s]; // Current step; diagonal matrix [X, X]
-        // Compute vectors
-        for (y in 1:X) { // Current region
-          for (x in 1:X) { // Released region
-            if (tags[n, s, 1, x, x] > 0) { // Were any tags released?
-              if (movement_possible_transpose[l][y, x] > 0) {
-                // Increment observation count
-                count += 1;
-                // Populate observed and expected values
-                observed[count] = tags[n, s, l, x, y]; // Integer
-                expected[count] = predicted[n, s, l, x, y]
-                + tolerance_expected; // Real
-              } // End if
-            } // End if
-          } // End x
-        } // End y
-      } // End l
-    } // End s
-  } // End n
-
-  // Return partial sum
-  return neg_binomial_2_lupmf(observed[1:count] | expected[1:count],dispersion);
-}
-
-
+*/

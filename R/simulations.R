@@ -34,7 +34,7 @@ sim <- function (n_steps,
   tags <- abundance
   # Released
   released <- array(
-    rnbinom(
+    stats::rnbinom(
       n = (n_steps - 1L) * n_regions,
       size = dispersion_released, # var = mu + mu^2/dispersion
       mu = mean_released
@@ -59,7 +59,7 @@ sim <- function (n_steps,
         movement_step
       # Observed
       tags[n, l,,] <- array(
-        rnbinom(
+        stats::rnbinom(
           n = n_regions * n_regions,
           size = dispersion,
           mu = as.vector(

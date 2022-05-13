@@ -323,132 +323,6 @@ create_s_to_d <- function (model_form,
   return(index)
 }
 
-
-# Current above here -----------------------------------------------------------
-
-
-
-#' Compute The Number of Model Steps
-#'
-#' @param n_times [integer()] number of model times (years)
-#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
-#'   or \code{"year"}
-#'
-#' @return [integer()] number of model steps
-#' @export
-#'
-#' @examples
-#' compute_n_steps(1, "month")
-#' compute_n_steps(1, "quarter")
-#' compute_n_steps(1, "year")
-#' compute_n_steps(10, "month")
-#' compute_n_steps(10, "quarter")
-#' compute_n_steps(10, "year")
-#'
-compute_n_steps <- function (n_times, step_interval) {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_integerish(n_times, lower = 1, any.missing = FALSE, len = 1)
-  checkmate::assert_choice(step_interval,  c("year", "quarter", "month"))
-
-  # Compute the number of steps per year ---------------------------------------
-
-  n <- c(1L, 4L, 12L)[match(step_interval, c("year", "quarter", "month"))[1]]
-
-  # Return the number of steps -------------------------------------------------
-
-  return(n_times * n)
-}
-
-#' Compute Steps Per Term
-#'
-#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
-#'   or \code{"year"}
-#' @param term_interval [character()] one of \code{"month"}, \code{"quarter"}
-#'   or \code{"year"}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#' compute_steps_per_term("month", "quarter")
-#' compute_steps_per_term("quarter", "quarter")
-#' compute_steps_per_term("quarter", "year")
-#'
-compute_steps_per_term <- function (step_interval, term_interval) {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_choice(step_interval, c("year", "quarter", "month"))
-  checkmate::assert_choice(term_interval, c("year", "quarter", "month"))
-
-  # Compute steps per term -----------------------------------------------------
-
-  steps_per_year <- compute_steps_per_year(step_interval)
-  terms_per_year <- compute_terms_per_year(term_interval)
-  steps_per_term <- steps_per_year / terms_per_year
-  if (steps_per_term < 1L) {
-    stop("step_interval must be <= term_interval")
-  }
-
-  # Return steps per term ------------------------------------------------------
-
-  return(as.integer(steps_per_term))
-}
-
-
-
-#' Compute The Number of Model Terms Per Year
-#'
-#' @param x [character()] one of \code{"year"}, \code{"quarter"}
-#'   or \code{"month"}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' compute_terms_per_year("year")
-#' compute_terms_per_year("quarter")
-#' compute_terms_per_year("month")
-#'
-compute_terms_per_year <- function (x) {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_choice(x = x, choices = c("year", "quarter", "month"))
-
-  # Return the number of terms per time ----------------------------------------
-
-  return(c(1L, 4L, 12L)[match(x, c("year", "quarter", "month"))[1]])
-}
-
-#' Compute The Number of Model Steps Per Year
-#'
-#' @param x [character()] one of \code{"year"}, \code{"quarter"}
-#'   or \code{"month"}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' compute_steps_per_year("year")
-#' compute_steps_per_year("quarter")
-#' compute_steps_per_year("month")
-#'
-compute_steps_per_year <- function (x) {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_choice(x = x, choices = c("year", "quarter", "month"))
-
-  # Return the number of steps per time ----------------------------------------
-
-  return(c(1L, 4L, 12L)[match(x, c("year", "quarter", "month"))[1]])
-}
-
 #' Compute The Number of Years
 #'
 #' @param a [character()] date as \code{"\%Y-\%m-\%d"}
@@ -593,7 +467,6 @@ create_movement_index <- function (number_of_regions,
 
   return(movement_index)
 }
-
 
 #' Create Groups from Index List
 #'
@@ -807,133 +680,6 @@ create_step_released <- function (date_released,
   return(as.integer(step_released))
 }
 
-#' Create Step to Time Index
-#'
-#' @param n_steps [integer()] number of model steps
-#' @param n_times [integer()] number of times (years)
-#'
-#' @return [integer()][vector()]
-#' @export
-#'
-create_step_to_time <- function (n_steps, n_times) {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_true(magrittr::mod(n_steps, n_times) == 0L)
-
-  # Assemble step to time ------------------------------------------------------
-
-  step_to_time <- rep(
-    seq_len(n_times),
-    each = ceiling(n_steps / n_times)
-  )[seq_len(n_steps)]
-
-  # Return step to time --------------------------------------------------------
-
-  return(step_to_time)
-}
-
-#' Create Step to Term Index
-#'
-#' @param n_steps [integer()] number of model steps
-#' @param n_times [integer()] number of times (years)
-#' @param n_terms [integer()] number of unique terms (seasons)
-#' @param nest_terms_within_times [logical()] nest terms within times?
-#'
-#' @return [integer()][vector()]
-#' @export
-#'
-create_step_to_term <- function (n_steps,
-                                 n_times,
-                                 n_terms,
-                                 nest_terms_within_times = FALSE) {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_true(magrittr::mod(n_steps, n_times) == 0L)
-  checkmate::assert_true(magrittr::mod(n_steps, n_terms) == 0L)
-  checkmate::assert_logical(
-    nest_terms_within_times,
-    any.missing = FALSE,
-    len = 1L
-  )
-
-  # Assemble step to term ------------------------------------------------------
-
-  if (nest_terms_within_times) {
-    step_to_term <- rep(
-      rep(seq_len(n_terms), n_times),
-      each  = ceiling(n_steps / (n_times * n_terms))
-    )[seq_len(n_steps)]
-  } else {
-    step_to_term <- rep(
-      seq_len(n_terms),
-      each = ceiling(n_steps / n_terms)
-    )[seq_len(n_steps)]
-  }
-
-  # Return step to term --------------------------------------------------------
-
-  return(step_to_term)
-}
-
-#' Create Step to Rate Power
-#'
-#' @param step_interval [character()] in \code{c("month", "quarter", "year")}
-#' @param rate_interval [character()] in \code{c("month", "quarter", "year")}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' create_step_to_rate_power("month", "month")
-#' create_step_to_rate_power("month", "quarter")
-#' create_step_to_rate_power("month", "year")
-#' create_step_to_rate_power("quarter", "quarter")
-#' create_step_to_rate_power("quarter", "year")
-#' create_step_to_rate_power("year", "year")
-#'
-create_step_to_rate_power <- function (step_interval, rate_interval) {
-
-  # Check arguments ------------------------------------------------------------
-
-  checkmate::assert_choice(
-    step_interval,
-    choices = c("year", "quarter", "month")
-  )
-  checkmate::assert_choice(
-    rate_interval,
-    choices = c("year", "quarter", "month")
-  )
-
-  # Compute power --------------------------------------------------------------
-
-  if (step_interval == rate_interval) {
-    n_power <- 1L
-  } else {
-    if (step_interval == "month") {
-      if (rate_interval == "quarter") {
-        n_power <- 3L
-      } else {
-        n_power <- 12L
-      }
-    } else if (step_interval == "quarter") {
-      if (rate_interval == "year") {
-        n_power <- 4L
-      } else {
-        stop("rate_interval must be equal or longer than step_interval")
-      }
-    } else {
-      stop("rate_interval must be equal or longer than step_interval")
-    }
-  }
-
-  # Return power ---------------------------------------------------------------
-
-  return(n_power)
-}
-
 #' Create Tag Array
 #'
 #' @param tag_data [data.frame()]
@@ -1040,7 +786,7 @@ create_tag_array <- function (tag_data,
   # Compute index limits -------------------------------------------------------
 
   n_times <- compute_n_years(date_released_start, date_recovered_end)
-  n_steps <- n_times * compute_steps_per_year(step_interval)
+  n_steps <- n_times * count_steps_per_year(step_interval)
   n_sizes <- length(list_sizes)
   n_regions <- length(list_regions)
   n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
