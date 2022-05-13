@@ -1,243 +1,301 @@
-
 functions {
   #include functions.stan
-  #include parameters.stan
-  #include partial_sum.stan
 }
 
 data {
-  // Index limits
-  int<lower=2> A; // Number of release and recovery areas
-  int<lower=1> G_released; // Number of release groups
-  int<lower=1> G_harvest; // Number of harvest rate groups
-  int<lower=1> T_released; // Number of release time steps
-  int<lower=2> T_liberty; // Maximum number of time steps at liberty
-  int<lower=2> T_study; // T_liberty + (T_released - 1) or T_liberty + 1
-  int<lower=1> T_movement; // Number of movement time steps
-  int<lower=1> T_harvest; // Number of harvest rate time steps
-  int<lower=1> T_reporting; // Number of tag reporting rate time steps
-  // Constants
-  int<lower=1> T_year; // Number of time steps per year
-  // Input rates
-  real<lower=0> m; // Natural mortality rate
-  real<lower=0, upper=1> u; // Initial tag retention rate (proportion)
-  real<lower=0> v; // Tag loss rate
-  // Reporting rate
-  real<lower=0, upper=1> w[T_reporting, A]; // Tag reporting rate array
+  // Model form
+  int<lower=0, upper=3> form; // 0: mean; 1: time; 2: term; 3: size
+  // Model index limits
+  int<lower=2> N; // Number of model steps (months/quarters/years) in the study
+  int<lower=1> S; // Number of size or sex classes
+  int<lower=2> L; // Number of maximum model steps at liberty
+  int<lower=2> X; // Number of geographic regions
+  // Movement index limits
+  int<lower=1> I; // Number of movement steps
+  int<lower=1> D; // Number of movement sizes
+  // Fishing index limits
+  int<lower=1> T; // Number of fishing steps (almost always years)
+//  int<lower=1> W; // Number of fishing weight steps (seasons per year)
+  // Conversion index limits
+  int<lower=1> J; // Factor to convert instantaneous stepwise rates to rates
+  int<lower=1> K; // Matrix power to convert movement steps (to rates)
+  int<lower=1> P; // Number of parameters in one [i,d][x,y] movement step slice
+  // Movement index arrays
+  array[N] int<lower=1> n_to_i; // Model step to movement step index
+  array[S] int<lower=1> s_to_d; // Model size to movement size index
+  // Fishing index arrays
+  array[N] int<lower=1> n_to_t; // Model step to fishing step index
+//  array[N] int<lower=1> n_to_w; // Model step to fishing weight step index
   // Tag data
-  int<lower=0> x[T_released, A, G_released]; // Released array
-  int<lower=0> y[T_released, A, G_released, T_liberty, A]; // Recovered array
-  // Movement index array
-  int<lower=0, upper=1> z[A, A]; // Movement index array
-  // Index vectors
-  int<lower=1> p_time_index[T_study]; // Movement rate time step index
-  int<lower=1> h_time_index[T_study]; // Harvest rate time step index
-  int<lower=1> w_time_index[T_study]; // Reporting rate time step index
-  int<lower=1> h_group_index[G_released]; // Harvest rate group index
-  // Option constants
-  int<lower=0, upper=1> random_walk; // Include random walk on retention rates
-  // Prior parameters
-  real<lower=0> h_prior_mean[G_harvest, T_harvest, A];
-  real<lower=0> h_prior_sd[G_harvest, T_harvest, A];
-  real<lower=0> phi_prior_mean;
-  real<lower=0> phi_prior_sd;
-  real<lower=0> sigma_prior_mean[(random_walk == 1 && T_movement > 1) ? A : 0];
-  real<lower=0> sigma_prior_sd[(random_walk == 1 && T_movement > 1) ? A : 0];
-  // Fudge constants
-  real<lower=0> p_fudge;
-  real<lower=0> y_fudge;
+  array[N - 1, S, L, X, X] int<lower=0> tags;
+  // Movement index (will be paired with a matrix version)
+  array[X, X] int<lower=0, upper=1> movement_index;
+  // Movement step mean priors
+  matrix<lower=0, upper=1>[X, X] mu_movement_step_mean;
+  matrix<lower=0, upper=1>[X, X] sd_movement_step_mean;
+  // Fishing rate priors
+  array[T] vector<lower=0>[X] mu_fishing_rate;
+  real<lower=0> cv_fishing_rate;
+  // Selectivity priors
+//  vector<lower=0, upper=1>[S - 1] mu_selectivity;
+//  real<lower=0> cv_selectivity;
+  // Fishing weight priors
+//  array[W] vector<lower=0, upper=1>[X] mu_fishing_weight;
+//  real<lower=0> cv_fishing_weight;
+  // Natural mortality rate priors
+  vector<lower=0>[X] mu_mortality_rate;
+  vector<lower=0>[X] sd_mortality_rate;
+  // Fractional (per tag) reporting rate priors
+  vector<lower=0, upper=1>[X] mu_reporting_rate;
+  vector<lower=0>[X] sd_reporting_rate;
+  // Fractional (per tag) initial loss rate priors
+  real<lower=0, upper=1> mu_initial_loss_rate;
+  real<lower=0> sd_initial_loss_rate;
+  // Instantaneous ongoing loss rate priors
+  real<lower=0> mu_ongoing_loss_rate;
+  real<lower=0> sd_ongoing_loss_rate;
+  // Autoregression priors
+  real<lower=0, upper=1> mu_autoregress;
+  real<lower=0, upper=1> sd_autoregress;
+  real<lower=0> mu_sigma;
+  real<lower=0> sd_sigma;
+  // Dispersion priors
+  real<lower=0> mu_dispersion;
+  real<lower=0> sd_dispersion;
+  // Tolerance values
+  real<lower=0> tolerance_expected;
+  real<lower=0> tolerance_fishing;
 }
 
 transformed data {
-  // Transformed prior parameters
-  real<lower=0> h_alpha[G_harvest, T_harvest, A];
-  real<lower=0> h_beta[G_harvest, T_harvest, A];
-  real<lower=0> phi_alpha;
-  real<lower=0> phi_beta;
-  real<lower=0> sigma_alpha[(random_walk == 1 && T_movement > 1) ? A : 0];
-  real<lower=0> sigma_beta[(random_walk == 1 && T_movement > 1) ? A : 0];
-  real<lower=0> pars[2] = rep_array(0.0, 2);
-  // Simplex dimensions
-  int simplex_dims[6] = simplex_dimensions(A, G_released, T_movement, z);
-  // Transformed indexes
-  real vs = v / T_year;
-  real ms = m / T_year;
-  // Populate harvest prior parameters
-  for (hg in 1:G_harvest) {
-    for (ht in 1:T_harvest) {
-      for (ca in 1:A) {
-        pars = beta_pars(h_prior_mean[hg, ht, ca], h_prior_sd[hg, ht, ca]);
-        h_alpha[hg, ht, ca] = pars[1];
-        h_beta[hg, ht, ca] = pars[2];
-      }
-    }
-  }
-  // Populate negative dispersion prior parameters
-  pars = gamma_pars(phi_prior_mean, phi_prior_sd);
-  phi_alpha = pars[1];
-  phi_beta = pars[2];
-  // Populate random walk standard deviation parameters
-  if (random_walk == 1 && T_movement > 1) {
-    for (ca in 1:A) {
-      pars = gamma_pars(sigma_prior_mean[ca], sigma_prior_sd[ca]);
-      sigma_alpha[ca] = pars[1];
-      sigma_beta[ca] = pars[2];
-    }
-  }
+  // Declare upper bound on number of observations
+  int<lower=0> C = N * S * L * X * X;
+  // Declare movement matrix version of movement index
+  matrix[X, X] movement_matrix = assemble_movement_matrix(movement_index);
+  // Declare simplex dimensions
+  array[6] int simplex_dimensions = assemble_simplex_dimensions(
+    movement_index,
+    I, D
+  );
+  // Declare tags released
+  array[N - 1, S] vector[X] tags_released = assemble_tags_released(tags);
+  // Declare tags transpose (permute x and y)
+  array[N - 1, S, L, X, X] int tags_transpose = assemble_tags_transpose(tags);
+  // Declare movement possible values
+  array[L] matrix[X, X] movement_possible = assemble_movement_possible(
+    movement_matrix,
+    L
+  );
+  // Declare partial sum index
+  array[N - 1] int partial_sum_index = rep_array(1, N - 1);
+  // Declare partial sum grainsize
+  int grainsize = 1;
 }
 
 parameters {
-  // Harvest rate
-  real<lower=0, upper=1> h[G_harvest, T_harvest, A];
   // Movement simplexes
-  simplex[1] s1[simplex_dims[1]]; // Not used
-  simplex[2] s2[simplex_dims[2]];
-  simplex[3] s3[simplex_dims[3]];
-  simplex[4] s4[simplex_dims[4]];
-  simplex[5] s5[simplex_dims[5]];
-  simplex[6] s6[simplex_dims[6]];
-  // Random walk standard deviation
-  real<lower=0> sigma[(random_walk == 1 && T_movement > 1) ? A : 0];
-  // Negative binomial dispersion var = mu + mu^2 / phi
-  real<lower=0> phi;
+  array[simplex_dimensions[1]] simplex[1] a1;
+  array[simplex_dimensions[2]] simplex[2] a2;
+  array[simplex_dimensions[3]] simplex[3] a3;
+  array[simplex_dimensions[4]] simplex[4] a4;
+  array[simplex_dimensions[5]] simplex[5] a5;
+  array[simplex_dimensions[6]] simplex[6] a6;
+  // Movement mean stepwise rate
+//  vector<lower=0, upper=1>[X] movement_step_diag;
+  // Instantaneous stepwise rates
+  array[T] vector<lower=0>[X] fishing_step;
+  vector<lower=0>[X] mortality_step;
+  real<lower=0> ongoing_loss_step;
+  // Fractional (per tag) stepwise rates
+  vector<lower=0, upper=1>[X] reporting_step;
+  real<lower=0, upper=1> initial_loss_step;
+  // Selectivity (per fish)
+//  vector<lower=0, upper=1>[S - 1] selectivity_short;
+  // Seasonal fishing weights
+//  array[X] simplex[W] fishing_weight_transpose;
+  // Autoregression priors
+  vector<lower=0, upper=1>[form > 0 ? X : 0] autoregress;
+  vector<lower=0>[form > 0 ? X : 0] sigma;
+  // Negative binomial dispersion parameter
+  real<lower=0> dispersion;
 }
 
 transformed parameters {
-  // Initialize array version of movement simplexes
-  real p1[simplex_dims[1], 1];
-  real p2[simplex_dims[2], 2];
-  real p3[simplex_dims[3], 3];
-  real p4[simplex_dims[4], 4];
-  real p5[simplex_dims[5], 5];
-  real p6[simplex_dims[6], 6];
-  // Initialize fishing mortality rates
-  real f[G_harvest, T_harvest, A];
-  real fs[G_harvest, T_harvest, A];
-  // Populate array version of movement simplexes
-  for (i in 1:simplex_dims[1]) {for (j in 1:1) {p1[i, j] = s1[i, j]; } }
-  for (i in 1:simplex_dims[2]) {for (j in 1:2) {p2[i, j] = s2[i, j]; } }
-  for (i in 1:simplex_dims[3]) {for (j in 1:3) {p3[i, j] = s3[i, j]; } }
-  for (i in 1:simplex_dims[4]) {for (j in 1:4) {p4[i, j] = s4[i, j]; } }
-  for (i in 1:simplex_dims[5]) {for (j in 1:5) {p5[i, j] = s5[i, j]; } }
-  for (i in 1:simplex_dims[6]) {for (j in 1:6) {p6[i, j] = s6[i, j]; } }
-  // Populate fishing mortality rates
-  for (hg in 1:G_harvest) {
-    for (ht in 1:T_harvest) {
-      for (ca in 1:A) {
-        f[hg, ht, ca] = -log(1 - h[hg, ht, ca]);
-        fs[hg, ht, ca] = f[hg, ht, ca] / T_year;
-      }
-    }
+  // Declare stepwise rates
+  array[I, D] matrix<lower=0, upper=1>[X, X] movement_step;
+  array[N, S] vector<lower=0, upper=1>[X] survival_step;
+  array[N, S] vector<lower=0, upper=1>[X] observed_step;
+  // Declare stepwise movement deviations
+  array[I, D] vector<lower=-1, upper=1>[X] movement_deviation;
+  // Declare instantaneous rates
+  array[T] vector<lower=0>[X] fishing_rate;
+  vector<lower=0>[X] mortality_rate = mortality_step * J;
+  real<lower=0> ongoing_loss_rate = ongoing_loss_step * J;
+  // Declare fractional (per tag) rates
+  vector<lower=0, upper=1>[X] reporting_rate = reporting_step;
+  real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
+  // Selectivity
+//  vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
+  // Declare fishing weight
+//  array[W] vector<lower=0, upper=1> fishing_weight;
+  // Assemble movement step [I, D][X, X]
+  movement_step = assemble_movement_step(
+    a1, a2, a3, a4, a5, a6,
+    movement_index,
+    I, D
+  );
+  // Assemble movement deviation
+  if (form == 0) {
+    movement_deviation = rep_array(rep_vector (0.0, X), I, D);
+  } else {
+    movement_deviation = assemble_movement_deviation(
+      movement_step,
+      mu_movement_step_mean
+//      movement_step_mean
+    );
   }
+  // Assemble fishing rate
+  fishing_rate = assemble_fishing_rate(fishing_step, J);
+  // Assemble fishing weight
+//  fishing_weight = assemble_fishing_weight(fishing_weight_transpose);
+  // Assemble survival step
+  survival_step = assemble_survival_step(
+    fishing_step,
+    mortality_step,
+    ongoing_loss_step,
+    n_to_t,
+    S
+  );
+  // Assemble observed step
+  observed_step = assemble_observed_step(
+    fishing_step,
+    reporting_step,
+    n_to_t,
+    S
+  );
 }
 
 model {
-  // Initialize values
-  real ps[G_released, T_movement, A, A]; // [ , , ca, pa] Stepwise rates
-  real ss[G_released, T_study, A]; // Stepwise survival rate
-  int release_steps[T_released];
-  int grainsize = 1;
-  ss = rep_array(0, G_released, T_study, A);
-
-  // Create stepwise movement rates
-  ps = p_step(A, G_released, T_movement, z, p1, p2, p3, p4, p5, p6, p_fudge);
-
-  // Populate release steps
-  for (rt in 1:T_released) {
-    release_steps[rt] = rt;
-  }
-
-  // Compute survival
-  for (rg in 1:G_released) {
-    for (ct in 1:T_study) {
-      for (ca in 1:A) {
-        ss[rg, ct, ca] = exp(
-          -fs[h_group_index[rg], h_time_index[ct], ca]
-          - ms
-          - vs);
+  // Movement step diag
+//  movement_step_diag ~ normal(
+//    diagonal(mu_movement_step_mean),
+//    diagonal(sd_movement_step_mean)
+//  );
+  // Movement deviation prior
+  if (form == 1) {
+    // Autoregression priors
+    autoregress ~ normal(mu_autoregress, sd_autoregress);
+    sigma ~ normal(mu_sigma, sd_sigma);
+    // Initial value
+    for (d in 1:D) {
+      movement_deviation[1, d] ~ normal(0.0, sigma);
+    }
+    // Autoregressive values
+    for (i in 2:I) {
+      for(d in 1:D) {
+        movement_deviation[i, d] ~ normal(
+         movement_deviation[i - 1, d] .* autoregress,
+         sigma
+        );
+      }
+    }
+  } else if (form == 2) {
+    // Autoregression priors
+    autoregress ~ normal(mu_autoregress, sd_autoregress);
+    sigma ~ normal(mu_sigma, sd_sigma);
+    // Initial value
+    for (d in 1:D) {
+      movement_deviation[1, d] ~ normal(
+        movement_deviation[I, d] .* autoregress,
+        sigma
+      );
+    }
+    // Autoregressive values
+    for (i in 2:I) {
+      for (d in 1:D) {
+        movement_deviation[i, d] ~ normal(
+         movement_deviation[i - 1, d] .* autoregress,
+         sigma
+        );
+      }
+    }
+  } else if (form == 3) {
+    // Autoregression priors
+    autoregress ~ normal(mu_autoregress, sd_autoregress);
+    sigma ~ normal(mu_sigma, sd_sigma);
+    // Autoregressive values
+    for (i in 1:I) {
+      for (d in 2:D) {
+        movement_deviation[i, d] ~ normal(
+         movement_deviation[i, d - 1] .* autoregress,
+         sigma
+        );
       }
     }
   }
-
+  // Fishing rate prior
+  for (t in 1:T) {
+    fishing_rate[t] ~ normal(
+      mu_fishing_rate[t],
+      mu_fishing_rate[t] * cv_fishing_rate + tolerance_fishing
+    );
+  }
+  // Mortality rate prior
+  mortality_rate ~ normal(mu_mortality_rate, sd_mortality_rate);
+  // Reporting rate prior
+  reporting_rate ~ normal(mu_reporting_rate, sd_reporting_rate);
+  // Ongoing loss rate prior
+  ongoing_loss_rate ~ normal(mu_ongoing_loss_rate, sd_ongoing_loss_rate);
+  // Initial loss rate prior
+  initial_loss_rate ~ normal(mu_initial_loss_rate, sd_initial_loss_rate);
   // Dispersion prior
-  phi ~ gamma(phi_alpha, phi_beta);
-
-  // Harvest rate priors
-  for (hg in 1:G_harvest) {
-    for (ht in 1:T_harvest) {
-      for (ca in 1:A) {
-        h[hg, ht, ca] ~ beta(h_alpha[hg, ht, ca], h_beta[hg, ht, ca]);
-      }
-    }
-  }
-
-  // Random walk priors
-  if (random_walk == 1 && T_movement > 1) {
-    sigma ~ gamma(sigma_alpha, sigma_beta);
-  }
-
-  // Random walk on retention rates (self-movement rates)
-  if (random_walk == 1 && T_movement > 1) {
-    for (rg in 1:G_released) {
-      for (mt in 2:T_movement) {
-        for (ca in 1:A) {
-          ps[rg, mt, ca, ca] ~ normal(ps[rg, mt - 1, ca, ca], sigma[ca]);
-        }
-      }
-    }
-  }
-
-  // Likelihood statement using reduce_sum()
+  dispersion ~ normal(mu_dispersion, sd_dispersion);
+  // Use reduce sum
   target += reduce_sum(
-    partial_sum_lupmf,
-    release_steps,
-    grainsize,
-    A,
-    G_released,
-    T_liberty,
-    T_study,
-    x,
-    y,
-    w,
-    u,
-    p_time_index,
-    h_time_index,
-    h_group_index,
-    w_time_index,
-    y_fudge,
-    fs,
-    ss,
-    ps,
-    phi);
+    partial_sum_lpmf, // Partial sum function
+    partial_sum_index, // Each element corresponds to a summand
+    grainsize, // Set to one to leave partitioning up to scheduler
+    N, S, L, X, // Arguments shared by every term...
+    n_to_i,
+    s_to_d,
+    tags_transpose,
+    tags_released,
+    movement_step,
+    survival_step,
+    observed_step,
+    movement_possible,
+    initial_loss_step,
+    tolerance_expected,
+    dispersion
+  );
 }
 
 generated quantities {
-  // Initialize
-  real ps[G_released, T_movement, A, A]; // Stepwise model version [ , , ca, pa]
-  matrix[A, A] ps_matrix[G_released, T_movement]; // Stepwise intermediary
-  matrix[A, A] p_matrix[G_released, T_movement]; // Annual intermediary
-  real p[A, A, T_movement, G_released]; // Annual user version [pa, ca, , ,]
-
-  // Create stepwise movement rates
-  ps = p_step(A, G_released, T_movement, z, p1, p2, p3, p4, p5, p6, p_fudge);
-
-  // Populate annual movement rate array
-  for (rg in 1:G_released) {
-    for (mt in 1:T_movement) {
-      // Populate p_matrix
-      for (pa in 1:A) {
-        for (ca in 1:A) {
-          ps_matrix[rg, mt, pa, ca] = ps[rg, mt, ca, pa];
-        }
-      }
-      // Populate annual p_matrix
-      p_matrix[rg, mt] = matrix_power(ps_matrix[rg, mt], T_year);
-      // Populate annual array p
-      for (pa in 1:A) {
-        for (ca in 1:A) {
-          p[pa, ca, mt, rg] = p_matrix[rg, mt, pa, ca];
-        }
-      }
+  // Declare movement mean
+  matrix[X, X] movement_mean = rep_matrix(0.0, X, X);
+  array[I] matrix[X, X] movement_time = rep_array(rep_matrix(0.0, X, X), I);
+  array[I] matrix[X, X] movement_term = rep_array(rep_matrix(0.0, X, X), I);
+  array[D] matrix[X, X] movement_size = rep_array(rep_matrix(0.0, X, X), D);
+  // Populate movement mean
+  if (form == 0) {
+    movement_mean = matrix_power(movement_step[1, 1], K);
+  }
+  // Populate movement time
+  if (form == 1) {
+    for (i in 1:I) {
+      movement_time[i] = matrix_power(movement_step[i, 1], K);
+    }
+  }
+  // Populate movement term
+  if (form == 2) {
+    for (i in 1:I) {
+      movement_term[i] = matrix_power(movement_step[i, 1], K);
+    }
+  }
+  // Populate movement size
+  if (form == 3) {
+    for (d in 1:D) {
+      movement_size[d] = matrix_power(movement_step[1, d], K);
     }
   }
 }

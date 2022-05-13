@@ -18,101 +18,284 @@ knitr::opts_chunk$set(
 library(mmmstan)
 ```
 
-# Prepare Data
-```{r prepare-data}
-
+# Load data
+```{r load-data}
 if (FALSE) {
-  load("~/github/sablefish-data/data/tags_released.rda")
-  load("~/github/sablefish-data/data/tags_recovered.rda")
+  # Define tag paths
+  path_released <- "~/github/sablefish-data/data/tags_released.rda"
+  path_recovered <- "~/github/sablefish-data/data/tags_recovered.rda"
+  # Assign values
+  tags_released <- read_from_path(path = path_released)
+  tags_recovered <- read_from_path(path = path_recovered)
+  # Tags
+  tag_data <- tags_released %>%
+    dplyr::left_join(
+      tags_recovered,
+      by = c(
+        "tag_id", 
+        "released_date", 
+        "released_length", 
+        "released_region", 
+        "released_omregion", 
+        "source"
+      )
+    )
+  
+  # Region arguments -----------------------------------------------------------
+  
+  # # Eight regions
+  # list_regions <- list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8)
+  # movement_pattern <- 2
+  # movement_allow <- matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
+  # movement_disallow <- NULL
+  
+  # Three regions
+  list_regions <- list(ak = 1:6, bc = 7, cc = 8)
+  movement_pattern <- 2
+  movement_allow <- NULL
+  movement_disallow <- NULL
+  
+  # Step arguments -------------------------------------------------------------
+  
+  step_interval <- "quarter"
+  # step_liberty_max <- NULL
+  step_liberty_max <- 12
+  
+  # Size arguments -------------------------------------------------------------
+  
+  # For fit mean
+  list_sizes <- list(sml = 400:800)
+  # For fit size
+  list_sizes_small_large <- list(s = 400:549, l = 550:800)
+ 
+  # Year arguments -------------------------------------------------------------
+  
+  year_start <- 1979
+  year_end <- 2017
+  
+  # Column name arguments ------------------------------------------------------
+  
+  colname_date_released <- "released_date" # "date_released"
+  colname_date_recovered <- "recovered_date" # "date_recovered"
+  colname_region_released <- "released_region" # "region_released"
+  colname_region_recovered <- "recovered_region" # "region_recovered"
+  colname_size_released <- "released_length" # "size_released"
+  
+  # Use reduce sum -------------------------------------------------------------
+  
+  use_reduce_sum <- FALSE
+  # use_reduce_sum <- TRUE
+  refresh = 10
 }
 
-if (FALSE) {
-  area_list <- list(bs = 1, ai = 2, wg = 3, cg = 4, eg = 5,
-                    se = 6, bc = 7, cc = 8)
-}
+```
 
+# Fit mean
+```{r fit-mean}
 if (FALSE) {
-  # Quarterly
-  tags <- tag_arrays(
-    released = tags_released,
-    recovered = tags_recovered,
-    released_time_unit = "quarter",
-    released_time_max = 148,
-    liberty_time_max = 12,
-    liberty_days_min = 30, # Not implemented
-    colname_released_date = "released_date",
-    colname_released_area = "released_region",
-    colname_group = "released_length",
-    colname_recovered_date = "recovered_date",
-    colname_recovered_area = "recovered_region",
-    colname_id = "tag_id",
-    area_list = area_list,
-    group_list = list(pooled = 400:799),
-    released_date_start = "1979-01-01",
-    released_date_end = "2015-12-31"
-  ) 
+  # Fit mean
+  fit_mean <- mmmstan(
+    tag_data = tag_data,
+    model_form = "mean",
+    # Tag arguments
+    list_regions = list_regions,
+    list_sizes = list_sizes,
+    year_start = year_start,
+    year_end = year_end,
+    step_interval = step_interval,
+    step_liberty_max = step_liberty_max,
+    colname_date_released = colname_date_released, # "date_released",
+    colname_date_recovered = colname_date_recovered, # "date_recovered",
+    colname_region_released = colname_region_released, # "region_released",
+    colname_region_recovered = colname_region_recovered, # "region_recovered",
+    colname_size_released = colname_size_released, # "size_released",
+    # Movement index
+    movement_pattern = movement_pattern,
+    movement_allow = movement_allow,
+    movement_disallow = movement_disallow,
+    # Use reduce sum
+    use_reduce_sum = use_reduce_sum,
+    refresh = refresh
+  )
+  # View
+  tibble::view(fit_mean$summary$movement_step)
+  tibble::view(fit_mean$summary$movement_mean)
+  tibble::view(fit_mean$summary$fishing_rate)
+  # Plot
+  ggplot2::ggplot(
+    data = fit_mean$summary$movement_mean,
+    mapping = ggplot2::aes(
+      x = 1,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
 }
 
 ```
 
-# Quarterly fit three F
-```{r quarterly-fit-three-f}
-
+# Fit time
+```{r fit-time}
 if (FALSE) {
-  h_prior_mean <- array(0.05, dim = c(1, 1, 8))
-  h_prior_sd <- 0.1 * h_prior_mean
-}
-
-if (FALSE) {
-  # Define data
-  data_list <- list(
-    A = 8,
-    G_released = 1,
-    G_harvest = 1,
-    T_released = 148,
-    T_liberty = 12, # 160,
-    T_study = 148 + 12 - 1, # T_released + T_liberty - 1
-    T_movement = 1,
-    T_harvest = 1,
-    T_reporting = 1,
-    T_year = 4,
-    m = 0.1,
-    u = 0.9,
-    v = 0.02,
-    w = array(1, dim = c(1, 8)),
-    x = tags$x,
-    y = tags$y,
-    z = movement_index(
-      n = 8,
-      pattern = 0,
-      allow = matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
-    ),
-    p_time_index = rep(1, 159),
-    # p_time_index = rep(1, 160),
-    h_time_index = rep(1, 159), #   rep(1:40, each = 4)[1:(160)],
-    # h_time_index = c(1:(148 + 12 - 1)),
-    w_time_index = rep(1, 159), # Reporting rate time step index
-    h_group_index = array(rep(1, 1), dim = c(1)), # Harvest rate group index
-    random_walk = 0,
-    h_prior_mean = h_prior_mean,
-    h_prior_sd = h_prior_sd,
-    phi_prior_mean = 0.6,
-    phi_prior_sd = 0.2,
-    sigma_prior_mean = numeric(0),
-    sigma_prior_sd = numeric(0),
-    p_fudge = 1e-12,
-    y_fudge = 1e-12
-  )  
-}
-
-if (FALSE) {
-  # Fit model
-  m1 <- mmmfit(data = data_list, threads_per_chain = 1)
-}
-
-if (FALSE) {
-  # Fit model
-  m2 <- mmmfit(data = data_list, threads_per_chain = 8, use_reduce_sum = TRUE)
+  # Fit time
+  fit_time <- mmmstan(
+    tag_data = tag_data,
+    model_form = "time",
+    # Tag arguments
+    list_regions = list_regions,
+    list_sizes = list_sizes,
+    year_start = year_start,
+    year_end = year_end,
+    step_interval = step_interval,
+    step_liberty_max = step_liberty_max,
+    colname_date_released = colname_date_released, # "date_released",
+    colname_date_recovered = colname_date_recovered, # "date_recovered",
+    colname_region_released = colname_region_released, # "region_released",
+    colname_region_recovered = colname_region_recovered, # "region_recovered",
+    colname_size_released = colname_size_released, # "size_released",
+    # Movement index
+    movement_pattern = movement_pattern,
+    movement_allow = movement_allow,
+    movement_disallow = movement_disallow,
+    # Movement step mean priors (from fit mean)
+    mu_movement_step_mean = fit_mean$priors$mu_movement_step_mean,
+    sd_movement_step_mean = fit_mean$priors$sd_movement_step_mean,
+    # Use reduce sum
+    use_reduce_sum = use_reduce_sum,
+    refresh = refresh
+  )
+  # View
+  tibble::view(fit_time$summary$movement_step)
+  tibble::view(fit_time$summary$movement_time)
+  tibble::view(fit_time$summary$fishing_rate)
+  tibble::view(fit_time$summary$autoregress)
+  tibble::view(fit_time$summary$sigma)
+  # Plot
+  ggplot2::ggplot(
+    data = fit_time$summary$movement_time,
+    mapping = ggplot2::aes(
+      x = .data$i,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
 }
 
 ```
+
+# Fit term
+```{r fit-term}
+if (FALSE) {
+  # Fit term
+  fit_term <- mmmstan(
+    tag_data = tag_data,
+    model_form = "term",
+    # Tag arguments
+    list_regions = list_regions,
+    list_sizes = list_sizes,
+    year_start = year_start,
+    year_end = year_end,
+    step_interval = step_interval,
+    step_liberty_max = step_liberty_max,
+    colname_date_released = colname_date_released, # "date_released",
+    colname_date_recovered = colname_date_recovered, # "date_recovered",
+    colname_region_released = colname_region_released, # "region_released",
+    colname_region_recovered = colname_region_recovered, # "region_recovered",
+    colname_size_released = colname_size_released, # "size_released",
+    # Movement index
+    movement_pattern = movement_pattern,
+    movement_allow = movement_allow,
+    movement_disallow = movement_disallow,
+    # Movement step mean priors (from fit mean)
+    mu_movement_step_mean = fit_mean$priors$mu_movement_step_mean,
+    sd_movement_step_mean = fit_mean$priors$sd_movement_step_mean,
+    # Use reduce sum
+    use_reduce_sum = use_reduce_sum,
+    refresh = refresh
+  )
+  # View
+  tibble::view(fit_term$summary$movement_step)
+  tibble::view(fit_term$summary$movement_term)
+  tibble::view(fit_term$summary$fishing_rate)
+  tibble::view(fit_term$summary$autoregress)
+  tibble::view(fit_term$summary$sigma)
+  # Plot
+  ggplot2::ggplot(
+    data = fit_term$summary$movement_term,
+    mapping = ggplot2::aes(
+      x = .data$i,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
+}
+
+```
+
+# Fit size
+```{r fit-size}
+if (FALSE) {
+  # Fit size
+  fit_size <- mmmstan(
+    tag_data = tag_data,
+    model_form = "size",
+    # Tag arguments
+    list_regions = list_regions,
+    list_sizes = list_sizes_small_large,
+    year_start = year_start,
+    year_end = year_end,
+    step_interval = step_interval,
+    step_liberty_max = step_liberty_max,
+    colname_date_released = colname_date_released, # "date_released",
+    colname_date_recovered = colname_date_recovered, # "date_recovered",
+    colname_region_released = colname_region_released, # "region_released",
+    colname_region_recovered = colname_region_recovered, # "region_recovered",
+    colname_size_released = colname_size_released, # "size_released",
+    # Movement index
+    movement_pattern = movement_pattern,
+    movement_allow = movement_allow,
+    movement_disallow = movement_disallow,
+    # Use reduce sum
+    use_reduce_sum = use_reduce_sum,
+    refresh = refresh
+  )
+  # View
+  tibble::view(fit_size$summary$movement_step)
+  tibble::view(fit_size$summary$movement_size)
+  tibble::view(fit_size$summary$fishing_rate)
+  tibble::view(fit_size$summary$autoregress)
+  tibble::view(fit_size$summary$sigma)
+  # Plot
+  ggplot2::ggplot(
+    data = fit_size$summary$movement_size,
+    mapping = ggplot2::aes(
+      x = .data$d,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
+}
+
+```
+
+
