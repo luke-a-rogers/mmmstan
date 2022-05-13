@@ -355,11 +355,141 @@ real partial_sum_lpmf (
   return neg_binomial_2_lupmf(observed[1:count] | expected[1:count],dispersion);
 }
 
+array[,] vector assemble_survival_step (
+  array[] vector fstep,
+  // array[] vector fweight,
+  // vector selectivity,
+  vector mstep,
+  real ostep,
+  array[] int n_to_t,
+  // array[] int n_to_w,
+  int S
+) {
+  // Get dimensions
+  int N = size(n_to_t);
+  int X = dims(fstep)[2];
+  // Initialize values
+  array[N, S] vector[X] survival_step;
+  // Populate survival step
+  for (n in 1:N) {
+    for (s in 1:S) {
+      survival_step[n, s] = exp(
+        -fstep[n_to_t[n]] // .* fweight[n_to_w[n]] .* selectivity
+        - mstep
+        - ostep
+      );
+    }
+  }
+  // Return survival step
+  return survival_step;
+}
+
+array[,] vector assemble_observed_step (
+  array [] vector fstep,
+  vector rstep,
+  array[] int n_to_t,
+  int S
+) {
+  // Get dimensions
+  int N = size(n_to_t);
+  int X = dims(fstep)[2];
+  // Initialize values
+  array[N, S] vector[X] observed_step;
+  // Populate observed step
+  for (n in 1:N) {
+    for (s in 1:S) {
+      observed_step[n, s] = rstep
+      .* (1.0 - exp(-fstep[n_to_t[n]])); // .* fweight[n_to_w[n]] .* selectivity
+    }
+  }  // Return observed step
+  return observed_step;
+}
 
 
 // New current above here ------------------------------------------------------
 
 
+/**
+* Assemble an observation step array [N] of diagonal matrices [X, X]
+*
+* @param fstep, an array [T] of vector [X] stepwise fishing rates
+* @param fterm, an array [I] of matrix [X, X] stepwise fishing term weights
+* @param sstep, a vector [X] of selectivity fractions
+* @param rstep, a vector [X] of tag reporting steps
+*
+* @return an array [N, S] of matrices [X, X]
+*/
+array[,] matrix assemble_observed_step_old (
+  array [] vector fstep,
+  array [] matrix fterm,
+  vector sstep,
+  vector rstep
+) {
+  // Get dimensions
+  int T = dims(fstep)[1];
+  int I = dims(fterm)[1];
+  int S = dims(sstep)[1];
+  int X = dims(fstep)[2];
+  int N = T * I;
+  // Initialize values
+  array[N, S] matrix[X, X] observed_step = rep_array(rep_matrix(0.0, X, X),N,S);
+  int n = 1;
+  // Populate reporting step
+  for (t in 1:T) {
+    for (i in 1:I) {
+      for (s in 1:S) {
+        observed_step[n, s] = diag_matrix(1 - exp(-fterm[i] * fstep[t] * sstep[s]))
+        * diag_matrix(rstep);
+      }
+      n += 1;
+    }
+  }
+  // Return observed step
+  return observed_step;
+}
+
+
+/**
+* Assemble a survival step array [N, S] of diagonal matrices [X, X]
+*
+* @param fstep, an array [T] of vector [X] stepwise fishing rates
+* @param fterm, an array [I] of matrix [X, X] stepwise fishing term weights
+* @param sstep, a vector [X] of selectivity fractions
+* @param mstep, a vector [X] of stepwise natural mortality rates
+* @param ostep, a real ongoing stepwise tag loss rate
+*
+* @return an array [N, S] of matrices [X, X]
+*/
+array[,] matrix assemble_survival_step_old (
+  array [] vector fstep,
+  array [] matrix fterm, // fweight
+  vector sstep, // selectivity
+  vector mstep,
+  real ostep
+) {
+  // Get dimensions
+  int T = dims(fstep)[1];
+  int I = dims(fterm)[1];
+  int S = dims(sstep)[1];
+  int X = dims(fstep)[2];
+  int N = T * I;
+  // Initialize values
+  array[N, S] matrix[X, X] survival_step = rep_array(rep_matrix(0.0, X, X),N,S);
+  int n = 1;
+  // Populate survival step
+  for (t in 1:T) {
+    for (i in 1:I) {
+      for (s in 1:S) {
+        survival_step[n, s] = diag_matrix(exp(-fterm[i] * fstep[t] * sstep[s]))
+        * diag_matrix(exp(-mstep))
+        * exp(-ostep);
+      }
+      n += 1;
+    }
+  }
+  // Return survival step
+  return survival_step;
+}
 
 
 
@@ -381,9 +511,6 @@ array[] matrix assemble_movement_term (
   return movement_term;
 }
 
-
-
-// Current above here ----------------------------------------------------------
 
 
 
@@ -614,86 +741,9 @@ array[] matrix assemble_fishing_term (array[] vector fsimp) {
   return fishing_weight;
 }
 
-/**
-* Assemble a survival step array [N] of diagonal matrices [X, X]
-*
-* @param fstep, an array [T] of vector [X] stepwise fishing rates
-* @param fterm, an array [I] of matrix [X, X] stepwise fishing term weights
-* @param sstep, a vector [X] of selectivity fractions
-* @param mstep, a vector [X] of stepwise natural mortality rates
-* @param ostep, a real ongoing stepwise tag loss rate
-*
-* @return an array [N, S] of matrices [X, X]
-*/
-array[,] matrix assemble_survival_step (
-  array [] vector fstep,
-  array [] matrix fterm,
-  vector sstep,
-  vector mstep,
-  real ostep
-) {
-  // Get dimensions
-  int T = dims(fstep)[1];
-  int I = dims(fterm)[1];
-  int S = dims(sstep)[1];
-  int X = dims(fstep)[2];
-  int N = T * I;
-  // Initialize values
-  array[N, S] matrix[X, X] survival_step = rep_array(rep_matrix(0.0, X, X),N,S);
-  int n = 1;
-  // Populate survival step
-  for (t in 1:T) {
-    for (i in 1:I) {
-      for (s in 1:S) {
-        survival_step[n, s] = diag_matrix(exp(-fterm[i] * fstep[t] * sstep[s]))
-        * diag_matrix(exp(-mstep))
-        * exp(-ostep);
-      }
-      n += 1;
-    }
-  }
-  // Return survival step
-  return survival_step;
-}
 
-/**
-* Assemble an observation step array [N] of diagonal matrices [X, X]
-*
-* @param fstep, an array [T] of vector [X] stepwise fishing rates
-* @param fterm, an array [I] of matrix [X, X] stepwise fishing term weights
-* @param sstep, a vector [X] of selectivity fractions
-* @param rstep, a vector [X] of tag reporting steps
-*
-* @return an array [N, S] of matrices [X, X]
-*/
-array[,] matrix assemble_observed_step (
-  array [] vector fstep,
-  array [] matrix fterm,
-  vector sstep,
-  vector rstep
-) {
-  // Get dimensions
-  int T = dims(fstep)[1];
-  int I = dims(fterm)[1];
-  int S = dims(sstep)[1];
-  int X = dims(fstep)[2];
-  int N = T * I;
-  // Initialize values
-  array[N, S] matrix[X, X] observed_step = rep_array(rep_matrix(0.0, X, X),N,S);
-  int n = 1;
-  // Populate reporting step
-  for (t in 1:T) {
-    for (i in 1:I) {
-      for (s in 1:S) {
-        observed_step[n, s] = diag_matrix(1 - exp(-fterm[i] * fstep[t] * sstep[s]))
-        * diag_matrix(rstep);
-      }
-      n += 1;
-    }
-  }
-  // Return observed step
-  return observed_step;
-}
+
+
 
 
 

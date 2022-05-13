@@ -253,6 +253,43 @@ create_n_to_i <- function (model_form,
   return(as.integer(index))
 }
 
+#' Create N to T Index
+#'
+#' @param year_start [integer()] year of first tag release
+#' @param year_end [integer()] year of final tag recovery
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' create_n_to_t(2011, 2018, "month")
+#' create_n_to_t(2011, 2018, "quarter")
+#' create_n_to_t(2011, 2018, "year")
+#'
+create_n_to_t <- function (year_start,
+                           year_end,
+                           step_interval) {
+
+  # Check arguments ------------------------------------------------------------
+
+  # Count model intervals ------------------------------------------------------
+
+  model_steps <- count_model_steps(year_start, year_end, step_interval)
+  model_years <- year_end - year_start + 1L
+  steps_per_year <- count_steps_per_year(step_interval)
+
+  # Define index ---------------------------------------------------------------
+
+  index <- rep(seq_len(model_years), each=steps_per_year)[seq_len(model_steps)]
+
+  # Return index ---------------------------------------------------------------
+
+  return(as.integer(index))
+}
+
 #' Create S to D Index Array
 #'
 #' @param model_form [character()] one of \code{"mean", "time", "term", "size"}

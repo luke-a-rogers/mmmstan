@@ -92,7 +92,7 @@ mmmstan <- function (tag_data,
                      sd_movement_step_mean = NULL,
                      # Fishing rate priors
                      mu_fishing_rate = NULL,
-                     cv_fishing_rate = 0.1,
+                     cv_fishing_rate = NULL,
                      # Selectivity priors
                      mu_selectivity = NULL,
                      sd_selectivity = NULL,
@@ -101,7 +101,7 @@ mmmstan <- function (tag_data,
                      sd_fishing_weight = NULL,
                      # Natural mortality rate priors
                      mu_mortality_rate = NULL,
-                     cv_mortality_rate = 0.1,
+                     sd_mortality_rate = NULL,
                      # Fractional (per tag) reporting rate priors
                      mu_reporting_rate = NULL,
                      sd_reporting_rate = NULL,
@@ -117,8 +117,8 @@ mmmstan <- function (tag_data,
                      mu_sigma = 0.1,
                      sd_sigma = 0.05,
                      # Dispersion priors
-                     mu_dispersion = 1.0, # [1]
-                     sd_dispersion = 0.5, # [1]
+                     mu_dispersion = 1.0,
+                     sd_dispersion = 0.5,
                      # Tolerance values
                      tolerance_expected = 1e-12,
                      tolerance_fishing =  1e-12,
@@ -369,9 +369,22 @@ mmmstan <- function (tag_data,
         ncol = length(list_regions)
       )
     }
+    if (is.null(cv_fishing_rate)) {
+      cv_fishing_rate <- 0.1
+    }
     # Natural mortality rate prior
     if (is.null(mu_mortality_rate)) {
       mu_mortality_rate <- rep(0.1, length(list_regions))
+    }
+    if (is.null(sd_mortality_rate)) {
+      sd_mortality_rate <- rep(0.01, length(list_regions))
+    }
+    # Reporting rate prior
+    if (is.null(mu_reporting_rate)) {
+      mu_reporting_rate <- rep(0.5, length(list_regions))
+    }
+    if (is.null(sd_reporting_rate)) {
+      sd_reporting_rate <- rep(0.05, length(list_regions))
     }
 
     # Assemble tag data --------------------------------------------------------
@@ -423,7 +436,7 @@ mmmstan <- function (tag_data,
       n_to_i = create_n_to_i(model_form, year_start, year_end, step_interval),
       s_to_d = create_s_to_d(model_form, list_sizes), # [S]
       # Fishing index arrays
-      # n_to_t = create_n_to_t(year_start, year_end, step_interval), # [N]
+      n_to_t = create_n_to_t(year_start, year_end, step_interval), # [N]
       # n_to_w = create_n_to_w(year_start, year_end, step_interval), # [N]
       # Tag data
       tags = tag_array, # [N - 1, S, L, X, X]
@@ -433,8 +446,8 @@ mmmstan <- function (tag_data,
       mu_movement_step_mean = mu_movement_step_mean, # [X, X]
       sd_movement_step_mean = sd_movement_step_mean, # [X, X]
       # Fishing rate priors
-      #  mu_fishing_rate = , # [T, X]
-      #  cv_fishing_rate = , # [1]
+      mu_fishing_rate = mu_fishing_rate, # [T, X]
+      cv_fishing_rate = cv_fishing_rate, # [1]
       # Selectivity priors
       #  mu_selectivity = , # [S - 1]
       #  cv_selectivity = , # [1]
@@ -442,28 +455,28 @@ mmmstan <- function (tag_data,
       #  mu_fishing_weight = , # [W, X]
       #  cv_fishing_weight = , # [1]
       # Natural mortality rate priors
-      #  mu_mortality_rate = , # [X]
-      #  cv_mortality_rate = , # [1]
+      mu_mortality_rate = mu_mortality_rate, # [X]
+      sd_mortality_rate = sd_mortality_rate, # [X]
       # Fractional (per tag) reporting rate priors
-      #  mu_reporting_rate = , # [X]
-      #  cv_reporting_rate = , # [1]
+      mu_reporting_rate = mu_reporting_rate, # [X]
+      sd_reporting_rate = sd_reporting_rate, # [X]
       # Fractional (per tag) initial loss rate priors
-      mu_initial_loss_rate = mu_initial_loss_rate, # [1]
-      sd_initial_loss_rate = sd_initial_loss_rate, # [1]
+      mu_initial_loss_rate = mu_initial_loss_rate,
+      sd_initial_loss_rate = sd_initial_loss_rate,
       # Instantaneous ongoing loss rate priors
-      #  mu_ongoing_loss_rate = mu_ongoing_loss_rate, # [1]
-      #  cv_ongoing_loss_rate = cv_ongoing_loss_rate, # [1]
+      mu_ongoing_loss_rate = mu_ongoing_loss_rate,
+      sd_ongoing_loss_rate = sd_ongoing_loss_rate,
       # Autoregression priors
       mu_autoregress = mu_autoregress,
       sd_autoregress = sd_autoregress,
       mu_sigma = mu_sigma,
       sd_sigma = sd_sigma,
       # Dispersion priors
-      mu_dispersion = mu_dispersion, # [1]
-      sd_dispersion = sd_dispersion, # [1]
+      mu_dispersion = mu_dispersion,
+      sd_dispersion = sd_dispersion,
       # Tolerance values
-      tolerance_expected = tolerance_expected #, # [1]
-      #  tolerance_fishing = tolerance_fishing # [1]
+      tolerance_expected = tolerance_expected,
+      tolerance_fishing = tolerance_fishing
     )
   }
 
@@ -512,9 +525,25 @@ mmmstan <- function (tag_data,
   movement_time_summary <- tibble::tibble()
   movement_term_summary <- tibble::tibble()
   movement_size_summary <- tibble::tibble()
-  # Initial loss step
-  initial_loss_step_summary <- fit$draws() %>%
-    tidybayes::spread_draws(initial_loss_step) %>%
+  # Fishing rate
+  fishing_rate_summary <- fit$draws() %>%
+    tidybayes::spread_draws(fishing_rate[t,x]) %>%
+    tidybayes::summarise_draws()
+  # Natural mortality rate
+  natural_mortality_rate_summary <- fit$draws() %>%
+    tidybayes::spread_draws(mortality_rate[x]) %>%
+    tidybayes::summarise_draws()
+  # Reporting rate
+  reporting_rate_summary <- fit$draws() %>%
+    tidybayes::spread_draws(reporting_rate[x]) %>%
+    tidybayes::summarise_draws()
+  # Initial loss rate
+  initial_loss_rate_summary <- fit$draws() %>%
+    tidybayes::spread_draws(initial_loss_rate) %>%
+    tidybayes::summarise_draws()
+  # Ongoing loss rate
+  ongoing_loss_rate_summary <- fit$draws() %>%
+    tidybayes::spread_draws(ongoing_loss_rate) %>%
     tidybayes::summarise_draws()
   # Autoregression
   autoregress_summary <- tibble::tibble()
@@ -581,8 +610,15 @@ mmmstan <- function (tag_data,
     movement_time = movement_time_summary,
     movement_term = movement_term_summary,
     movement_size = movement_size_summary,
+    # Fishing rate
+    fishing_rate = fishing_rate_summary,
+    # Natural mortality rate
+    natural_mortality_rate = natural_mortality_rate_summary,
+    # Reporting rate
+    reporting_rate = reporting_rate_summary,
     # Tag loss
-    initial_loss_step = initial_loss_step_summary,
+    initial_loss_rate = initial_loss_rate_summary,
+    ongoing_loss_rate = ongoing_loss_rate_summary,
     # Autoregression
     autoregress = autoregress_summary,
     sigma = sigma_summary

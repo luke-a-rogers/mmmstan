@@ -21,11 +21,11 @@ data {
   int<lower=1> K; // Matrix power to convert movement steps (to rates)
   int<lower=1> P; // Number of parameters in one [i,d][x,y] movement step slice
   // Movement index arrays
-  array[N] int<lower=1> n_to_i; // Model step to movement step index
-  array[S] int<lower=1> s_to_d; // Model size to movement size index
+  array[N] int<lower=1, upper=I> n_to_i; // Model step to movement step index
+  array[S] int<lower=1, upper=D> s_to_d; // Model size to movement size index
   // Fishing index arrays
-//  array[N] int<lower=1> n_to_t; // Model step to fishing step index
-//  array[N] int<lower=1> n_to_w; // Model step to fishing weight step index
+  array[N] int<lower=1, upper=T> n_to_t; // Model step to fishing step index
+//  array[N] int<lower=1, upper=W> n_to_w; // Model step to fishing weight step index
   // Tag data
   array[N - 1, S, L, X, X] int<lower=0> tags;
   // Movement index (will be paired with a matrix version)
@@ -34,8 +34,8 @@ data {
   matrix<lower=0, upper=1>[X, X] mu_movement_step_mean;
   matrix<lower=0, upper=1>[X, X] sd_movement_step_mean;
   // Fishing rate priors
-//  array[T] vector<lower=0>[X] mu_fishing_rate;
-//  real<lower=0> cv_fishing_rate;
+  array[T] vector<lower=0>[X] mu_fishing_rate;
+  real<lower=0> cv_fishing_rate;
   // Selectivity priors
 //  vector<lower=0, upper=1>[S - 1] mu_selectivity;
 //  real<lower=0> cv_selectivity;
@@ -43,17 +43,17 @@ data {
 //  array[W] vector<lower=0, upper=1>[X] mu_fishing_weight;
 //  real<lower=0> cv_fishing_weight;
   // Natural mortality rate priors
-//  vector<lower=0>[X] mu_mortality_rate;
-//  real<lower=0> cv_mortality_rate;
+  vector<lower=0>[X] mu_mortality_rate;
+  vector<lower=0>[X] sd_mortality_rate;
   // Fractional (per tag) reporting rate priors
-//  vector<lower=0>[X] mu_reporting_rate;
-//  real<lower=0> cv_reporting_rate;
+  vector<lower=0, upper=1>[X] mu_reporting_rate;
+  vector<lower=0>[X] sd_reporting_rate;
   // Fractional (per tag) initial loss rate priors
   real<lower=0, upper=1> mu_initial_loss_rate;
   real<lower=0> sd_initial_loss_rate;
   // Instantaneous ongoing loss rate priors
-//  real<lower=0> mu_ongoing_loss_rate;
-//  real<lower=0> cv_ongoing_loss_rate;
+  real<lower=0> mu_ongoing_loss_rate;
+  real<lower=0> sd_ongoing_loss_rate;
   // Autoregression priors
   real<lower=0, upper=1> mu_autoregress;
   real<lower=0, upper=1> sd_autoregress;
@@ -64,7 +64,7 @@ data {
   real<lower=0> sd_dispersion;
   // Tolerance values
   real<lower=0> tolerance_expected;
-//  real<lower=0> tolerance_fishing;
+  real<lower=0> tolerance_fishing;
 }
 
 transformed data {
@@ -97,13 +97,13 @@ parameters {
   array[simplex_dimensions[5]] simplex[5] a5;
   array[simplex_dimensions[6]] simplex[6] a6;
   // Movement mean stepwise rate
-//  matrix<lower=0, upper=1>[X, X] movement_step_mean;
+//  vector<lower=0, upper=1>[X] movement_step_diag;
   // Instantaneous stepwise rates
-//  array[T] vector<lower=0>[X] fishing_step;
-//  vector<lower=0>[X] mortality_step;
-//  real<lower=0> ongoing_loss_step;
+  array[T] vector<lower=0>[X] fishing_step;
+  vector<lower=0>[X] mortality_step;
+  real<lower=0> ongoing_loss_step;
   // Fractional (per tag) stepwise rates
-//  vector<lower=0, upper=1>[X] reporting_step;
+  vector<lower=0, upper=1>[X] reporting_step;
   real<lower=0, upper=1> initial_loss_step;
   // Selectivity (per fish)
 //  vector<lower=0, upper=1>[S - 1] selectivity_short;
@@ -124,11 +124,11 @@ transformed parameters {
   // Declare stepwise movement deviations
   array[I, D] vector<lower=-1, upper=1>[X] movement_deviation;
   // Declare instantaneous rates
-//  array[T] vector<lower=0>[X] fishing_rate;
-//  vector<lower=0>[X] mortality_rate = mortality_step * J;
-//  real<lower=0> ongoing_loss_rate = ongoing_loss_step * J;
+  array[T] vector<lower=0>[X] fishing_rate;
+  vector<lower=0>[X] mortality_rate = mortality_step * J;
+  real<lower=0> ongoing_loss_rate = ongoing_loss_step * J;
   // Declare fractional (per tag) rates
-//  vector<lower=0, upper=1>[X] reporting_rate = reporting_step;
+  vector<lower=0, upper=1>[X] reporting_rate = reporting_step;
   real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
   // Selectivity
 //  vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
@@ -151,13 +151,24 @@ transformed parameters {
     );
   }
   // Assemble fishing rate
-//  fishing_rate = assemble_fishing_rate(fishing_step, J);
+  fishing_rate = assemble_fishing_rate(fishing_step, J);
   // Assemble fishing weight
 //  fishing_weight = assemble_fishing_weight(fishing_weight_transpose);
   // Assemble survival step
-  survival_step = rep_array(rep_vector(0.85, X), N, S);
+  survival_step = assemble_survival_step(
+    fishing_step,
+    mortality_step,
+    ongoing_loss_step,
+    n_to_t,
+    S
+  );
   // Assemble observed step
-  observed_step = rep_array(rep_vector(0.05, X), N, S);
+  observed_step = assemble_observed_step(
+    fishing_step,
+    reporting_step,
+    n_to_t,
+    S
+  );
 }
 
 model {
@@ -213,6 +224,11 @@ model {
       } // End l
     } // End s
   } // End n
+  // Movement step diag
+//  movement_step_diag ~ normal(
+//    diagonal(mu_movement_step_mean),
+//    diagonal(sd_movement_step_mean)
+//  );
   // Movement deviation prior
   if (form == 1) {
     // Autoregression priors
@@ -265,6 +281,19 @@ model {
       }
     }
   }
+  // Fishing rate prior
+  for (t in 1:T) {
+    fishing_rate[t] ~ normal(
+      mu_fishing_rate[t],
+      mu_fishing_rate[t] * cv_fishing_rate + tolerance_fishing
+    );
+  }
+  // Mortality rate prior
+  mortality_rate ~ normal(mu_mortality_rate, sd_mortality_rate);
+  // Reporting rate prior
+  reporting_rate ~ normal(mu_reporting_rate, sd_reporting_rate);
+  // Ongoing loss rate prior
+  ongoing_loss_rate ~ normal(mu_ongoing_loss_rate, sd_ongoing_loss_rate);
   // Initial loss rate prior
   initial_loss_rate ~ normal(mu_initial_loss_rate, sd_initial_loss_rate);
   // Dispersion prior

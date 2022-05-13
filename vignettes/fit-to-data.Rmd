@@ -120,6 +120,7 @@ if (FALSE) {
   # View
   tibble::view(fit_mean$summary$movement_step)
   tibble::view(fit_mean$summary$movement_mean)
+  tibble::view(fit_mean$summary$fishing_rate)
   # Plot
   ggplot2::ggplot(
     data = fit_mean$summary$movement_mean,
@@ -171,6 +172,7 @@ if (FALSE) {
   # View
   tibble::view(fit_time$summary$movement_step)
   tibble::view(fit_time$summary$movement_time)
+  tibble::view(fit_time$summary$fishing_rate)
   tibble::view(fit_time$summary$autoregress)
   tibble::view(fit_time$summary$sigma)
   # Plot
@@ -224,6 +226,7 @@ if (FALSE) {
   # View
   tibble::view(fit_term$summary$movement_step)
   tibble::view(fit_term$summary$movement_term)
+  tibble::view(fit_term$summary$fishing_rate)
   tibble::view(fit_term$summary$autoregress)
   tibble::view(fit_term$summary$sigma)
   # Plot
@@ -274,6 +277,7 @@ if (FALSE) {
   # View
   tibble::view(fit_size$summary$movement_step)
   tibble::view(fit_size$summary$movement_size)
+  tibble::view(fit_size$summary$fishing_rate)
   tibble::view(fit_size$summary$autoregress)
   tibble::view(fit_size$summary$sigma)
   # Plot
