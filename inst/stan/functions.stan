@@ -20,8 +20,8 @@ matrix assemble_movement_matrix (array[,] int mindex) {
 * Assemble An Integer Array of Simplex Dimensions
 *
 * @param mindex, an array of dimension [X, X]
-* @param I, positive integer number of movement steps
-* @param D, positive integer number of movement sizes
+* @param dim_1, positive integer
+* @param dim_2, positive integer
 *
 * @return an integer array of dimension [A] giving the number of simplexes
 * of each dimension 1:A
@@ -32,8 +32,9 @@ matrix assemble_movement_matrix (array[,] int mindex) {
 */
 array[] int assemble_simplex_dimensions (
   array[,] int mindex,
-  int I,
-  int D
+  int model_type,
+  int dim_1,
+  int dim_2
 ) {
   // Get dimensions
   int X = dims(mindex)[1];
@@ -41,17 +42,20 @@ array[] int assemble_simplex_dimensions (
   // Declare values
   array[A] int simplex_dimensions = rep_array(0, A);
   int row_sum;
-  // Populate simplex dimensions
-  for (x in 1:X) {
-    row_sum = 0;
-    for (y in 1:X) {
-      row_sum += mindex[x, y];
-    }
-    if (row_sum > 0) {
-      if (row_sum > A) {
-        reject("row_sum: ", row_sum);
+  // Conditional
+  if (model_type == 1) {
+    // Populate simplex dimensions
+    for (x in 1:X) {
+      row_sum = 0;
+      for (y in 1:X) {
+        row_sum += mindex[x, y];
       }
-      simplex_dimensions[row_sum] += I * D;
+      if (row_sum > 0) {
+        if (row_sum > A) {
+          reject("row_sum: ", row_sum);
+        }
+        simplex_dimensions[row_sum] += dim_1 * dim_2;
+      }
     }
   }
   // Return simplex dimensions
@@ -61,15 +65,15 @@ array[] int assemble_simplex_dimensions (
 array[,] vector assemble_tags_released(array[,,,,] int tags) {
   // Get dimensions
   int N = dims(tags)[1]; // Here N = model N - 1
-  int S = dims(tags)[2];
+  int L = dims(tags)[3];
   int X = dims(tags)[4];
   // Declare values
-  array[N, S] vector[X] tags_released;
+  array[N, L] vector[X] tags_released;
   // Populate tags released
   for (n in 1:N) { // Here N = model N - 1
-    for (s in 1:S) { // Released size
+    for (l in 1:L) { // Released size
       for (x in 1:X) { // Released region
-        tags_released[n, s, x] = tags[n, s, 1, x, x] * 1.0;
+        tags_released[n, l, x] = tags[n, 1, l, x, x] * 1.0;
       }
     }
   }
@@ -80,18 +84,18 @@ array[,] vector assemble_tags_released(array[,,,,] int tags) {
 array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
   // Get dimensions
   int N = dims(tags)[1]; // Here N = model N - 1
-  int S = dims(tags)[2];
+  int D = dims(tags)[2];
   int L = dims(tags)[3];
   int X = dims(tags)[4];
   // Declare values
-  array[N, S, L, X, X] int tags_transpose;
+  array[N, D, L, X, X] int tags_transpose;
   // Populate tag array
   for (n in 1:N) { // Here N = model N - 1
-    for (s in 1:S) {
+    for (d in 1:D) {
       for (l in 1:L) {
         for (x in 1:X) {
           for (y in 1:X) {
-            tags_transpose[n, s, l, y, x] = tags[n, s, l, x, y];
+            tags_transpose[n, d, l, y, x] = tags[n, d, l, x, y];
           }
         }
       }
@@ -105,9 +109,9 @@ array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
 * Assemble Matrices That Indicate Possible Movement at Each Liberty Step
 *
 * @param movement_matrix, a matrix of dimension [X, X]
-* @param L, an integer giving the maximum steps at liberty
+* @param D, an integer giving the maximum duration at large in steps
 *
-* @return an array of dimension [L] holding matrices of dimension [X, X]
+* @return an array of dimension [D] holding matrices of dimension [X, X]
 *
 * The argument mindex is a square integer array of zeros and ones indicating
 * that movement is permitted (one) or not permitted (zero) between a given
@@ -115,27 +119,205 @@ array [,,,,] int assemble_tags_transpose (array[,,,,] int tags) {
 */
 array[] matrix assemble_movement_possible (
   matrix movement_matrix,
-  int L
+  int D
 ) {
   // Get dimensions
   int X = dims(movement_matrix)[1];
   // Initialize values
-  array[L] matrix[X, X] movement_possible;
+  array[D] matrix[X, X] movement_possible;
   // Populate movement possible
   movement_possible[1] = rep_matrix(0.0, X, X);
   movement_possible[2] = movement_matrix;
   // Iterate higher indexes
-  for (l in 3:L) {
-    if (min(movement_possible[l - 1]) > 0.0) {
-      movement_possible[l] = movement_possible[l - 1];
+  for (d in 3:D) {
+    if (min(movement_possible[d - 1]) > 0.0) {
+      movement_possible[d] = movement_possible[d - 1];
     } else {
-      movement_possible[l] = movement_possible[l - 1]
+      movement_possible[d] = movement_possible[d - 1]
       * movement_matrix;
     }
   }
   // Return movement possible
   return movement_possible;
 }
+
+matrix assemble_movement_step_mean (
+  array[] vector m1,
+  array[] vector m2,
+  array[] vector m3,
+  array[] vector m4,
+  array[] vector m5,
+  array[] vector m6,
+  array[,] int mindex
+) {
+  // Get dimensions
+  int X = dims(mindex)[1];
+  int A = 6;
+  // Declare values
+  matrix[X, X] movement_step_mean = rep_matrix(0.0, X, X);
+  array[A] int index = rep_array(0, A); // Simplex array row index
+  int row_sum; // Movement index row sum
+  int column; // Simplex index (column)
+  // Populate
+  for (x in 1:X) {
+    row_sum = sum(mindex[x, 1:X]);
+    if (row_sum > 0) {
+      index[row_sum] += 1;
+      column = 0;
+      for (y in 1:X) {
+        if (mindex[x, y] == 1) {
+          column += 1;
+          if (row_sum == 1) {
+            movement_step_mean[x, y] = m1[index[row_sum], column];
+          } else if (row_sum == 2) {
+            movement_step_mean[x, y] = m2[index[row_sum], column];
+          } else if (row_sum == 3) {
+            movement_step_mean[x, y] = m3[index[row_sum], column];
+          } else if (row_sum == 4) {
+            movement_step_mean[x, y] = m4[index[row_sum], column];
+          } else if (row_sum == 5) {
+            movement_step_mean[x, y] = m5[index[row_sum], column];
+          } else if (row_sum == 6) {
+            movement_step_mean[x, y] = m6[index[row_sum], column];
+          } else {
+            reject("row_sum: ", row_sum);
+          }
+        }
+      }
+    }
+  }
+  // Return movement step mean
+  return movement_step_mean;
+}
+
+array[,] matrix assemble_movement_transformation (
+  array[] vector s1,
+  array[] vector s2,
+  array[] vector s3,
+  array[] vector s4,
+  array[] vector s5,
+  array[] vector s6,
+  array[,] int mindex,
+  int model_type,
+  int B
+) {
+  // Get dimensions
+  int X = dims(mindex)[1];
+  int A = 6;
+  // Declare values
+  array[B, X] matrix[X, X] movement_tran = rep_array(identity_matrix(X), B, X);
+  array[A] int index = rep_array(0, A); // Simplex array row index
+  int row_sum; // Movement index row sum
+  int column; // Simplex index (column)
+  // Conditional
+  if (model_type == 1) {
+    // Populate
+    for (b in 1:B) {
+      for (w in 1:X) {
+        for (x in 1:X) {
+          row_sum = sum(mindex[x, 1:X]);
+          if (row_sum > 0) {
+            index[row_sum] += 1;
+            column = 0;
+            for (y in 1:X) {
+              if (mindex[x, y] == 1) {
+                column += 1;
+                if (row_sum == 1) {
+                  movement_tran[b, w, x, y] = s1[index[row_sum], column];
+                } else if (row_sum == 2) {
+                  movement_tran[b, w, x, y] = s2[index[row_sum], column];
+                } else if (row_sum == 3) {
+                  movement_tran[b, w, x, y] = s3[index[row_sum], column];
+                } else if (row_sum == 4) {
+                  movement_tran[b, w, x, y] = s4[index[row_sum], column];
+                } else if (row_sum == 5) {
+                  movement_tran[b, w, x, y] = s5[index[row_sum], column];
+                } else if (row_sum == 6) {
+                  movement_tran[b, w, x, y] = s6[index[row_sum], column];
+                } else {
+                  reject("row_sum: ", row_sum);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  // Return movement term
+  return movement_tran;
+}
+
+array[,,] matrix assemble_movement_step (
+  matrix mmean,
+  array[,] matrix mtime,
+  array[,] matrix mterm,
+  array[,] matrix msize
+) {
+  // Get dimensions
+  int T = dim(mtime)[1];
+  int K = dim(mterm)[1];
+  int L = dim(msize)[1];
+  int X = dim(mmean)[1];
+  // Declare movement step
+  array[T, K, L] matrix[X, X] movement_step;
+  // Populate movement step
+  for (t in 1:T) { // Year
+    for (k in 1:K) { // Term
+      for (l in 1:L) { // Size
+        for (x in 1:X) { // Row within matrix movement step mean
+          movement_step[t, k, l][x] = mmean[x]
+          * mtime[t, x]
+          * mterm[t, x]
+          * msize[t, x];
+        }
+      }
+    }
+  }
+  // Return movement step
+  return movement_step;
+}
+
+array[,,] vector assemble_survival_step (
+  array[] vector fishing_step,
+  // array[] vector fishing_weight,
+  // vector selectivity,
+  vector natural_mortality_step,
+  real ongoing_loss_step,
+  int K,
+  int L
+) {
+  // Get dimensions
+  int T = dims(fishing_step)[1];
+  int X = dims(fishing_step)[2];
+  // Initialize values
+  array[T, K, L] vector[X] survival_step;
+  // Populate survival step
+  for (t in 1:T) {
+    for (k in 1:K) {
+      for (l in 1:L) {
+        survival_step[t, k, l] = exp(
+          -fishing_step[t] // .* fishing_weight[k] * selectivity[l]
+          - natural_mortality_step
+          - ongoing_loss_step
+        );
+      }
+    }
+  }
+  // Return survival step
+  return survival_step;
+}
+
+array[,] matrix assemble_transition_step (
+  array[,,] matrix movement_step,
+  array[,,] matrix transition_step
+) {}
+
+// New current above here ------------------------------------------------------
+
+
+
+
 
 /**
 * Assemble An Array of Stepwise Movement Rate Matrices
@@ -355,34 +537,6 @@ real partial_sum_lpmf (
   return neg_binomial_2_lupmf(observed[1:count] | expected[1:count],dispersion);
 }
 
-array[,] vector assemble_survival_step (
-  array[] vector fstep,
-  // array[] vector fweight,
-  // vector selectivity,
-  vector mstep,
-  real ostep,
-  array[] int n_to_t,
-  // array[] int n_to_w,
-  int S
-) {
-  // Get dimensions
-  int N = size(n_to_t);
-  int X = dims(fstep)[2];
-  // Initialize values
-  array[N, S] vector[X] survival_step;
-  // Populate survival step
-  for (n in 1:N) {
-    for (s in 1:S) {
-      survival_step[n, s] = exp(
-        -fstep[n_to_t[n]] // .* fweight[n_to_w[n]] .* selectivity
-        - mstep
-        - ostep
-      );
-    }
-  }
-  // Return survival step
-  return survival_step;
-}
 
 array[,] vector assemble_observed_step (
   array [] vector fstep,
@@ -406,7 +560,6 @@ array[,] vector assemble_observed_step (
 }
 
 
-// New current above here ------------------------------------------------------
 
 
 /**
