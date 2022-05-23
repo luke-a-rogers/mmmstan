@@ -19,7 +19,7 @@
 #' @param year_start [integer()] year of initial tag released
 #' @param year_end [integer()] year of final tag recovered
 #' @param step_interval [character()] one of \code{"month", "quarter", "year"}
-#' @param step_liberty_max [integer()]
+#' @param step_duration_max [integer()]
 #' @param term_interval [character()] one of \code{"month", "quarter", "year"}
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
@@ -32,14 +32,16 @@
 #' @param movement_pattern [integer()]
 #' @param movement_allow [integer()][matrix()]
 #' @param movement_disallow [integer()][matrix()]
+#' @param mu_movement_diag [numeric()][vector()] stepwise prior mean
+#' @param sd_movement_diag [numeric()][vector()] stepwise prior sd
 #' @param mu_fishing_rate [numeric()]
 #' @param cv_fishing_rate [numeric()]
 #' @param mu_selectivity [numeric()]
 #' @param sd_selectivity [numeric()]
 #' @param mu_fishing_weight [numeric()]
 #' @param sd_fishing_weight [numeric()]
-#' @param mu_mortality_rate [numeric()]
-#' @param sd_mortality_rate [numeric()]
+#' @param mu_natural_mortality_rate [numeric()]
+#' @param sd_natural_mortality_rate [numeric()]
 #' @param mu_reporting_rate [numeric()]
 #' @param sd_reporting_rate [numeric()]
 #' @param mu_initial_loss_rate [numeric()]
@@ -93,6 +95,9 @@ mmmstan <- function (tag_data,
                      movement_pattern = 2,
                      movement_allow = NULL,
                      movement_disallow = NULL,
+                     # Movement step mean priors
+                     mu_movement_diag = NULL,
+                     sd_movement_diag = NULL,
                      # Fishing rate priors
                      mu_fishing_rate = NULL,
                      cv_fishing_rate = NULL,
@@ -261,6 +266,22 @@ mmmstan <- function (tag_data,
     null.ok = TRUE
   )
   # Movement step mean priors
+  checkmate::assert_numeric(
+    mu_movement_diag,
+    lower = 0,
+    upper = 1,
+    any.missing = FALSE,
+    len = length(list_regions),
+    null.ok = TRUE
+  )
+  checkmate::assert_numeric(
+    sd_movement_diag,
+    lower = 0,
+    finite = TRUE,
+    any.missing = FALSE,
+    len = length(list_regions),
+    null.ok = TRUE
+  )
   # Fishing rate priors
   # Selectivity priors
   # Fishing weight priors
@@ -373,6 +394,13 @@ mmmstan <- function (tag_data,
         step_interval
       )
     }
+    # Movement step mean prior
+    if (is.null(mu_movement_diag)) {
+      mu_movement_diag <- rep(0.95, length(list_regions))
+    }
+    if (is.null(sd_movement_diag)) {
+      sd_movement_diag <- rep(0.25, length(list_regions))
+    }
     # Fishing rate prior
     if (is.null(mu_fishing_rate)) {
       mu_fishing_rate <- matrix(
@@ -449,6 +477,9 @@ mmmstan <- function (tag_data,
       tags = tag_array, # [N - 1, D, L, X, X]
       # Movement index
       movement_index = movement_index, # [X, X]
+      # Movement step mean priors
+      mu_movement_diag = mu_movement_diag, # [X]
+      sd_movement_diag = sd_movement_diag, # [X]
       # Fishing rate priors
       mu_fishing_rate = mu_fishing_rate, # [T, X]
       cv_fishing_rate = cv_fishing_rate, # [1]
@@ -516,10 +547,10 @@ mmmstan <- function (tag_data,
   # Compute unconditional fit summaries ----------------------------------------
 
   # Movement step
-  movement_step_summary <- fit$draws() %>%
-    tidybayes::spread_draws(movement_step[t,k,l,x,y]) %>%
-    tidybayes::summarise_draws() %>%
-    dplyr::ungroup()
+  # movement_step_summary <- fit$draws() %>%
+  #   tidybayes::spread_draws(movement_step[t,k,l,x,y]) %>%
+  #   tidybayes::summarise_draws() %>%
+  #   dplyr::ungroup()
   # Movement mean
   movement_mean_summary <- fit$draws() %>%
     tidybayes::spread_draws(movement_mean[x,y]) %>%
@@ -556,6 +587,11 @@ mmmstan <- function (tag_data,
   # Autoregression
   # autoregress_summary <- tibble::tibble()
   # sigma_summary <- tibble::tibble()
+  # Dispersion
+  dispersion_summary <- fit$draws() %>%
+    tidybayes::spread_draws(dispersion) %>%
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
 
   # Compute conditional fit summaries ------------------------------------------
 
@@ -584,9 +620,11 @@ mmmstan <- function (tag_data,
   # Assemble fit summary -------------------------------------------------------
 
   summary <- list(
-    # Movement
-    movement_step = movement_step_summary,
+    # Movement step
+    # movement_step = movement_step_summary,
+    # Movement mean
     movement_mean = movement_mean_summary,
+    # Movement facets
     movement_time = movement_time_summary,
     movement_term = movement_term_summary,
     movement_size = movement_size_summary,
@@ -599,6 +637,8 @@ mmmstan <- function (tag_data,
     # Tag loss
     initial_loss_rate = initial_loss_rate_summary,
     ongoing_loss_rate = ongoing_loss_rate_summary,
+    # Dispersion
+    dispersion = dispersion_summary
   )
 
   # Return values --------------------------------------------------------------

@@ -460,7 +460,7 @@ array[] vector assemble_fishing_rate (
   return fishing_rate;
 }
 
-array[] int assemble_n_to_r (int start, int end) {
+array[] int index_n_to_r (int start, int end) {
   // Declare values
   array[end] int n_to_r;
   int r = 1;
@@ -501,28 +501,18 @@ array[] matrix assemble_movement_rate (
   return movement_rate;
 }
 
-
-// New current above here ------------------------------------------------------
-
-
-
-
-
 real partial_sum_lpmf (
   array[] int index,
   int start,
   int end,
   int N,
-  int S,
+  int D,
   int L,
   int X,
-  array[] int n_to_i,
-  array[] int s_to_d,
   array[,,,,] int tags_transpose,
   array[,] vector tags_released,
-  array[,] matrix movement_step,
-  array[,] vector survival_step,
-  array[,] vector observed_step,
+  array[,] matrix transition_step,
+  array[,] vector observation_step,
   array[] matrix movement_possible,
   real initial_loss_step,
   real tolerance_expected,
@@ -530,68 +520,60 @@ real partial_sum_lpmf (
 ) {
   // Declare index limits
   int R = (end - start + 1); // R stands in for N - 1
-  int C = R * S * L * X * X;
+  int C = R * D * L * X * X;
   // Declare index arrays
-  array[end] int n_to_r = assemble_n_to_r(start, end);
+  array[end] int n_to_r = index_n_to_r(start, end);
   // Declare enumeration values
-  array[R, S, L] matrix[X, X] abundance;
-  array[R, S, L] matrix[X, X] predicted;
+  array[R, D, L] matrix[X, X] abundance;
+  array[R, D, L] matrix[X, X] predicted;
   array[C] int observed;
   array[C] real expected;
-  // Declare index values
-  int count;
+  // Initialize count
+  int count = 0;
   // Populate released abundance
   for (n in start:end) { // Model step
-    for (s in 1:S) { // Released size
-      for (x in 1:X) { // Released region
-        abundance[n_to_r[n], s, 1] = diag_matrix(
-          tags_released[n, s] * (1 - initial_loss_step)
-        );
-      }
+    for (l in 1:L) { // Released size
+      abundance[n_to_r[n], 1, l] = diag_matrix(
+        tags_released[n, l] * (1 - initial_loss_step)
+      );
     }
   }
-  // Initialize count
-  count = 0;
   // Compute expected recoveries
   for (n in start:end) { // Partial sum index range within released step
-    for (s in 1:S) { // Released size
-      for (l in 2:min(N - n + 1, L)) { // Liberty step
+    for (d in 2:min(N - n + 1, D)) { // Duration at large
+      for (l in 1:L) { // Released size
         // Propagate abundance
-        abundance[n_to_r[n], s, l] = abundance[n_to_r[n], s, l - 1]
-        * diag_post_multiply(
-            movement_step[n_to_i[n], s_to_d[s]],
-            survival_step[n + l - 2, s]
-          );
+        abundance[n_to_r[n], d, l] = abundance[n_to_r[n], d - 1, l]
+        * transition_step[n + d - 2, l]; // Previous step
         // Compute predicted
-        predicted[n_to_r[n], s, l] = diag_post_multiply(
-          abundance[n_to_r[n], s, l],
-          observed_step[n + l - 1, s]
+        predicted[n_to_r[n], d, l] = diag_post_multiply(
+          abundance[n_to_r[n], d, l],
+          observation_step[n + d - 1, l] // Current step
         );
         // Compute vectors
         for (y in 1:X) { // Current region
           for (x in 1:X) { // Released region
-            if (tags_released[n, s, x] > 0) { // Were any tags released?
-              if (movement_possible[l][x, y] > 0) {
+            if (tags_released[n, l, x] > 0) { // Were any tags released?
+              if (movement_possible[d][x, y] > 0) {
                 // Increment observation count
                 count += 1;
                 // Populate observed and expected values
-                observed[count] = tags_transpose[n, s, l, y, x]; // Integer
-                expected[count] = predicted[n_to_r[n], s, l, x, y]
+                observed[count] = tags_transpose[n, d, l, y, x]; // Integer
+                expected[count] = predicted[n_to_r[n], d, l, x, y]
                 + tolerance_expected; // Real
               } // End if
             } // End if
           } // End x
         } // End y
       } // End l
-    } // End s
+    } // End d
   } // End n
+  // Return likelihood contribution
   return neg_binomial_2_lupmf(observed[1:count] | expected[1:count],dispersion);
 }
 
 
-
-
-
+// New current above here ------------------------------------------------------
 
 
 /**

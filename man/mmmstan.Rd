@@ -24,6 +24,8 @@ mmmstan(
   movement_pattern = 2,
   movement_allow = NULL,
   movement_disallow = NULL,
+  mu_movement_diag = NULL,
+  sd_movement_diag = NULL,
   mu_fishing_rate = NULL,
   cv_fishing_rate = NULL,
   mu_selectivity = NULL,
@@ -72,6 +74,8 @@ mmmstan(
 
 \item{step_interval}{\code{\link[=character]{character()}} one of \code{"month", "quarter", "year"}}
 
+\item{step_duration_max}{\code{\link[=integer]{integer()}}}
+
 \item{term_interval}{\code{\link[=character]{character()}} one of \code{"month", "quarter", "year"}}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
@@ -96,6 +100,10 @@ mmmstan(
 
 \item{movement_disallow}{\link[=matrix]{integer()}}
 
+\item{mu_movement_diag}{\link[=vector]{numeric()} stepwise prior mean}
+
+\item{sd_movement_diag}{\link[=vector]{numeric()} stepwise prior sd}
+
 \item{mu_fishing_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{cv_fishing_rate}{\code{\link[=numeric]{numeric()}}}
@@ -107,6 +115,10 @@ mmmstan(
 \item{mu_fishing_weight}{\code{\link[=numeric]{numeric()}}}
 
 \item{sd_fishing_weight}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_natural_mortality_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_natural_mortality_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{mu_reporting_rate}{\code{\link[=numeric]{numeric()}}}
 
@@ -157,12 +169,6 @@ mmmstan(
 \item{refresh}{\code{\link[=integer]{integer()}}}
 
 \item{...}{additional arguments to pass to \code{$sample()} method}
-
-\item{step_liberty_max}{\code{\link[=integer]{integer()}}}
-
-\item{mu_mortality_rate}{\code{\link[=numeric]{numeric()}}}
-
-\item{sd_mortality_rate}{\code{\link[=numeric]{numeric()}}}
 }
 \value{
 \code{\link[=mmmstan]{mmmstan()}}

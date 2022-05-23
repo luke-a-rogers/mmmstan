@@ -24,6 +24,9 @@ data {
   array[N - 1, D, L, X, X] int<lower=0> tags;
   // Movement index (will be paired with a matrix version)
   array[X, X] int<lower=0, upper=1> movement_index;
+  // Movement step mean priors
+  vector<lower=0, upper=1>[X] mu_movement_diag;
+  vector<lower=0>[X] sd_movement_diag;
   // Fishing rate priors
   array[T] vector<lower=0>[X] mu_fishing_rate;
   real<lower=0> cv_fishing_rate;
@@ -119,9 +122,12 @@ parameters {
 //  vector<lower=0, upper=1>[L - 1] selectivity_short;
 //  // Seasonal fishing weights
 //  array[X] simplex[K] fishing_weight_transpose;
-//  // Autoregression priors
-//  vector<lower=0, upper=1>[form > 0 ? X : 0] autoregress;
-//  vector<lower=0>[form > 0 ? X : 0] sigma;
+  // Non-centred process parameters
+  vector<lower=0, upper=1>[model_time ? X : 0] phi_time;
+  vector<lower=0, upper=1>[model_term ? X : 0] phi_term;
+  array[X] vector<lower=0>[model_time ? X : 0] sigma_time;
+  array[X] vector<lower=0>[model_term ? X : 0] sigma_term;
+  array[X] vector<lower=0>[model_size ? X : 0] sigma_size;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -220,8 +226,8 @@ model {
   array[N - 1, D, L] matrix[X, X] predicted;
   array[C] int observed;
   array[C] real expected;
-  // Declare index values
-  int count;
+  // Initialize count
+  int count = 0;
   // Populate released abundance
   for (n in 1:(N - 1)) { // Model step
     for (l in 1:L) { // Released size
@@ -230,8 +236,6 @@ model {
       );
     }
   }
-  // Initialize count
-  count = 0;
   // Compute expected recoveries
   for (n in 1:(N - 1)) { // Model step
     for (d in 2:min(N - n + 1, D)) { // Duration at large
@@ -260,14 +264,62 @@ model {
           } // End x
         } // End y
       } // End l
-    } // End s
+    } // End d
   } // End n
   // Stepwise movement mean priors
-  diagonal(movement_step_mean) ~ normal(0.95, 0.25);
+  diagonal(movement_step_mean) ~ normal(mu_movement_diag, sd_movement_diag);
   // Stepwise movement transformation priors
-  if (model_time) {}
-  if (model_term) {}
-  if (model_size) {}
+  if (model_time) {
+    // Initial time
+    for (x in 1:X) {
+      diagonal(movement_tran_time[1, x]) ~ normal(1.0, sigma_time[x]);
+    }
+    // Centred AR1
+    for (t in 2:T) {
+      for (x in 1:X) {
+        diagonal(movement_tran_time[t, x]) ~ normal(
+          1.0 + phi_time[x] * (diagonal(movement_tran_time[t - 1, x]) - 1.0),
+          sigma_time[x]
+        );
+      }
+    }
+    phi_time ~ std_normal();
+    for (x in 1:X) {
+      sigma_time[x] ~ std_normal();
+    }
+  }
+  if (model_term) {
+    // Initial term
+    for (x in 1:X) {
+      diagonal(movement_tran_term[1, x]) ~ normal(1.0, sigma_term[x]);
+    }
+    // Centred AR1
+    for (k in 2:K) {
+      for (x in 1:X) {
+        diagonal(movement_tran_term[k, x]) ~ normal(
+          1.0 + phi_term[x] * (diagonal(movement_tran_term[k - 1, x]) - 1.0),
+          sigma_term[x]
+        );
+      }
+    }
+    phi_term ~ std_normal();
+    for (x in 1:X) {
+      sigma_term[x] ~ std_normal();
+    }
+  }
+  if (model_size) {
+    // Non-centred random effect
+    for (l in 1:L) {
+      for (x in 1:X) {
+        (diagonal(movement_tran_size[l, x] - 1.0) ./ sigma_size[x])
+        ~ std_normal();
+      }
+    }
+    for (x in 1:X) {
+      sigma_size[x] ~ std_normal();
+      target += -log(sigma_size[x]);
+    }
+  }
   // Fishing rate prior
   for (t in 1:T) {
     fishing_rate[t] ~ normal(
