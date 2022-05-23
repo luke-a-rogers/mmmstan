@@ -10,7 +10,7 @@ create_step_duration_max(
   date_released_start,
   date_recovered_end,
   step_interval,
-  step_liberty_max
+  step_duration_max
 )
 }
 \arguments{

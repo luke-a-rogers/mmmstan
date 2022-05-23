@@ -30,8 +30,8 @@ mmmstan(
   sd_selectivity = NULL,
   mu_fishing_weight = NULL,
   sd_fishing_weight = NULL,
-  mu_mortality_rate = NULL,
-  sd_mortality_rate = NULL,
+  mu_natural_mortality_rate = NULL,
+  sd_natural_mortality_rate = NULL,
   mu_reporting_rate = NULL,
   sd_reporting_rate = NULL,
   mu_initial_loss_rate = 0.1,
@@ -108,10 +108,6 @@ mmmstan(
 
 \item{sd_fishing_weight}{\code{\link[=numeric]{numeric()}}}
 
-\item{mu_mortality_rate}{\code{\link[=numeric]{numeric()}}}
-
-\item{sd_mortality_rate}{\code{\link[=numeric]{numeric()}}}
-
 \item{mu_reporting_rate}{\code{\link[=numeric]{numeric()}}}
 
 \item{sd_reporting_rate}{\code{\link[=numeric]{numeric()}}}
@@ -163,6 +159,10 @@ mmmstan(
 \item{...}{additional arguments to pass to \code{$sample()} method}
 
 \item{step_liberty_max}{\code{\link[=integer]{integer()}}}
+
+\item{mu_mortality_rate}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_mortality_rate}{\code{\link[=numeric]{numeric()}}}
 }
 \value{
 \code{\link[=mmmstan]{mmmstan()}}
