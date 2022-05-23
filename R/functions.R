@@ -367,7 +367,11 @@ mmmstan <- function (tag_data,
 
     # Step duration at large maximum
     if (is.null(step_duration_max)) {
-      step_duration_max <- count_intervals(year_start, year_end, step_interval)
+      step_duration_max <- count_model_steps(
+        year_start,
+        year_end,
+        step_interval
+      )
     }
     # Fishing rate prior
     if (is.null(mu_fishing_rate)) {
