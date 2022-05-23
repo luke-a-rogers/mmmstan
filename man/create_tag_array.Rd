@@ -11,7 +11,7 @@ create_tag_array(
   year_released_start,
   year_recovered_end,
   step_interval = "month",
-  step_liberty_max = NULL,
+  step_duration_max = NULL,
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
@@ -33,8 +33,8 @@ create_tag_array(
 \item{step_interval}{\code{\link[=character]{character()}} one of \code{"year"}, \code{"quarter"}
 or \code{"month"}}
 
-\item{step_liberty_max}{\code{\link[=integer]{integer()}} optional constraint on the maximum
-steps at liberty}
+\item{step_duration_max}{\code{\link[=integer]{integer()}} optional constraint on the maximum
+steps duration at large}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
 

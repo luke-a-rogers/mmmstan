@@ -14,23 +14,24 @@
 #' \code{data} object matches the requirements of the underlying Stan model.
 #'
 #' @param tag_data [data.frame()]
-#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
 #' @param list_regions [list()]
 #' @param list_sizes [list()]
 #' @param year_start [integer()] year of initial tag released
 #' @param year_end [integer()] year of final tag recovered
 #' @param step_interval [character()] one of \code{"month", "quarter", "year"}
 #' @param step_liberty_max [integer()]
+#' @param term_interval [character()] one of \code{"month", "quarter", "year"}
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
 #' @param colname_region_recovered [character()]
 #' @param colname_size_released [character()]
+#' @param model_time [logical()]
+#' @param model_term [logical()]
+#' @param model_size [logical()]
 #' @param movement_pattern [integer()]
 #' @param movement_allow [integer()][matrix()]
 #' @param movement_disallow [integer()][matrix()]
-#' @param mu_movement_step_mean [numeric()][matrix()]
-#' @param sd_movement_step_mean [numeric()][matrix()]
 #' @param mu_fishing_rate [numeric()]
 #' @param cv_fishing_rate [numeric()]
 #' @param mu_selectivity [numeric()]
@@ -59,6 +60,7 @@
 #' @param adapt_delta [numeric()] the adaptation target acceptance statistic
 #' @param iter_warmup [integer()] number of warmup iterations
 #' @param iter_sampling [integer()] number of sampling iterations
+#' @param max_treedepth [integer()]
 #' @param use_reduce_sum [logical()] use within chain parallel threading
 #' @param threads_per_chain [integer()] number of threads per chain
 #' @param refresh [integer()]
@@ -70,26 +72,27 @@
 #' @export
 #'
 mmmstan <- function (tag_data,
-                     model_form = "mean",
                      # Tag arguments
                      list_regions,
                      list_sizes,
                      year_start,
                      year_end,
                      step_interval = "month",
-                     step_liberty_max = NULL,
+                     step_duration_max = NULL,
+                     term_interval = "quarter",
                      colname_date_released = "date_released",
                      colname_date_recovered = "date_recovered",
                      colname_region_released = "region_released",
                      colname_region_recovered = "region_recovered",
                      colname_size_released = "size_released",
+                     # Model structure
+                     model_time = FALSE,
+                     model_term = FALSE,
+                     model_size = FALSE,
                      # Movement index
                      movement_pattern = 2,
                      movement_allow = NULL,
                      movement_disallow = NULL,
-                     # Movement step mean priors
-                     mu_movement_step_mean = NULL,
-                     sd_movement_step_mean = NULL,
                      # Fishing rate priors
                      mu_fishing_rate = NULL,
                      cv_fishing_rate = NULL,
@@ -100,8 +103,8 @@ mmmstan <- function (tag_data,
                      mu_fishing_weight = NULL,
                      sd_fishing_weight = NULL,
                      # Natural mortality rate priors
-                     mu_mortality_rate = NULL,
-                     sd_mortality_rate = NULL,
+                     mu_natural_mortality_rate = NULL,
+                     sd_natural_mortality_rate = NULL,
                      # Fractional (per tag) reporting rate priors
                      mu_reporting_rate = NULL,
                      sd_reporting_rate = NULL,
@@ -129,8 +132,9 @@ mmmstan <- function (tag_data,
                      adapt_delta = 0.95,
                      iter_warmup = 250,
                      iter_sampling = 750,
+                     max_treedepth = 10,
                      use_reduce_sum = FALSE,
-                     threads_per_chain = parallel::detectCores() / (2*chains),
+                     threads_per_chain = parallel::detectCores()/(2*chains),
                      refresh = 100,
                      ...) {
 
@@ -143,11 +147,6 @@ mmmstan <- function (tag_data,
     tag_data,
     all.missing = FALSE,
     null.ok = has_data
-  )
-  # Model form
-  checkmate::assert_choice(
-    model_form,
-    c("mean", "time", "term", "size")
   )
   # Tag arguments
   checkmate::assert_list(
@@ -177,15 +176,20 @@ mmmstan <- function (tag_data,
   )
   checkmate::assert_choice(
     step_interval,
-    choices = c("year", "quarter", "month"),
+    choices = c("month", "quarter", "year"),
     null.ok = has_data
   )
   checkmate::assert_integerish(
-    step_liberty_max,
+    step_duration_max,
     lower = 2,
     any.missing = FALSE,
     len = 1,
     null.ok = TRUE
+  )
+  checkmate::assert_choice(
+    term_interval,
+    choices = c("month", "quarter", "year"),
+    null.ok = has_data
   )
   checkmate::assert_character(
     colname_date_released,
@@ -215,6 +219,25 @@ mmmstan <- function (tag_data,
     colname_size_released,
     any.missing = FALSE,
     len = 1,
+    null.ok = has_data
+  )
+  # Model structure
+  checkmate::assert_logical(
+    model_time,
+    any.missing = FALSE,
+    len = 1L,
+    null.ok = has_data
+  )
+  checkmate::assert_logical(
+    model_term,
+    any.missing = FALSE,
+    len = 1L,
+    null.ok = has_data
+  )
+  checkmate::assert_logical(
+    model_size,
+    any.missing = FALSE,
+    len = 1L,
     null.ok = has_data
   )
   # Movement index
@@ -306,6 +329,12 @@ mmmstan <- function (tag_data,
     any.missing = FALSE,
     len = 1
   )
+  checkmate::assert_integerish(
+    max_treedepth,
+    lower = 1,
+    any.missing = FALSE,
+    len = 1
+  )
   checkmate::assert_logical(
     use_reduce_sum,
     any.missing = FALSE,
@@ -336,30 +365,9 @@ mmmstan <- function (tag_data,
 
     # Populate null arguments --------------------------------------------------
 
-    # Step liberty max
-    if (is.null(step_liberty_max)) {
-      step_liberty_max <- count_intervals(year_start, year_end, step_interval)
-    }
-    # Movement step mean
-    if (is.null(mu_movement_step_mean)) {
-      if (model_form == "mean" || model_form == "size") {
-        mu_movement_step_mean <- matrix(
-          0.0,
-          nrow = length(list_regions),
-          ncol = length(list_regions)
-        )
-      } else {
-        stop("mu_movement_step_mean must be non-null")
-      }
-      if (model_form == "mean" || model_form == "size") {
-        sd_movement_step_mean <- matrix(
-          0.0,
-          nrow = length(list_regions),
-          ncol = length(list_regions)
-        )
-      } else {
-        stop("sd_movement_step_mean must be non-null")
-      }
+    # Step duration at large maximum
+    if (is.null(step_duration_max)) {
+      step_duration_max <- count_intervals(year_start, year_end, step_interval)
     }
     # Fishing rate prior
     if (is.null(mu_fishing_rate)) {
@@ -373,11 +381,11 @@ mmmstan <- function (tag_data,
       cv_fishing_rate <- 0.1
     }
     # Natural mortality rate prior
-    if (is.null(mu_mortality_rate)) {
-      mu_mortality_rate <- rep(0.1, length(list_regions))
+    if (is.null(mu_natural_mortality_rate)) {
+      mu_natural_mortality_rate <- rep(0.1, length(list_regions))
     }
-    if (is.null(sd_mortality_rate)) {
-      sd_mortality_rate <- rep(0.01, length(list_regions))
+    if (is.null(sd_natural_mortality_rate)) {
+      sd_natural_mortality_rate <- rep(0.01, length(list_regions))
     }
     # Reporting rate prior
     if (is.null(mu_reporting_rate)) {
@@ -395,7 +403,7 @@ mmmstan <- function (tag_data,
       list_sizes = list_sizes,
       year_released_start = year_start,
       year_recovered_end = year_end,
-      step_liberty_max = step_liberty_max,
+      step_duration_max = step_duration_max,
       step_interval = step_interval,
       colname_date_released = colname_date_released,
       colname_date_recovered = colname_date_recovered,
@@ -416,35 +424,27 @@ mmmstan <- function (tag_data,
     # Assemble data ------------------------------------------------------------
 
     data <- list(
-      form = c(0:3)[match(model_form, c("mean", "time", "term", "size"))[1]],
+      # Model structure
+      model_time = as.integer(model_time),
+      model_term = as.integer(model_term),
+      model_size = as.integer(model_size),
       # Model index limits
       N = count_model_steps(year_start, year_end, step_interval),
-      S = length(list_sizes),
-      L = step_liberty_max,
+      D = step_duration_max,
+      L = length(list_sizes),
       X = length(list_regions),
-      # Movement index limits
-      I = count_movement_steps(model_form, year_start, year_end),
-      D = count_movement_sizes(model_form, list_sizes),
-      # Fishing index limits
       T = year_end - year_start + 1L,
-      # W = ,
-      # Conversion index limits
-      J = convert_stepwise_rates(step_interval),
-      K = convert_movement_steps(model_form, step_interval),
-      P = sum(movement_index) - length(list_regions),
-      # Movement index arrays
-      n_to_i = create_n_to_i(model_form, year_start, year_end, step_interval),
-      s_to_d = create_s_to_d(model_form, list_sizes), # [S]
-      # Fishing index arrays
-      n_to_t = create_n_to_t(year_start, year_end, step_interval), # [N]
-      # n_to_w = create_n_to_w(year_start, year_end, step_interval), # [N]
+      K = count_intervals(term_interval, "year"),
+      # Constants
+      H = count_intervals(step_interval, term_interval),
+      J = count_intervals(step_interval, "year"),
+      # Index arrays
+      n_to_t = index_n_to_t(year_start, year_end, step_interval),
+      n_to_k = index_n_to_k(year_start, year_end, step_interval, term_interval),
       # Tag data
-      tags = tag_array, # [N - 1, S, L, X, X]
+      tags = tag_array, # [N - 1, D, L, X, X]
       # Movement index
       movement_index = movement_index, # [X, X]
-      # Movement step mean priors
-      mu_movement_step_mean = mu_movement_step_mean, # [X, X]
-      sd_movement_step_mean = sd_movement_step_mean, # [X, X]
       # Fishing rate priors
       mu_fishing_rate = mu_fishing_rate, # [T, X]
       cv_fishing_rate = cv_fishing_rate, # [1]
@@ -452,11 +452,11 @@ mmmstan <- function (tag_data,
       #  mu_selectivity = , # [S - 1]
       #  cv_selectivity = , # [1]
       # Fishing weight priors
-      #  mu_fishing_weight = , # [W, X]
+      #  mu_fishing_weight = , # [K, X]
       #  cv_fishing_weight = , # [1]
       # Natural mortality rate priors
-      mu_mortality_rate = mu_mortality_rate, # [X]
-      sd_mortality_rate = sd_mortality_rate, # [X]
+      mu_natural_mortality_rate = mu_natural_mortality_rate, # [X]
+      sd_natural_mortality_rate = sd_natural_mortality_rate, # [X]
       # Fractional (per tag) reporting rate priors
       mu_reporting_rate = mu_reporting_rate, # [X]
       sd_reporting_rate = sd_reporting_rate, # [X]
@@ -467,10 +467,10 @@ mmmstan <- function (tag_data,
       mu_ongoing_loss_rate = mu_ongoing_loss_rate,
       sd_ongoing_loss_rate = sd_ongoing_loss_rate,
       # Autoregression priors
-      mu_autoregress = mu_autoregress,
-      sd_autoregress = sd_autoregress,
-      mu_sigma = mu_sigma,
-      sd_sigma = sd_sigma,
+      # mu_autoregress = mu_autoregress,
+      # sd_autoregress = sd_autoregress,
+      # mu_sigma = mu_sigma,
+      # sd_sigma = sd_sigma,
       # Dispersion priors
       mu_dispersion = mu_dispersion,
       sd_dispersion = sd_dispersion,
@@ -481,9 +481,6 @@ mmmstan <- function (tag_data,
   }
 
   # Check data elements --------------------------------------------------------
-
-  checkmate::assert_true(data$P == sum(data$movement_index) - data$X)
-  # ...
 
   # Initialize model -----------------------------------------------------------
 
@@ -506,6 +503,7 @@ mmmstan <- function (tag_data,
     adapt_delta = adapt_delta,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
+    max_treedepth = max_treedepth,
     threads_per_chain = threads_per_chain,
     refresh = refresh #,
     #...
@@ -515,28 +513,33 @@ mmmstan <- function (tag_data,
 
   # Movement step
   movement_step_summary <- fit$draws() %>%
-    tidybayes::spread_draws(movement_step[i,d,x,y]) %>%
-    tidybayes::summarise_draws()
-  # Movement step mean priors
-  mu_movement_step_mean <- matrix(0.0, nrow = data$X, ncol = data$X)
-  sd_movement_step_mean <- matrix(0.0, nrow = data$X, ncol = data$X)
+    tidybayes::spread_draws(movement_step[t,k,l,x,y]) %>%
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
+  # Movement mean
+  movement_mean_summary <- fit$draws() %>%
+    tidybayes::spread_draws(movement_mean[x,y]) %>%
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
   # Movement summaries
-  movement_mean_summary <- tibble::tibble()
   movement_time_summary <- tibble::tibble()
   movement_term_summary <- tibble::tibble()
   movement_size_summary <- tibble::tibble()
   # Fishing rate
   fishing_rate_summary <- fit$draws() %>%
     tidybayes::spread_draws(fishing_rate[t,x]) %>%
-    tidybayes::summarise_draws()
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
   # Natural mortality rate
   natural_mortality_rate_summary <- fit$draws() %>%
-    tidybayes::spread_draws(mortality_rate[x]) %>%
-    tidybayes::summarise_draws()
+    tidybayes::spread_draws(natural_mortality_rate[x]) %>%
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
   # Reporting rate
   reporting_rate_summary <- fit$draws() %>%
     tidybayes::spread_draws(reporting_rate[x]) %>%
-    tidybayes::summarise_draws()
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
   # Initial loss rate
   initial_loss_rate_summary <- fit$draws() %>%
     tidybayes::spread_draws(initial_loss_rate) %>%
@@ -544,61 +547,34 @@ mmmstan <- function (tag_data,
   # Ongoing loss rate
   ongoing_loss_rate_summary <- fit$draws() %>%
     tidybayes::spread_draws(ongoing_loss_rate) %>%
-    tidybayes::summarise_draws()
+    tidybayes::summarise_draws() %>%
+    dplyr::ungroup()
   # Autoregression
-  autoregress_summary <- tibble::tibble()
-  sigma_summary <- tibble::tibble()
+  # autoregress_summary <- tibble::tibble()
+  # sigma_summary <- tibble::tibble()
 
   # Compute conditional fit summaries ------------------------------------------
 
-  if (model_form == "mean") {
-    # Movement mean
-    movement_mean_summary <- fit$draws() %>%
-      tidybayes::spread_draws(movement_mean[x,y]) %>%
-      tidybayes::summarise_draws()
-    # Movement step
-    mu_movement_step_mean <- movement_step_summary %>%
-      dplyr::pull(.data$mean) %>%
-      matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
-    sd_movement_step_mean <- movement_step_summary %>%
-      dplyr::pull(.data$sd) %>%
-      matrix(byrow = TRUE, nrow = data$X, ncol = data$X)
-  } else if (model_form == "time") {
+  if (model_time) {
     # Movement time
     movement_time_summary <- fit$draws() %>%
-      tidybayes::spread_draws(movement_time[i,x,y]) %>%
-      tidybayes::summarise_draws()
-    # Autoregression
-    autoregress_summary <- fit$draws() %>%
-      tidybayes::spread_draws(autoregress[x]) %>%
-      tidybayes::summarise_draws()
-    sigma_summary <- fit$draws() %>%
-      tidybayes::spread_draws(sigma[x]) %>%
-      tidybayes::summarise_draws()
-  } else if (model_form == "term") {
+      tidybayes::spread_draws(movement_time[t,x,y]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
+  }
+  if (model_term) {
     # Movement term
     movement_term_summary <- fit$draws() %>%
-      tidybayes::spread_draws(movement_term[i,x,y]) %>%
-      tidybayes::summarise_draws()
-    # Autoregression
-    autoregress_summary <- fit$draws() %>%
-      tidybayes::spread_draws(autoregress[x]) %>%
-      tidybayes::summarise_draws()
-    sigma_summary <- fit$draws() %>%
-      tidybayes::spread_draws(sigma[x]) %>%
-      tidybayes::summarise_draws()
-  } else if (model_form == "size") {
+      tidybayes::spread_draws(movement_term[k,x,y]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
+  }
+  if (model_size) {
     # Movement size
     movement_size_summary <- fit$draws() %>%
-      tidybayes::spread_draws(movement_size[d,x,y]) %>%
-      tidybayes::summarise_draws()
-    # Autoregression
-    autoregress_summary <- fit$draws() %>%
-      tidybayes::spread_draws(autoregress[x]) %>%
-      tidybayes::summarise_draws()
-    sigma_summary <- fit$draws() %>%
-      tidybayes::spread_draws(sigma[x]) %>%
-      tidybayes::summarise_draws()
+      tidybayes::spread_draws(movement_size[l,x,y]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
   }
 
   # Assemble fit summary -------------------------------------------------------
@@ -619,16 +595,6 @@ mmmstan <- function (tag_data,
     # Tag loss
     initial_loss_rate = initial_loss_rate_summary,
     ongoing_loss_rate = ongoing_loss_rate_summary,
-    # Autoregression
-    autoregress = autoregress_summary,
-    sigma = sigma_summary
-  )
-
-  # Assemble step mean priors --------------------------------------------------
-
-  priors <- list(
-    mu_movement_step_mean = mu_movement_step_mean,
-    sd_movement_step_mean = sd_movement_step_mean
   )
 
   # Return values --------------------------------------------------------------
@@ -637,7 +603,6 @@ mmmstan <- function (tag_data,
     data = data,
     fit = fit,
     # draws = draws,
-    priors = priors,
     summary = summary),
     class = "mmmstan")
 }

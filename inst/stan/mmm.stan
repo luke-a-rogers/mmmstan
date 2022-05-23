@@ -3,14 +3,14 @@ functions {
 }
 
 data {
-  // Model form
+  // Model structure
   int<lower=0, upper=1> model_time;
   int<lower=0, upper=1> model_term;
   int<lower=0, upper=1> model_size;
   // Index limits
   int<lower=2> N; // Number of model steps (months/quarters/years) in the study
   int<lower=2> D; // Maximum duration at large in model steps
-  int<lower=2> L; // Number of size or sex classes
+  int<lower=1> L; // Number of size or sex classes
   int<lower=2> X; // Number of geographic regions
   int<lower=1> T; // Number of years in the study
   int<lower=1> K; // Number of terms (quarters/trimesters/halfs) per year
@@ -21,7 +21,7 @@ data {
   array[N] int<lower=1, upper=T> n_to_t; // Model step to year index
   array[N] int<lower=1, upper=K> n_to_k; // Model step to term index
   // Tag data
-  array[N - 1, D, L X, X] int<lower=0> tags;
+  array[N - 1, D, L, X, X] int<lower=0> tags;
   // Movement index (will be paired with a matrix version)
   array[X, X] int<lower=0, upper=1> movement_index;
   // Fishing rate priors
@@ -59,30 +59,15 @@ data {
 }
 
 transformed data {
-  // Maximum number of observations
+  // Maximum number of observations (upper bound actually)
   int<lower=0> C = N * D * L * X * X;
   // Matrix version of movement index
-  matrix[X, X] movement_matrix = assemble_movement_matrix(movement_index);
+  matrix[X, X] movement_matrix = to_matrix(movement_index);
   // Simplex dimensions
-  array[6] int simplex_dimensions_mean = assemble_simplex_dimensions(
-    movement_index,
-    1, 1, 1 // Always use the mean
-  );
-  array[6] int simplex_dimensions_time = assemble_simplex_dimensions(
-    movement_index,
-    model_time,
-    T, X // Number of years and movement rows
-  );
-  array[6] int simplex_dimensions_term = assemble_simplex_dimensions(
-    movement_index,
-    model_term,
-    K, X // Number of terms and movement row
-  );
-  array[6] int simplex_dimensions_size = assemble_simplex_dimensions(
-    movement_index,
-    model_size,
-    L, X // Number of sizes and movement row
-  );
+  array[6] int simplex_dims_mean = simplex_dims(movement_index);
+  array[6] int simplex_dims_time = simplex_dims(movement_index, model_time, T);
+  array[6] int simplex_dims_term = simplex_dims(movement_index, model_term, K);
+  array[6] int simplex_dims_size = simplex_dims(movement_index, model_size, L);
   // Declare tags released
   array[N - 1, L] vector[X] tags_released = assemble_tags_released(tags);
   // Declare tags transpose (permute x and y)
@@ -96,34 +81,33 @@ transformed data {
 
 parameters {
   // Stepwise movement mean simplexes
-  array[simplex_dimensions_mean[1]] simplex[1] m1;
-  array[simplex_dimensions_mean[2]] simplex[2] m2;
-  array[simplex_dimensions_mean[3]] simplex[3] m3;
-  array[simplex_dimensions_mean[4]] simplex[4] m4;
-  array[simplex_dimensions_mean[5]] simplex[5] m5;
-  array[simplex_dimensions_mean[6]] simplex[6] m6;
+  array[simplex_dims_mean[1]] simplex[1] m1;
+  array[simplex_dims_mean[2]] simplex[2] m2;
+  array[simplex_dims_mean[3]] simplex[3] m3;
+  array[simplex_dims_mean[4]] simplex[4] m4;
+  array[simplex_dims_mean[5]] simplex[5] m5;
+  array[simplex_dims_mean[6]] simplex[6] m6;
   // Stepwise movement time simplexes
-  array[simplex_dimensions_time[1]] simplex[model_time == 1 ? 1 : 0] t1;
-  array[simplex_dimensions_time[2]] simplex[model_time == 1 ? 2 : 0] t2;
-  array[simplex_dimensions_time[3]] simplex[model_time == 1 ? 3 : 0] t3;
-  array[simplex_dimensions_time[4]] simplex[model_time == 1 ? 4 : 0] t4;
-  array[simplex_dimensions_time[5]] simplex[model_time == 1 ? 5 : 0] t5;
-  array[simplex_dimensions_time[6]] simplex[model_time == 1 ? 6 : 0] t6;
+  array[simplex_dims_time[1]] simplex[1] t1;
+  array[simplex_dims_time[2]] simplex[2] t2;
+  array[simplex_dims_time[3]] simplex[3] t3;
+  array[simplex_dims_time[4]] simplex[4] t4;
+  array[simplex_dims_time[5]] simplex[5] t5;
+  array[simplex_dims_time[6]] simplex[6] t6;
   // Stepwise movement term simplexes
-  array[simplex_dimensions_term[1]] simplex[model_term == 1 ? 1 : 0] k1;
-  array[simplex_dimensions_term[2]] simplex[model_term == 1 ? 2 : 0] k2;
-  array[simplex_dimensions_term[3]] simplex[model_term == 1 ? 3 : 0] k3;
-  array[simplex_dimensions_term[4]] simplex[model_term == 1 ? 4 : 0] k4;
-  array[simplex_dimensions_term[5]] simplex[model_term == 1 ? 5 : 0] k5;
-  array[simplex_dimensions_term[6]] simplex[model_term == 1 ? 6 : 0] k6;
+  array[simplex_dims_term[1]] simplex[1] k1;
+  array[simplex_dims_term[2]] simplex[2] k2;
+  array[simplex_dims_term[3]] simplex[3] k3;
+  array[simplex_dims_term[4]] simplex[4] k4;
+  array[simplex_dims_term[5]] simplex[5] k5;
+  array[simplex_dims_term[6]] simplex[6] k6;
   // Stepwise movement size simplexes
-  array[simplex_dimensions_size[1]] simplex[model_size == 1 ? 1 : 0] l1;
-  array[simplex_dimensions_size[2]] simplex[model_size == 1 ? 2 : 0] l2;
-  array[simplex_dimensions_size[3]] simplex[model_size == 1 ? 3 : 0] l3;
-  array[simplex_dimensions_size[4]] simplex[model_size == 1 ? 4 : 0] l4;
-  array[simplex_dimensions_size[5]] simplex[model_size == 1 ? 5 : 0] l5;
-  array[simplex_dimensions_size[6]] simplex[model_size == 1 ? 6 : 0] l6;
-
+  array[simplex_dims_size[1]] simplex[1] l1;
+  array[simplex_dims_size[2]] simplex[2] l2;
+  array[simplex_dims_size[3]] simplex[3] l3;
+  array[simplex_dims_size[4]] simplex[4] l4;
+  array[simplex_dims_size[5]] simplex[5] l5;
+  array[simplex_dims_size[6]] simplex[6] l6;
   // Instantaneous stepwise rates
   array[T] vector<lower=0>[X] fishing_step;
   vector<lower=0>[X] natural_mortality_step;
@@ -144,7 +128,7 @@ parameters {
 
 transformed parameters {
   // Stepwise movement rate components
-  martix<lower=0, upper=1>[X, X] movement_step_mean;
+  matrix<lower=0, upper=1>[X, X] movement_step_mean;
   array[T, X] matrix<lower=0, upper=1>[X, X] movement_tran_time;
   array[K, X] matrix<lower=0, upper=1>[X, X] movement_tran_term;
   array[L, X] matrix<lower=0, upper=1>[X, X] movement_tran_size;
@@ -167,7 +151,7 @@ transformed parameters {
 //  // Selectivity
 //  vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
 //  // Declare fishing weight
-//  array[K] vector<lower=0, upper=1> fishing_weight;
+//  array[K] vector<lower=0, upper=1>[X] fishing_weight;
 
   // Assemble stepwise movement rate components
   movement_step_mean = assemble_movement_step_mean(
@@ -197,7 +181,10 @@ transformed parameters {
     movement_step_mean,
     movement_tran_time,
     movement_tran_term,
-    movement_tran_size
+    movement_tran_size,
+    model_time,
+    model_term,
+    model_size
   );
 //  // Assemble fishing weight [K][X]
 //  fishing_weight = assemble_fishing_weight(fishing_weight_transpose);
@@ -210,15 +197,19 @@ transformed parameters {
     ongoing_loss_step,
     K, L
   );
-// TODO:
   // Assemble stepwise transition rate [N, L][X, X]
   transition_step = assemble_transition_step(
     movement_step,
     survival_step
   );
   // Assemble stepwize observation rate [N, L][X]
-  observation_step = assemble_observation_step();
-
+  observation_step = assemble_observation_step(
+    fishing_step,
+//    fishing_weight,
+//    selectivity,
+    reporting_step,
+    K, L
+  );
   // Assemble fishing rate [T][X]
   fishing_rate = assemble_fishing_rate(fishing_step, J);
 }
@@ -247,11 +238,11 @@ model {
       for (l in 1:L) { // Released size
         // Propagate abundance
         abundance[n, d, l] = abundance[n, d - 1, l]
-        * transition_step[n + d - 2, l];
+        * transition_step[n + d - 2, l]; // Previous step
         // Compute predicted
         predicted[n, d, l] = diag_post_multiply(
           abundance[n, d, l],
-          observation_step[n + d - 1, l]
+          observation_step[n + d - 1, l] // Current step
         );
         // Compute vectors
         for (y in 1:X) { // Current region
@@ -271,10 +262,12 @@ model {
       } // End l
     } // End s
   } // End n
-  // Stepwise movement rate priors
-
+  // Stepwise movement mean priors
+  diagonal(movement_step_mean) ~ normal(0.95, 0.25);
   // Stepwise movement transformation priors
-
+  if (model_time) {}
+  if (model_term) {}
+  if (model_size) {}
   // Fishing rate prior
   for (t in 1:T) {
     fishing_rate[t] ~ normal(
@@ -282,8 +275,11 @@ model {
       mu_fishing_rate[t] * cv_fishing_rate + tolerance_fishing
     );
   }
-  // Mortality rate prior
-  mortality_rate ~ normal(mu_mortality_rate, sd_mortality_rate);
+  // Natural mortality rate prior
+  natural_mortality_rate ~ normal(
+    mu_natural_mortality_rate,
+    sd_natural_mortality_rate
+  );
   // Reporting rate prior
   reporting_rate ~ normal(mu_reporting_rate, sd_reporting_rate);
   // Ongoing loss rate prior
@@ -297,17 +293,31 @@ model {
 }
 
 generated quantities {
-  // Movement rate components
-  matrix<lower=0, upper=1>[X, X] movement_mean;
-  array[T] matrix<lower=0, upper=1>[X, X] movement_time;
-  array[K] matrix<lower=0, upper=1>[X, X] movement_term;
-  array[L] matrix<lower=0, upper=1>[X, X] movement_size;
-  // Movement rate
-  array[T, K, L] matrix<lower=0, upper=1>[X, X] movement_rate;
-
-  // Populate movement mean
+  // Movement mean
+  matrix[X, X] movement_mean = matrix_power(movement_step_mean, J);
+  // Movement facets
+  array[T] matrix[X, X] movement_time;
+  array[K] matrix[X, X] movement_term;
+  array[L] matrix[X, X] movement_size;
   // Populate movement time
+  movement_time = assemble_movement_rate(
+    movement_step_mean,
+    movement_tran_time,
+    model_time,
+    J
+  );
   // Populate movement term
+  movement_term = assemble_movement_rate(
+    movement_step_mean,
+    movement_tran_term,
+    model_term,
+    H
+  );
   // Populate movement size
-  // Populate movement rate
+  movement_size = assemble_movement_rate(
+    movement_step_mean,
+    movement_tran_size,
+    model_size,
+    J
+  );
 }

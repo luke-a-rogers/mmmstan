@@ -58,8 +58,12 @@ if (FALSE) {
   # Step arguments -------------------------------------------------------------
   
   step_interval <- "quarter"
-  # step_liberty_max <- NULL
-  step_liberty_max <- 12
+  # step_duration_max <- NULL
+  step_duration_max <- 12
+  
+  # Term arguments -------------------------------------------------------------
+  
+  term_interval <- "quarter"
   
   # Size arguments -------------------------------------------------------------
   
@@ -73,6 +77,12 @@ if (FALSE) {
   year_start <- 1979
   year_end <- 2017
   
+  # Model structure ------------------------------------------------------------
+  
+  model_time <- FALSE
+  model_term <- FALSE
+  model_size <- FALSE
+  
   # Column name arguments ------------------------------------------------------
   
   colname_date_released <- "released_date" # "date_released"
@@ -81,17 +91,116 @@ if (FALSE) {
   colname_region_recovered <- "recovered_region" # "region_recovered"
   colname_size_released <- "released_length" # "size_released"
   
+  # Arguments with defaults ----------------------------------------------------
+  
+  # Fishing rate priors
+  mu_fishing_rate <- NULL
+  cv_fishing_rate <- NULL
+  # Selectivity priors
+  mu_selectivity <- NULL
+  sd_selectivity <- NULL
+  # Fishing weight priors
+  mu_fishing_weight <- NULL
+  sd_fishing_weight <- NULL
+  # Natural mortality rate priors
+  mu_natural_mortality_rate <- NULL
+  sd_natural_mortality_rate <- NULL
+  # Fractional (per tag) reporting rate priors
+  mu_reporting_rate <- NULL
+  sd_reporting_rate <- NULL
+  # Fractional (per tag) initial loss rate priors
+  mu_initial_loss_rate <- 0.1
+  sd_initial_loss_rate <- 0.01
+  # Instantaneous ongoing loss rate priors
+  mu_ongoing_loss_rate <- 0.02
+  sd_ongoing_loss_rate <- 0.001
+  # Autoregression priors
+  # mu_autoregress <- 0.5
+  # sd_autoregress <- 0.2
+  # mu_sigma <- 0.1
+  # sd_sigma <- 0.05
+  # Dispersion priors
+  mu_dispersion <- 1.0
+  sd_dispersion <- 0.5
+  # Tolerance values
+  tolerance_expected <- 1e-12
+  tolerance_fishing <-  1e-12
+  # CmdStanR
+  data <- NULL
+  chains <- 1
+  step_size <- 0.01
+  adapt_delta <- 0.95
+  iter_warmup <- 250
+  iter_sampling <- 750
+  max_treedepth <- 10
+  threads_per_chain <- parallel::detectCores()/(2*chains)
+
   # Use reduce sum -------------------------------------------------------------
   
   use_reduce_sum <- FALSE
   # use_reduce_sum <- TRUE
-  refresh = 10
+  refresh <- 10
 }
 
 ```
 
 # Fit mean
 ```{r fit-mean}
+if (FALSE) {
+  # Fit mean
+  fit_mean <- mmmstan(
+    tag_data = tag_data,
+    # Tag arguments
+    list_regions = list_regions,
+    list_sizes = list_sizes,
+    year_start = year_start,
+    year_end = year_end,
+    step_interval = step_interval,
+    step_duration_max = step_duration_max,
+    term_interval = term_interval,
+    colname_date_released = colname_date_released, # "date_released",
+    colname_date_recovered = colname_date_recovered, # "date_recovered",
+    colname_region_released = colname_region_released, # "region_released",
+    colname_region_recovered = colname_region_recovered, # "region_recovered",
+    colname_size_released = colname_size_released, # "size_released",
+    # Model structure
+    model_time = FALSE,
+    model_term = FALSE,
+    model_size = FALSE,
+    # Movement index
+    movement_pattern = movement_pattern,
+    movement_allow = movement_allow,
+    movement_disallow = movement_disallow,
+    # Use reduce sum
+    use_reduce_sum = use_reduce_sum,
+    refresh = refresh
+  )
+  # View
+  tibble::view(fit_mean$summary$movement_step)
+  tibble::view(fit_mean$summary$movement_mean)
+  tibble::view(fit_mean$summary$fishing_rate)
+  # Plot
+  ggplot2::ggplot(
+    data = fit_mean$summary$movement_mean,
+    mapping = ggplot2::aes(
+      x = 1,
+      y = .data$mean
+    )
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$x),
+      cols = ggplot2::vars(.data$y)
+    ) +
+    ggsidekick::theme_sleek()
+}
+
+```
+
+
+
+# Fit mean (old)
+```{r fit-mean-old}
 if (FALSE) {
   # Fit mean
   fit_mean <- mmmstan(

@@ -6,23 +6,24 @@
 \usage{
 mmmstan(
   tag_data,
-  model_form = "mean",
   list_regions,
   list_sizes,
   year_start,
   year_end,
   step_interval = "month",
-  step_liberty_max = NULL,
+  step_duration_max = NULL,
+  term_interval = "quarter",
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
   colname_region_recovered = "region_recovered",
   colname_size_released = "size_released",
+  model_time = FALSE,
+  model_term = FALSE,
+  model_size = FALSE,
   movement_pattern = 2,
   movement_allow = NULL,
   movement_disallow = NULL,
-  mu_movement_step_mean = NULL,
-  sd_movement_step_mean = NULL,
   mu_fishing_rate = NULL,
   cv_fishing_rate = NULL,
   mu_selectivity = NULL,
@@ -51,6 +52,7 @@ mmmstan(
   adapt_delta = 0.95,
   iter_warmup = 250,
   iter_sampling = 750,
+  max_treedepth = 10,
   use_reduce_sum = FALSE,
   threads_per_chain = parallel::detectCores()/(2 * chains),
   refresh = 100,
@@ -59,8 +61,6 @@ mmmstan(
 }
 \arguments{
 \item{tag_data}{\code{\link[=data.frame]{data.frame()}}}
-
-\item{model_form}{\code{\link[=character]{character()}} one of \code{"mean", "time", "term", "size"}}
 
 \item{list_regions}{\code{\link[=list]{list()}}}
 
@@ -72,7 +72,7 @@ mmmstan(
 
 \item{step_interval}{\code{\link[=character]{character()}} one of \code{"month", "quarter", "year"}}
 
-\item{step_liberty_max}{\code{\link[=integer]{integer()}}}
+\item{term_interval}{\code{\link[=character]{character()}} one of \code{"month", "quarter", "year"}}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
 
@@ -84,15 +84,17 @@ mmmstan(
 
 \item{colname_size_released}{\code{\link[=character]{character()}}}
 
+\item{model_time}{\code{\link[=logical]{logical()}}}
+
+\item{model_term}{\code{\link[=logical]{logical()}}}
+
+\item{model_size}{\code{\link[=logical]{logical()}}}
+
 \item{movement_pattern}{\code{\link[=integer]{integer()}}}
 
 \item{movement_allow}{\link[=matrix]{integer()}}
 
 \item{movement_disallow}{\link[=matrix]{integer()}}
-
-\item{mu_movement_step_mean}{\link[=matrix]{numeric()}}
-
-\item{sd_movement_step_mean}{\link[=matrix]{numeric()}}
 
 \item{mu_fishing_rate}{\code{\link[=numeric]{numeric()}}}
 
@@ -150,6 +152,8 @@ mmmstan(
 
 \item{iter_sampling}{\code{\link[=integer]{integer()}} number of sampling iterations}
 
+\item{max_treedepth}{\code{\link[=integer]{integer()}}}
+
 \item{use_reduce_sum}{\code{\link[=logical]{logical()}} use within chain parallel threading}
 
 \item{threads_per_chain}{\code{\link[=integer]{integer()}} number of threads per chain}
@@ -157,6 +161,8 @@ mmmstan(
 \item{refresh}{\code{\link[=integer]{integer()}}}
 
 \item{...}{additional arguments to pass to \code{$sample()} method}
+
+\item{step_liberty_max}{\code{\link[=integer]{integer()}}}
 }
 \value{
 \code{\link[=mmmstan]{mmmstan()}}
