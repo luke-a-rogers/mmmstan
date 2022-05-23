@@ -40,10 +40,16 @@ mmmstan(
   sd_initial_loss_rate = 0.01,
   mu_ongoing_loss_rate = 0.02,
   sd_ongoing_loss_rate = 0.001,
-  mu_autoregress = 0.5,
-  sd_autoregress = 0.2,
-  mu_sigma = 0.1,
-  sd_sigma = 0.05,
+  mu_phi_time = 0.25,
+  sd_phi_time = 0.05,
+  mu_phi_term = 0.25,
+  sd_phi_term = 0.05,
+  mu_sigma_time = 0.25,
+  sd_sigma_time = 0.05,
+  mu_sigma_term = 0.25,
+  sd_sigma_term = 0.05,
+  mu_sigma_size = 0.25,
+  sd_sigma_size = 0.05,
   mu_dispersion = 1,
   sd_dispersion = 0.5,
   tolerance_expected = 1e-12,
@@ -132,13 +138,25 @@ mmmstan(
 
 \item{sd_ongoing_loss_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{mu_autoregress}{\code{\link[=numeric]{numeric()}}}
+\item{mu_phi_time}{\code{\link[=numeric]{numeric()}}}
 
-\item{sd_autoregress}{\code{\link[=numeric]{numeric()}}}
+\item{sd_phi_time}{\code{\link[=numeric]{numeric()}}}
 
-\item{mu_sigma}{\code{\link[=numeric]{numeric()}}}
+\item{mu_phi_term}{\code{\link[=numeric]{numeric()}}}
 
-\item{sd_sigma}{\code{\link[=numeric]{numeric()}}}
+\item{sd_phi_term}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_sigma_time}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_sigma_time}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_sigma_term}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_sigma_term}{\code{\link[=numeric]{numeric()}}}
+
+\item{mu_sigma_size}{\code{\link[=numeric]{numeric()}}}
+
+\item{sd_sigma_size}{\code{\link[=numeric]{numeric()}}}
 
 \item{mu_dispersion}{\code{\link[=numeric]{numeric()}}}
 

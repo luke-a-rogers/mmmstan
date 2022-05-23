@@ -501,6 +501,27 @@ array[] matrix assemble_movement_rate (
   return movement_rate;
 }
 
+array[] vector assemble_movement_deviation (
+  matrix mmean,
+  array[,] matrix mtran
+) {
+  // Get dimensions
+  int B = dims(mtran)[1];
+  int X = dims(mmean)[1];
+  // Declare values
+  array[B] vector[X] movement_deviation;
+  array[B] matrix[X, X] movement_step;
+  // Populate movement deviation
+  for (b in 1:B) { // Year, term or size
+    for (x in 1:X) { // Row within matrix movement step mean (mmean)
+      movement_step[b][x] = mmean[x] * mtran[b, x];
+    }
+    movement_deviation[b] = diagonal(movement_step[b]) - diagonal(mmean);
+  }
+  // Return value
+  return movement_deviation;
+}
+
 real partial_sum_lpmf (
   array[] int index,
   int start,

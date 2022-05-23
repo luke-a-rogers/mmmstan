@@ -48,11 +48,21 @@ data {
   // Instantaneous ongoing loss rate priors
   real<lower=0> mu_ongoing_loss_rate;
   real<lower=0> sd_ongoing_loss_rate;
-  // Autoregression priors
-//  real<lower=0, upper=1> mu_autoregress;
-//  real<lower=0, upper=1> sd_autoregress;
-//  real<lower=0> mu_sigma;
-//  real<lower=0> sd_sigma;
+  // AR1 time coefficient priors
+  real<lower=0, upper=1> mu_phi_time;
+  real<lower=0> sd_phi_time;
+  // AR1 term coefficient priors
+  real<lower=0, upper=1> mu_phi_term;
+  real<lower=0> sd_phi_term;
+  // AR1 time sigma priors
+  real<lower=0, upper=1> mu_sigma_time;
+  real<lower=0> sd_sigma_time;
+  // AR1 term sigma priors
+  real<lower=0, upper=1> mu_sigma_term;
+  real<lower=0> sd_sigma_term;
+  // RE size sigma priors
+  real<lower=0, upper=1> mu_sigma_size;
+  real<lower=0> sd_sigma_size;
   // Dispersion priors
   real<lower=0> mu_dispersion;
   real<lower=0> sd_dispersion;
@@ -125,9 +135,9 @@ parameters {
   // Non-centred process parameters
   vector<lower=0, upper=1>[model_time ? X : 0] phi_time;
   vector<lower=0, upper=1>[model_term ? X : 0] phi_term;
-  array[X] vector<lower=0>[model_time ? X : 0] sigma_time;
-  array[X] vector<lower=0>[model_term ? X : 0] sigma_term;
-  array[X] vector<lower=0>[model_size ? X : 0] sigma_size;
+  vector<lower=0>[model_time ? X : 0] sigma_time;
+  vector<lower=0>[model_term ? X : 0] sigma_term;
+  vector<lower=0>[model_size ? X : 0] sigma_size;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -138,6 +148,10 @@ transformed parameters {
   array[T, X] matrix<lower=0, upper=1>[X, X] movement_tran_time;
   array[K, X] matrix<lower=0, upper=1>[X, X] movement_tran_term;
   array[L, X] matrix<lower=0, upper=1>[X, X] movement_tran_size;
+  // Stepwise movement diagonal deviations
+  array[T] vector[X] movement_dev_time;
+  array[K] vector[X] movement_dev_term;
+  array[L] vector[X] movement_dev_size;
   // Stepwise movement rate
   array[T, K, L] matrix<lower=0, upper=1>[X, X] movement_step;
   // Stepwise survival rate
@@ -146,7 +160,6 @@ transformed parameters {
   array[N, L] matrix<lower=0, upper=1>[X, X] transition_step;
   // Stepwise observation rate
   array[N, L] vector<lower=0, upper=1>[X] observation_step;
-
   // Declare instantaneous rates
   array[T] vector<lower=0>[X] fishing_rate;
   vector<lower=0>[X] natural_mortality_rate = natural_mortality_step * J;
@@ -158,7 +171,6 @@ transformed parameters {
 //  vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
 //  // Declare fishing weight
 //  array[K] vector<lower=0, upper=1>[X] fishing_weight;
-
   // Assemble stepwise movement rate components
   movement_step_mean = assemble_movement_step_mean(
     m1, m2, m3, m4, m5, m6,
@@ -192,6 +204,27 @@ transformed parameters {
     model_term,
     model_size
   );
+  // Assemble movement time deviations
+  if (model_time) {
+    movement_dev_time = assemble_movement_deviation(
+      movement_step_mean,
+      movement_tran_time
+    );
+  }
+  // Assemble movement term deviations
+  if (model_term) {
+    movement_dev_term = assemble_movement_deviation(
+      movement_step_mean,
+      movement_tran_term
+    );
+  }
+  // Assemble movement size deviations
+  if (model_size) {
+    movement_dev_size = assemble_movement_deviation(
+      movement_step_mean,
+      movement_tran_size
+    );
+  }
 //  // Assemble fishing weight [K][X]
 //  fishing_weight = assemble_fishing_weight(fishing_weight_transpose);
   // Assemble stepwise survival rate [T, K, L][X]
@@ -268,57 +301,42 @@ model {
   } // End n
   // Stepwise movement mean priors
   diagonal(movement_step_mean) ~ normal(mu_movement_diag, sd_movement_diag);
-  // Stepwise movement transformation priors
+  // Stepwise movement deviation priors
   if (model_time) {
-    // Initial time
-    for (x in 1:X) {
-      diagonal(movement_tran_time[1, x]) ~ normal(1.0, sigma_time[x]);
-    }
-    // Centred AR1
+    // Case t = 1
+    movement_dev_time[1] ./ sigma_time ~ std_normal();
+    // Non-centred AR1
     for (t in 2:T) {
-      for (x in 1:X) {
-        diagonal(movement_tran_time[t, x]) ~ normal(
-          1.0 + phi_time[x] * (diagonal(movement_tran_time[t - 1, x]) - 1.0),
-          sigma_time[x]
-        );
-      }
+      (movement_dev_time[t] - phi_time .* movement_dev_time[t - 1])
+      ./ sigma_time ~ std_normal();
     }
-    phi_time ~ std_normal();
-    for (x in 1:X) {
-      sigma_time[x] ~ std_normal();
-    }
+    phi_time ~ normal(mu_phi_time, sd_phi_time);
+    sigma_time ~ normal(mu_sigma_time, sd_sigma_time);
+    // Jacobean adjustment
+    // target += log();
   }
   if (model_term) {
-    // Initial term
-    for (x in 1:X) {
-      diagonal(movement_tran_term[1, x]) ~ normal(1.0, sigma_term[x]);
-    }
-    // Centred AR1
+    // Case k = 1
+    (movement_dev_term[1] - phi_term .* movement_dev_term[K])
+    ./ sigma_term ~ std_normal();
+    // Non-centred AR1
     for (k in 2:K) {
-      for (x in 1:X) {
-        diagonal(movement_tran_term[k, x]) ~ normal(
-          1.0 + phi_term[x] * (diagonal(movement_tran_term[k - 1, x]) - 1.0),
-          sigma_term[x]
-        );
-      }
+      (movement_dev_term[k] - phi_term .* movement_dev_term[k - 1])
+      ./ sigma_term ~ std_normal();
     }
-    phi_term ~ std_normal();
-    for (x in 1:X) {
-      sigma_term[x] ~ std_normal();
-    }
+    phi_term ~ normal(mu_phi_term, sd_phi_term);
+    sigma_term ~ normal(mu_sigma_term, sd_sigma_term);
+    // Jacobean adjustment
+    // target += log();
   }
   if (model_size) {
     // Non-centred random effect
     for (l in 1:L) {
-      for (x in 1:X) {
-        (diagonal(movement_tran_size[l, x] - 1.0) ./ sigma_size[x])
-        ~ std_normal();
-      }
+      movement_dev_size[l] ./ sigma_size ~ std_normal();
     }
-    for (x in 1:X) {
-      sigma_size[x] ~ std_normal();
-      target += -log(sigma_size[x]);
-    }
+    sigma_size ~ normal(mu_sigma_size, sd_sigma_size);
+    // Jacobean adjustment
+    // target += log();
   }
   // Fishing rate prior
   for (t in 1:T) {

@@ -48,10 +48,16 @@
 #' @param sd_initial_loss_rate [numeric()]
 #' @param mu_ongoing_loss_rate [numeric()]
 #' @param sd_ongoing_loss_rate [numeric()]
-#' @param mu_autoregress [numeric()]
-#' @param sd_autoregress [numeric()]
-#' @param mu_sigma [numeric()]
-#' @param sd_sigma [numeric()]
+#' @param mu_phi_time [numeric()]
+#' @param sd_phi_time [numeric()]
+#' @param mu_phi_term [numeric()]
+#' @param sd_phi_term [numeric()]
+#' @param mu_sigma_time [numeric()]
+#' @param sd_sigma_time [numeric()]
+#' @param mu_sigma_term [numeric()]
+#' @param sd_sigma_term [numeric()]
+#' @param mu_sigma_size [numeric()]
+#' @param sd_sigma_size [numeric()]
 #' @param mu_dispersion [numeric()]
 #' @param sd_dispersion [numeric()]
 #' @param tolerance_expected [numeric()]
@@ -119,11 +125,21 @@ mmmstan <- function (tag_data,
                      # Instantaneous ongoing loss rate priors
                      mu_ongoing_loss_rate = 0.02,
                      sd_ongoing_loss_rate = 0.001,
-                     # Autoregression priors
-                     mu_autoregress = 0.5,
-                     sd_autoregress = 0.2,
-                     mu_sigma = 0.1,
-                     sd_sigma = 0.05,
+                     # AR1 time coefficient priors
+                     mu_phi_time = 0.25,
+                     sd_phi_time = 0.05,
+                     # AR1 term coefficient priors
+                     mu_phi_term = 0.25,
+                     sd_phi_term = 0.05,
+                     # AR1 time sigma priors
+                     mu_sigma_time = 0.25,
+                     sd_sigma_time = 0.05,
+                     # AR1 term sigma priors
+                     mu_sigma_term = 0.25,
+                     sd_sigma_term = 0.05,
+                     # RE size sigma priors
+                     mu_sigma_size = 0.25,
+                     sd_sigma_size = 0.05,
                      # Dispersion priors
                      mu_dispersion = 1.0,
                      sd_dispersion = 0.5,
@@ -289,7 +305,8 @@ mmmstan <- function (tag_data,
   # Fractional (per tag) reporting rate priors
   # Fractional (per tag) initial loss rate priors
   # Instantaneous ongoing loss rate priors
-  # Autoregression priors
+  # AR1 priors
+  # RE priors
 
   # Dispersion priors
   checkmate::assert_number(
@@ -396,10 +413,10 @@ mmmstan <- function (tag_data,
     }
     # Movement step mean prior
     if (is.null(mu_movement_diag)) {
-      mu_movement_diag <- rep(0.95, length(list_regions))
+      mu_movement_diag <- rep(0.98, length(list_regions))
     }
     if (is.null(sd_movement_diag)) {
-      sd_movement_diag <- rep(0.25, length(list_regions))
+      sd_movement_diag <- rep(0.05, length(list_regions))
     }
     # Fishing rate prior
     if (is.null(mu_fishing_rate)) {
@@ -501,11 +518,21 @@ mmmstan <- function (tag_data,
       # Instantaneous ongoing loss rate priors
       mu_ongoing_loss_rate = mu_ongoing_loss_rate,
       sd_ongoing_loss_rate = sd_ongoing_loss_rate,
-      # Autoregression priors
-      # mu_autoregress = mu_autoregress,
-      # sd_autoregress = sd_autoregress,
-      # mu_sigma = mu_sigma,
-      # sd_sigma = sd_sigma,
+      # AR1 time coefficient priors
+      mu_phi_time = mu_phi_time,
+      sd_phi_time = sd_phi_time,
+      # AR1 term coefficient priors
+      mu_phi_term = mu_phi_term,
+      sd_phi_term = sd_phi_term,
+      # AR1 time sigma priors
+      mu_sigma_time = mu_sigma_time,
+      sd_sigma_time = sd_sigma_time,
+      # AR1 term sigma priors
+      mu_sigma_term = mu_sigma_term,
+      sd_sigma_term = sd_sigma_term,
+      # RE size sigma priors
+      mu_sigma_size = mu_sigma_size,
+      sd_sigma_size = sd_sigma_size,
       # Dispersion priors
       mu_dispersion = mu_dispersion,
       sd_dispersion = sd_dispersion,
@@ -543,6 +570,32 @@ mmmstan <- function (tag_data,
     refresh = refresh #,
     #...
   )
+
+  # Placate R-CMD-check --------------------------------------------------------
+
+  # Values names
+  movement_mean <- NULL
+  fishing_rate <- NULL
+  natural_mortality_rate <- NULL
+  reporting_rate <- NULL
+  initial_loss_rate <- NULL
+  ongoing_loss_rate <- NULL
+  dispersion <- NULL
+  movement_time <- NULL
+  movement_term <- NULL
+  movement_size <- NULL
+  # AR1 and RE parameters
+  phi_time <- NULL
+  phi_term <- NULL
+  sigma_time <- NULL
+  sigma_term <- NULL
+  sigma_size <- NULL
+  # Dimension names
+  x <- NULL
+  y <- NULL
+  t <- NULL
+  k <- NULL
+  l <- NULL
 
   # Compute unconditional fit summaries ----------------------------------------
 
@@ -584,9 +637,13 @@ mmmstan <- function (tag_data,
     tidybayes::spread_draws(ongoing_loss_rate) %>%
     tidybayes::summarise_draws() %>%
     dplyr::ungroup()
-  # Autoregression
-  # autoregress_summary <- tibble::tibble()
-  # sigma_summary <- tibble::tibble()
+  # AR1 coefficients
+  phi_time_summary <- tibble::tibble()
+  phi_term_summary <- tibble::tibble()
+  # AR1 and RE standard deviations
+  sigma_time_summary <- tibble::tibble()
+  sigma_term_summary <- tibble::tibble()
+  sigma_size_summary <- tibble::tibble()
   # Dispersion
   dispersion_summary <- fit$draws() %>%
     tidybayes::spread_draws(dispersion) %>%
@@ -601,6 +658,16 @@ mmmstan <- function (tag_data,
       tidybayes::spread_draws(movement_time[t,x,y]) %>%
       tidybayes::summarise_draws() %>%
       dplyr::ungroup()
+    # AR1 coefficients
+    phi_time_summary<- fit$draws() %>%
+      tidybayes::spread_draws(phi_time[x]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
+    # AR1 standard deviations
+    sigma_time_summary<- fit$draws() %>%
+      tidybayes::spread_draws(sigma_time[x]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
   }
   if (model_term) {
     # Movement term
@@ -608,11 +675,26 @@ mmmstan <- function (tag_data,
       tidybayes::spread_draws(movement_term[k,x,y]) %>%
       tidybayes::summarise_draws() %>%
       dplyr::ungroup()
+    # AR1 coefficients
+    phi_term_summary<- fit$draws() %>%
+      tidybayes::spread_draws(phi_term[x]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
+    # AR1 standard deviations
+    sigma_term_summary<- fit$draws() %>%
+      tidybayes::spread_draws(sigma_term[x]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
   }
   if (model_size) {
     # Movement size
     movement_size_summary <- fit$draws() %>%
       tidybayes::spread_draws(movement_size[l,x,y]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
+    # RE standard deviations
+    sigma_size_summary<- fit$draws() %>%
+      tidybayes::spread_draws(sigma_size[x]) %>%
       tidybayes::summarise_draws() %>%
       dplyr::ungroup()
   }
@@ -637,6 +719,13 @@ mmmstan <- function (tag_data,
     # Tag loss
     initial_loss_rate = initial_loss_rate_summary,
     ongoing_loss_rate = ongoing_loss_rate_summary,
+    # AR1 coefficients
+    phi_time = phi_time_summary,
+    phi_term = phi_term_summary,
+    # AR1 standard deviations
+    sigma_time = sigma_time_summary,
+    sigma_term = sigma_term_summary,
+    sigma_size = sigma_size_summary,
     # Dispersion
     dispersion = dispersion_summary
   )

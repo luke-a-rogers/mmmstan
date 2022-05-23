@@ -798,6 +798,46 @@ create_tag_array <- function (tag_data,
   return(tag_array)
 }
 
+
+# create_fishing_weight <- function (tag_array,
+#                                    year_start,
+#                                    year_end,
+#                                    step_interval,
+#                                    term_interval) {
+#
+#   # Check arguments ------------------------------------------------------------
+#
+#   checkmate::assert_array(
+#     tag_array,
+#     mode = "integer",
+#     any.missing = FALSE,
+#     d = 5L
+#   )
+#
+#   # Get dimensions -------------------------------------------------------------
+#
+#   N <- dim(tag_array)[1L] # Stand-in for [N - 1]
+#   D <- dim(tag_array)[2L]
+#   L <- dim(tag_array)[3L]
+#   X <- dim(tag_array)[4L]
+#
+#   # Compute constants ----------------------------------------------------------
+#
+#   terms_per_year <- count_intervals(term_interval, "year")
+#
+#   # Assemble term index --------------------------------------------------------
+#
+#   n_to_k <- index_n_to_k(year_start, year_end, step_interval, term_interval)
+#
+#   # Assemble fishing weight ----------------------------------------------------
+#
+#   fishing_weight <- array(0, dim = c(terms))
+#
+#   # Return value ---------------------------------------------------------------
+#
+#   return(fishing_weight)
+# }
+
 #' Read File From Path
 #'
 #' @param path [character()] file path
