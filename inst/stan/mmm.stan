@@ -197,9 +197,9 @@ model {
       for (l in 2:min(N - n + 1, L)) { // Liberty step
         // Propagate abundance
         abundance[n, s, l] = abundance[n, s, l - 1]
-        * diag_post_multiply(
-            movement_step[n_to_i[n], s_to_d[s]],
-            survival_step[n + l - 2, s]
+        * diag_pre_multiply(
+            survival_step[n + l - 2, s],
+            movement_step[n_to_i[n + l - 2], s_to_d[s]]
           );
         // Compute predicted
         predicted[n, s, l] = diag_post_multiply(
