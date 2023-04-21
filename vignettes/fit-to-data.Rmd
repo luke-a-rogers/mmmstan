@@ -124,14 +124,14 @@ if (FALSE) {
   mu_phi_term <- 0.25
   sd_phi_term <- 0.05
   # AR1 time sigma priors
-  mu_sigma_time <- 0.25
-  sd_sigma_time <- 0.05
+  mu_sigma_time <- 0.005
+  sd_sigma_time <- 0.001
   # AR1 term sigma priors
-  mu_sigma_term <- 0.25
-  sd_sigma_term <- 0.05
+  mu_sigma_term <- 0.005
+  sd_sigma_term <- 0.001
   # RE size sigma priors
-  mu_sigma_size <- 0.25
-  sd_sigma_size <- 0.05  
+  mu_sigma_size <- 0.005
+  sd_sigma_size <- 0.001  
   # Dispersion priors
   mu_dispersion <- 1.0
   sd_dispersion <- 0.5
@@ -236,6 +236,12 @@ if (FALSE) {
     movement_pattern = movement_pattern,
     movement_allow = movement_allow,
     movement_disallow = movement_disallow,
+    # AR1 time sigma priors
+    mu_sigma_time = mu_sigma_time,
+    sd_sigma_time = sd_sigma_time,
+    # AR1 term sigma priors
+    mu_sigma_term = mu_sigma_term,
+    sd_sigma_term = sd_sigma_term,
     # Use reduce sum
     use_reduce_sum = use_reduce_sum,
     refresh = refresh
@@ -305,6 +311,12 @@ if (FALSE) {
     movement_pattern = movement_pattern,
     movement_allow = movement_allow,
     movement_disallow = movement_disallow,
+    # AR1 time sigma priors
+    mu_sigma_time = mu_sigma_time,
+    sd_sigma_time = sd_sigma_time,
+    # AR1 term sigma priors
+    mu_sigma_term = mu_sigma_term,
+    sd_sigma_term = sd_sigma_term,
     # Use reduce sum
     use_reduce_sum = use_reduce_sum,
     refresh = refresh
@@ -372,6 +384,9 @@ if (FALSE) {
     movement_pattern = movement_pattern,
     movement_allow = movement_allow,
     movement_disallow = movement_disallow,
+    # RE size sigma priors
+    mu_sigma_size = mu_sigma_size,
+    sd_sigma_size = sd_sigma_size, 
     # Use reduce sum
     use_reduce_sum = use_reduce_sum,
     refresh = refresh
@@ -439,6 +454,12 @@ if (FALSE) {
     movement_pattern = movement_pattern,
     movement_allow = movement_allow,
     movement_disallow = movement_disallow,
+    # AR1 time sigma priors
+    mu_sigma_time = mu_sigma_time / 10,
+    sd_sigma_time = sd_sigma_time / 10,
+    # AR1 term sigma priors
+    mu_sigma_term = mu_sigma_term / 10,
+    sd_sigma_term = sd_sigma_term / 10,
     # Use reduce sum
     use_reduce_sum = use_reduce_sum,
     refresh = refresh

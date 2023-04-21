@@ -132,14 +132,14 @@ mmmstan <- function (tag_data,
                      mu_phi_term = 0.25,
                      sd_phi_term = 0.05,
                      # AR1 time sigma priors
-                     mu_sigma_time = 0.25,
-                     sd_sigma_time = 0.05,
+                     mu_sigma_time = 0.005,
+                     sd_sigma_time = 0.001,
                      # AR1 term sigma priors
-                     mu_sigma_term = 0.25,
-                     sd_sigma_term = 0.05,
+                     mu_sigma_term = 0.005,
+                     sd_sigma_term = 0.001,
                      # RE size sigma priors
-                     mu_sigma_size = 0.25,
-                     sd_sigma_size = 0.05,
+                     mu_sigma_size = 0.005,
+                     sd_sigma_size = 0.001,
                      # Dispersion priors
                      mu_dispersion = 1.0,
                      sd_dispersion = 0.5,
