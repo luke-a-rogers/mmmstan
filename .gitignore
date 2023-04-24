@@ -7,6 +7,9 @@
 # R
 .Rapp.history
 
+# Visuals
+sablefish-timevarying.pdf
+
 # Mac OSX
 .DS_Store
 

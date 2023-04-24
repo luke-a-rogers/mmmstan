@@ -252,6 +252,16 @@ if (FALSE) {
   tibble::view(fit_time$summary$fishing_rate)
   tibble::view(fit_time$summary$phi_time)
   tibble::view(fit_time$summary$sigma_time)
+  # Function
+  region_abbrev <- function(x) c("AK", "BC", "CC")[x]
+  # Wrangle
+  movement_time <- fit_time$summary$movement_time %>%
+    dplyr::mutate(
+      region_start = region_abbrev(.data$x),
+      region_end = region_abbrev(.data$y),
+      year = .data$t + 1978
+    )
+  tibble::view(movement_time)
   # Plot
   ggplot2::ggplot(
     data = fit_time$summary$movement_mean,
@@ -268,18 +278,24 @@ if (FALSE) {
     ggsidekick::theme_sleek()
   # Plot time
   ggplot2::ggplot(
-    data = fit_time$summary$movement_time,
+    data = movement_time, # fit_time$summary$movement_time
     mapping = ggplot2::aes(
-      x = .data$t,
+      x = .data$year,
       y = .data$mean
     )
   ) +
     ggplot2::geom_col() +
     ggplot2::facet_grid(
-      rows = ggplot2::vars(.data$x),
-      cols = ggplot2::vars(.data$y)
+      rows = ggplot2::vars(.data$region_start),
+      cols = ggplot2::vars(.data$region_end)
     ) +
+    ggplot2::xlab("Year") + 
+    ggplot2::ylab("Annual movement rate") +
     ggsidekick::theme_sleek()
+  # Save
+  ggplot2::ggsave(
+    "sablefish-timevarying.pdf", width = 190, height = 140, units = "mm"
+  )
 }
 
 ```
