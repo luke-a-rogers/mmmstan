@@ -3,6 +3,82 @@ functions {
 }
 
 data {
+  // Index limits
+  int<lower=2> N; // Number of model steps (months/quarters/years) in the study
+  int<lower=2> D; // Maximum duration at large in model steps
+  int<lower=1> L; // Number of size or sex classes
+  int<lower=2> X; // Number of geographic regions
+  int<lower=1> T; // Number of years in the study
+  // Constants
+  int<lower=1> K; // Number of steps (months/quarters/years) per year
+  // Movement index arrays
+  array[N] int<lower=1, upper=T> n_to_t; // Model step to year index
+  // Tag data
+  array[N - 1, D, L, X, X] int<lower=0> tags;
+  // Movement index (will be paired with a matrix version)
+  array[X, X] int<lower=0, upper=1> movement_index;
+  // Movement mean priors
+  vector<lower=0, upper=1>[X] mu_movement_mean_diag;
+  vector<lower=0>[X] sd_movement_mean_diag;
+  // Fishing rate priors
+  array[T] vector<lower=0>[X] mu_fishing_rate;
+  real<lower=0> cv_fishing_rate;
+  // Selectivity priors
+  //  vector<lower=0, upper=1>[L - 1] mu_selectivity;
+  //  real<lower=0> cv_selectivity;
+  // Natural mortality rate priors
+  vector<lower=0>[X] mu_natural_mortality_rate;
+  vector<lower=0>[X] sd_natural_mortality_rate;
+  // Fractional (per tag) reporting rate priors
+  vector<lower=0, upper=1>[X] mu_reporting_rate;
+  vector<lower=0>[X] sd_reporting_rate;
+  // Fractional (per tag) initial loss rate priors
+  real<lower=0, upper=1> mu_initial_loss_rate;
+  real<lower=0> sd_initial_loss_rate;
+  // Instantaneous ongoing loss rate priors
+  real<lower=0> mu_ongoing_loss_rate;
+  real<lower=0> sd_ongoing_loss_rate;
+  // Dispersion priors
+  real<lower=0> mu_dispersion;
+  real<lower=0> sd_dispersion;
+  // Tolerance values
+  real<lower=0> tolerance_expected;
+  real<lower=0> tolerance_fishing;
+}
+
+transformed data {
+  // Maximum number of observations (upper bound actually)
+  int<lower=0> C = N * D * L * X * X;
+  // Matrix version of movement index
+  matrix[X, X] movement_matrix = to_matrix(movement_index);
+  // Simplex dimensions
+  array[6] int simplex_dims = assemble_simplex_dims(movement_index);
+  // Declare tags released
+  array[N - 1, L] vector[X] tags_released = assemble_tags_released(tags);
+  // Declare tags transpose (permute x and y)
+  array[N - 1, D, L, X, X] int tags_transpose = assemble_tags_transpose(tags);
+  // Declare movement possible values
+  array[D] matrix[X, X] movement_possible = assemble_movement_possible(
+    movement_matrix,
+    D
+  );
+}
+
+// Continue from here: array of movement rate matrices [L][X, X]
+
+
+
+
+
+
+
+
+
+// Old below here --------------------------------------------------------------
+
+
+
+data {
   // Model form
   int<lower=0, upper=3> form; // 0: mean; 1: time; 2: term; 3: size
   // Model index limits
