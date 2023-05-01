@@ -65,6 +65,10 @@ transformed data {
     movement_matrix,
     D
   );
+  // Declare partial sum index
+  array[N - 1] int partial_sum_index = rep_array(1, N - 1);
+  // Declare partial sum grainsize
+  int grainsize = 1;
 }
 
 parameters {
@@ -147,51 +151,6 @@ transformed parameters {
 }
 
 model {
-  // Declare enumeration values
-  array[N - 1, D, L] matrix[X, X] abundance;
-  array[N - 1, D, L] matrix[X, X] predicted;
-  array[C] int observed;
-  array[C] real expected;
-  // Initialize count
-  int count = 0;
-  // Populate released abundance
-  for (n in 1:(N - 1)) { // Model step
-    for (l in 1:L) { // Released size
-      abundance[n, 1, l] = diag_matrix(
-        tags_released[n, l] * (1 - initial_loss_step)
-      );
-    }
-  }
-  // Compute expected recoveries
-  for (n in 1:(N - 1)) { // Model step
-    for (d in 2:min(N - n + 1, D)) { // Duration at large
-      for (l in 1:L) { // Released size
-        // Propagate abundance
-        abundance[n, d, l] = abundance[n, d - 1, l]
-        * transition_step[n + d - 2, l]; // Previous step
-        // Compute predicted
-        predicted[n, d, l] = diag_post_multiply(
-          abundance[n, d, l],
-          observation_step[n + d - 1, l] // Current step
-        );
-        // Compute vectors
-        for (y in 1:X) { // Current region
-          for (x in 1:X) { // Released region
-            if (tags_released[n, l, x] > 0) { // Were any tags released?
-              if (movement_possible[d][x, y] > 0) {
-                // Increment observation count
-                count += 1;
-                // Populate observed and expected values
-                observed[count] = tags_transpose[n, d, l, y, x]; // Integer
-                expected[count] = predicted[n, d, l, x, y]
-                + tolerance_expected; // Real
-              } // End if
-            } // End if
-          } // End x
-        } // End y
-      } // End l
-    } // End d
-  } // End n
   // Movement rate priors
   for (l in 1:L) {
     diagonal(movement_rate[l]) ~ normal(
@@ -219,6 +178,19 @@ model {
   initial_loss_rate ~ normal(mu_initial_loss_rate, sd_initial_loss_rate);
   // Dispersion prior
   dispersion ~ normal(mu_dispersion, sd_dispersion);
-  // Sampling statement (var = mu + mu^2 / dispersion)
-  observed[1:count] ~ neg_binomial_2(expected[1:count], dispersion);
+  // Use reduce sum
+  target += reduce_sum(
+    partial_sum_lpmf, // Partial sum function
+    partial_sum_index, // Each element corresponds to a summand
+    grainsize, // Set to one to leave partitioning up to scheduler
+    N, D, L, X, // Arguments shared by every term...
+    tags_transpose,
+    tags_released,
+    transition_step,
+    observation_step,
+    movement_possible,
+    initial_loss_step,
+    tolerance_expected,
+    dispersion
+  );
 }
