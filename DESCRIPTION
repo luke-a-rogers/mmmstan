@@ -21,7 +21,8 @@ Imports:
     cmdstanr,
     rlang,
     checkmate,
-    tidybayes
+    tidybayes,
+    rstan
 Suggests: 
     knitr,
     rmarkdown

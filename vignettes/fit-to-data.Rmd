@@ -83,7 +83,7 @@ if (FALSE) {
   
   # Arguments with defaults ----------------------------------------------------
   
-  # Movement step  priors
+  # Movement step priors
   mu_movement_step_diag <- NULL
   sd_movement_step_diag <- NULL
   # Fishing rate priors
@@ -161,6 +161,8 @@ if (FALSE) {
   # View
   tibble::view(fit_mean$summary$movement_rate)
   tibble::view(fit_mean$summary$fishing_rate)
+  # Shiny
+  shinystan::launch_shinystan(fit_mean$rstanfit)
   # Plot
   ggplot2::ggplot(
     data = fit_mean$summary$movement_rate,
@@ -206,7 +208,6 @@ if (FALSE) {
   )
   # View
   tibble::view(fit_size$summary$movement_rate)
-  tibble::view(fit_size$summary$movement_size)
   tibble::view(fit_size$summary$fishing_rate)
   # Plot size
   ggplot2::ggplot(
