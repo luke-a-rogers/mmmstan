@@ -2,7 +2,7 @@
 An R package to fit Markov movement models (MMM) via CmdStan and CmdStanR
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/luke-a-rogers/mmmstan/workflows/R-CMD-check/badge.svg)](https://github.com/luke-a-rogers/mmmstan/actions)
+[![R-CMD-check](https://github.com/luke-a-rogers/mmmstan/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/luke-a-rogers/mmmstan/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 ## CmdStan / CmdStanR
