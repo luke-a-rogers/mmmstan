@@ -23,7 +23,7 @@ count_model_steps <- function (year_start,
   # Compute model steps --------------------------------------------------------
 
   # Count steps per year
-  steps_per_year <- count_steps_per_year(step_interval)
+  steps_per_year <- count_intervals(step_interval, "year")
   # Count model years
   years <- year_end - year_start + 1L
   # Count model steps
@@ -34,294 +34,152 @@ count_model_steps <- function (year_start,
   return(model_steps)
 }
 
-#' Count Movement Steps
+#' Count Intervals
 #'
-#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
+#' @param a [character()] one of \code{"month"}, \code{"quarter"}
+#' @param b [character()] one of \code{"month"}, \code{"quarter"}
+#'
+#' @return [integer()]
+#' @export
+#'
+#' @examples
+#'
+#' count_intervals("month", "month")
+#' count_intervals("month", "quarter")
+#' count_intervals("month", "year")
+#' count_intervals("quarter", "quarter")
+#' count_intervals("quarter", "year")
+#' count_intervals("year", "year")
+#'
+count_intervals <- function (a, b) {
+
+  # Define reference options ---------------------------------------------------
+
+  options <- c("month", "quarter", "year")
+  offsets <- c(1L, 3L, 12L)
+
+  # Check arguments ------------------------------------------------------------
+
+  checkmate::assert_choice(a, options)
+  checkmate::assert_choice(b, options)
+
+  # Check nesting of intervals -------------------------------------------------
+
+  if (match(a, options) > match(b, options)) stop("a must be <= b")
+
+  # Compute value --------------------------------------------------------------
+
+  value <- offsets[match(b, options)] %/% offsets[match(a, options)]
+
+  # Return value ---------------------------------------------------------------
+
+  return(value)
+}
+
+#' Index N to T
+#'
 #' @param year_start [integer()] year of first tag release
 #' @param year_end [integer()] year of final tag recovery
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' count_movement_steps("mean", 2011, 2018)
-#' count_movement_steps("time", 2011, 2018)
-#' count_movement_steps("term", 2011, 2018)
-#'
-count_movement_steps <- function (model_form,
-                                  year_start,
-                                  year_end) {
-
-  # Check arguments ------------------------------------------------------------
-
-  # Compute movement steps -----------------------------------------------------
-
-  if (model_form == "mean") {
-    movement_steps <- 1L
-  } else if (model_form == "time") {
-    movement_steps <- year_end - year_start + 1L
-  } else if (model_form == "term") {
-    movement_steps <- 4L
-  } else {
-    movement_steps <- 1L
-  }
-
-  # Return movement steps ------------------------------------------------------
-
-  return(movement_steps)
-}
-
-#' Count Movement Sizes
-#'
-#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
-#' @param list_sizes [list()]
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' count_movement_sizes("mean", list(s = 1:5, m = 6:10, l = 11:15))
-#' count_movement_sizes("time", list(s = 1:5, m = 6:10, l = 11:15))
-#' count_movement_sizes("term", list(s = 1:5, m = 6:10, l = 11:15))
-#' count_movement_sizes("size", list(s = 1:5, m = 6:10, l = 11:15))
-#'
-count_movement_sizes <- function (model_form,
-                                  list_sizes) {
-
-  # Check arguments ------------------------------------------------------------
-
-  # Compute movement sizes -----------------------------------------------------
-
-  if (model_form == "size") {
-    movement_sizes <- length(list_sizes)
-  } else {
-    movement_sizes <- 1L
-  }
-
-  # Return movement sizes ------------------------------------------------------
-
-  return(movement_sizes)
-}
-
-#' Count Model Steps Per Year
-#'
 #' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
 #'   or \code{"year"}
 #'
-#' @return [integer()]
+#' @return [integer()][vector()]
 #' @export
 #'
 #' @examples
 #'
-#' count_steps_per_year("month")
-#' count_steps_per_year("quarter")
-#' count_steps_per_year("year")
+#' index_n_to_t(2011, 2018, "month")
+#' index_n_to_t(2011, 2018, "quarter")
+#' index_n_to_t(2011, 2018, "year")
 #'
-count_steps_per_year <- function (step_interval) {
+index_n_to_t <- function (year_start, year_end, step_interval) {
 
   # Check arguments ------------------------------------------------------------
 
+  checkmate::assert_integerish(
+    year_start,
+    any.missing = FALSE,
+    len = 1
+  )
+  checkmate::assert_integerish(
+    year_end,
+    lower = year_start + 1L,
+    any.missing = FALSE,
+    len = 1
+  )
   checkmate::assert_choice(step_interval, c("month", "quarter", "year"))
 
-  # Return the number of steps per year ----------------------------------------
-
-  return(c(1L, 4L, 12L)[match(step_interval, c("year", "quarter", "month"))[1]])
-}
-
-#' Convert Stepwise Rates
-#'
-#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
-#'   or \code{"year"}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' convert_stepwise_rates("month")
-#' convert_stepwise_rates("quarter")
-#' convert_stepwise_rates("year")
-#'
-convert_stepwise_rates <- function (step_interval) {
-
-  # Check arguments ------------------------------------------------------------
-
-  # Return conversion factor ---------------------------------------------------
-
-  return(c(1, 4, 12)[match(step_interval, c("year", "quarter", "month"))[1]])
-}
-
-#' Convert Movement Steps
-#'
-#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
-#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
-#'   or \code{"year"}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' convert_movement_steps("mean", "month")
-#' convert_movement_steps("mean", "quarter")
-#' convert_movement_steps("mean", "year")
-#' convert_movement_steps("term", "month")
-#' convert_movement_steps("term", "quarter")
-#'
-convert_movement_steps <- function (model_form,
-                                    step_interval) {
-
-  # Check arguments ------------------------------------------------------------
-
-  # Compute conversion power ---------------------------------------------------
-
-  if (model_form == "term") {
-    if (step_interval %in% c("month", "quarter")) {
-      k <- c(1, 3)[match(step_interval, c("quarter", "month"))[1]]
-    } else {
-      stop("step_interval must be month or quarter when model_form == term")
-    }
-  } else {
-    k <- count_steps_per_year(step_interval)
-  }
-
-  # Return conversion power ----------------------------------------------------
-
-  return(k)
-}
-
-#' Create N to I Index
-#'
-#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
-#' @param year_start [integer()] year of first tag release
-#' @param year_end [integer()] year of final tag recovery
-#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
-#'   or \code{"year"}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' create_n_to_i("mean", 2011, 2018, "month")
-#' create_n_to_i("mean", 2011, 2018, "quarter")
-#' create_n_to_i("mean", 2011, 2018, "year")
-#' create_n_to_i("time", 2011, 2018, "month")
-#' create_n_to_i("time", 2011, 2018, "quarter")
-#' create_n_to_i("time", 2011, 2018, "year")
-#' create_n_to_i("term", 2011, 2018, "month")
-#' create_n_to_i("term", 2011, 2018, "quarter")
-#' create_n_to_i("size", 2011, 2018, "month")
-#' create_n_to_i("size", 2011, 2018, "quarter")
-#' create_n_to_i("size", 2011, 2018, "year")
-#'
-create_n_to_i <- function (model_form,
-                           year_start,
-                           year_end,
-                           step_interval) {
-
-  # Check arguments ------------------------------------------------------------
-
-  # Count model intervals ------------------------------------------------------
+  # Compute values -------------------------------------------------------------
 
   model_steps <- count_model_steps(year_start, year_end, step_interval)
-  model_years <- year_end - year_start + 1L
-  steps_per_year <- count_steps_per_year(step_interval)
+  model_years <- year_end - year_start + 1
+  steps_per_year <- count_intervals(step_interval, "year")
 
-  # Define index ---------------------------------------------------------------
-
-  if (model_form == "mean") {
-    index <- rep(1L, model_steps)
-  } else if (model_form == "time") {
-    index <- rep(seq_len(model_years), each = steps_per_year)
-  } else if (model_form == "term") {
-    if (step_interval == "month") {
-      index <- rep(rep(1:4, each = 3L), model_years)
-    } else if (step_interval == "quarter") {
-      index <- rep(1:4, model_years)
-    } else {
-      stop("step_interval must be month or quarter when model_form == term")
-    }
-  } else {
-    index <- rep(1L, model_steps)
-  }
-
-  # Return index ---------------------------------------------------------------
-
-  return(as.integer(index))
-}
-
-#' Create N to T Index
-#'
-#' @param year_start [integer()] year of first tag release
-#' @param year_end [integer()] year of final tag recovery
-#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
-#'   or \code{"year"}
-#'
-#' @return [integer()]
-#' @export
-#'
-#' @examples
-#'
-#' create_n_to_t(2011, 2018, "month")
-#' create_n_to_t(2011, 2018, "quarter")
-#' create_n_to_t(2011, 2018, "year")
-#'
-create_n_to_t <- function (year_start,
-                           year_end,
-                           step_interval) {
-
-  # Check arguments ------------------------------------------------------------
-
-  # Count model intervals ------------------------------------------------------
-
-  model_steps <- count_model_steps(year_start, year_end, step_interval)
-  model_years <- year_end - year_start + 1L
-  steps_per_year <- count_steps_per_year(step_interval)
-
-  # Define index ---------------------------------------------------------------
+  # Populate index -------------------------------------------------------------
 
   index <- rep(seq_len(model_years), each=steps_per_year)[seq_len(model_steps)]
 
   # Return index ---------------------------------------------------------------
 
-  return(as.integer(index))
+  return(index)
 }
 
-#' Create S to D Index Array
+#' Index N to K
 #'
-#' @param model_form [character()] one of \code{"mean", "time", "term", "size"}
-#' @param list_sizes [list()]
+#' @param year_start [integer()] year of first tag release
+#' @param year_end [integer()] year of final tag recovery
+#' @param step_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
+#' @param term_interval [character()] one of \code{"month"}, \code{"quarter"}
+#'   or \code{"year"}
 #'
-#' @return [integer()] [vector()]
+#' @return [integer()][vector()]
 #' @export
 #'
 #' @examples
 #'
-#' create_s_to_d("mean", list(s = 1:5, m = 6:10, l = 11:15))
-#' create_s_to_d("time", list(s = 1:5, m = 6:10, l = 11:15))
-#' create_s_to_d("term", list(s = 1:5, m = 6:10, l = 11:15))
-#' create_s_to_d("size", list(s = 1:5, m = 6:10, l = 11:15))
+#' index_n_to_k(2011, 2018, "month", "month")
+#' index_n_to_k(2011, 2018, "month", "quarter")
+#' index_n_to_k(2011, 2018, "month", "year")
+#' index_n_to_k(2011, 2018, "quarter", "quarter")
+#' index_n_to_k(2011, 2018, "quarter", "year")
+#' index_n_to_k(2011, 2018, "year", "year")
 #'
-create_s_to_d <- function (model_form,
-                           list_sizes) {
+index_n_to_k <- function (year_start, year_end, step_interval, term_interval) {
 
   # Check arguments ------------------------------------------------------------
 
-  # Define index ---------------------------------------------------------------
+  checkmate::assert_integerish(
+    year_start,
+    any.missing = FALSE,
+    len = 1
+  )
+  checkmate::assert_integerish(
+    year_end,
+    lower = year_start + 1L,
+    any.missing = FALSE,
+    len = 1
+  )
+  checkmate::assert_choice(step_interval, c("month", "quarter", "year"))
+  checkmate::assert_choice(term_interval, c("month", "quarter", "year"))
 
-  if (model_form == "size") {
-    index <- seq_along(list_sizes)
-  } else {
-    index <- rep(1L, length(list_sizes))
-  }
+  # Compute values -------------------------------------------------------------
+
+  model_steps <- count_model_steps(year_start, year_end, step_interval)
+  model_terms <- count_intervals(term_interval, "year")
+  model_years <- year_end - year_start + 1L
+  steps_per_term <- count_intervals(step_interval, term_interval)
+
+  # Populate index -------------------------------------------------------------
+
+  index_within_year <- rep(seq_len(model_terms), each = steps_per_term)
+  index <- rep(index_within_year, model_years)[seq_len(model_steps)]
 
   # Return index ---------------------------------------------------------------
 
   return(index)
 }
+
 
 #' Compute The Number of Years
 #'
@@ -514,7 +372,7 @@ create_group <- function (x, list_x) {
   return(x_groups)
 }
 
-#' Create Step Liberty
+#' Create Step Duration At Large Max
 #'
 #' @param date_released [character()] [vector()] dates as \code{"\%Y-\%m-\%d"}
 #' @param date_recovered [character()] [vector()] dates as \code{"\%Y-\%m-\%d"}
@@ -522,9 +380,9 @@ create_group <- function (x, list_x) {
 #' @param date_recovered_end [character()] date as \code{"\%Y-\%m-\%d"}
 #' @param step_interval [character()] one of \code{"year"}, \code{"quarter"}
 #'   or \code{"month"}
-#' @param step_liberty_max [integer()] maximum steps at liberty
+#' @param step_duration_max [integer()] maximum steps duration at large
 #'
-#' @return [integer()] [vector()] step liberty
+#' @return [integer()] [vector()]
 #' @export
 #'
 #' @examples
@@ -536,7 +394,7 @@ create_group <- function (x, list_x) {
 #' x <- c("2020-01-01")
 #' y  <- "year"
 #' z <- 10
-#' create_step_liberty(u, v, w, x, y, z)
+#' create_step_duration_max(u, v, w, x, y, z)
 #'
 #' # Quarterly
 #' u <- rep("2011-01-01", 5)
@@ -545,7 +403,7 @@ create_group <- function (x, list_x) {
 #' x <- c("2020-01-01")
 #' y <- "quarter"
 #' z <- 40
-#' create_step_liberty(u, v, w, x, y, z)
+#' create_step_duration_max(u, v, w, x, y, z)
 #'
 #' # Monthly
 #' u <- rep("2011-01-01", 5)
@@ -554,14 +412,14 @@ create_group <- function (x, list_x) {
 #' x <- c("2020-01-01")
 #' y <- "month"
 #' z <- 120
-#' create_step_liberty(u, v, w, x, y, z)
+#' create_step_duration_max(u, v, w, x, y, z)
 #'
-create_step_liberty <- function (date_released,
-                                 date_recovered,
-                                 date_released_start,
-                                 date_recovered_end,
-                                 step_interval,
-                                 step_liberty_max) {
+create_step_duration_max <- function (date_released,
+                                      date_recovered,
+                                      date_released_start,
+                                      date_recovered_end,
+                                      step_interval,
+                                      step_duration_max) {
 
   # Check arguments ------------------------------------------------------------
 
@@ -591,12 +449,12 @@ create_step_liberty <- function (date_released,
   # Create step liberty --------------------------------------------------------
 
   if (step_interval == "year") {
-    step_liberty <- year_recovered - year_released + 1
+    step_duration <- year_recovered - year_released + 1
   } else if (step_interval == "quarter") {
-    step_liberty <- 4 * (year_recovered - year_released) +
+    step_duration <- 4 * (year_recovered - year_released) +
       (quarter_recovered - quarter_released) + 1
   } else if (step_interval == "month") {
-    step_liberty <- 12 * (year_recovered - year_released) +
+    step_duration <- 12 * (year_recovered - year_released) +
       (month_recovered - month_released) + 1
   } else {
     stop("step_interval must be 'year', 'quarter', or 'month'")
@@ -604,12 +462,12 @@ create_step_liberty <- function (date_released,
 
   # Replace disallowed dates by NAs --------------------------------------------
 
-  step_liberty[which(step_liberty < 2)] <- NA_real_
-  step_liberty[which(step_liberty > step_liberty_max)] <- NA_real_
+  step_duration[which(step_duration < 2)] <- NA_real_
+  step_duration[which(step_duration > step_duration_max)] <- NA_real_
 
   # Return step liberty --------------------------------------------------------
 
-  return(as.integer(step_liberty))
+  return(as.integer(step_duration))
 }
 
 #' Create Step Released
@@ -689,8 +547,8 @@ create_step_released <- function (date_released,
 #' @param year_recovered_end [integer()] year the last tag was recovered
 #' @param step_interval [character()] one of \code{"year"}, \code{"quarter"}
 #'   or \code{"month"}
-#' @param step_liberty_max [integer()] optional constraint on the maximum
-#'   steps at liberty
+#' @param step_duration_max [integer()] optional constraint on the maximum
+#'   steps duration at large
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
@@ -708,7 +566,7 @@ create_tag_array <- function (tag_data,
                               year_released_start,
                               year_recovered_end,
                               step_interval = "month",
-                              step_liberty_max = NULL,
+                              step_duration_max = NULL,
                               colname_date_released = "date_released",
                               colname_date_recovered = "date_recovered",
                               colname_region_released = "region_released",
@@ -736,7 +594,7 @@ create_tag_array <- function (tag_data,
     choices = c("year", "quarter", "month")
   )
   checkmate::assert_integerish(
-    step_liberty_max,
+    step_duration_max,
     lower = 2,
     len = 1,
     any.missing = FALSE,
@@ -786,26 +644,22 @@ create_tag_array <- function (tag_data,
   # Compute index limits -------------------------------------------------------
 
   n_times <- compute_n_years(date_released_start, date_recovered_end)
-  n_steps <- n_times * count_steps_per_year(step_interval)
+  n_steps <- n_times * count_intervals(step_interval, "year")
   n_sizes <- length(list_sizes)
   n_regions <- length(list_regions)
-  n_liberty <- ifelse(is.null(step_liberty_max), n_steps-1L, step_liberty_max)
+  n_duration <- ifelse(is.null(step_duration_max), n_steps-1, step_duration_max)
 
   # Assemble released tibble ---------------------------------------------------
 
   tags_released_tibble <- tag_data %>%
     dplyr::rename(
       date_released = .data[[colname_date_released]],
-      # date_recovered = .data[[colname_date_recovered]],
       region_released = .data[[colname_region_released]],
-      # region_recovered = .data[[colname_region_recovered]],
       size_released = .data[[colname_size_released]]
     ) %>%
     dplyr::select(
       date_released,
-      # date_recovered,
       region_released,
-      # region_recovered,
       size_released
     ) %>%
     tidyr::drop_na() %>%
@@ -816,42 +670,27 @@ create_tag_array <- function (tag_data,
         date_recovered_end = date_recovered_end,
         step_interval = step_interval
       ),
-      s = create_group(x = .data$size_released, list_x = list_sizes),
+      l = create_group(x = .data$size_released, list_x = list_sizes),
       x = create_group(x = .data$region_released, list_x = list_regions)
-      # l = create_step_liberty(
-      #   date_released = .data$date_released,
-      #   date_recovered = .data$date_recovered,
-      #   date_released_start = date_released_start,
-      #   date_released_end = date_released_end,
-      #   step_interval = step_interval,
-      #   step_liberty_max = step_liberty_max
-      # ),
-      # y = create_group(x = .data$region_recovered, list_x = list_regions)
     ) %>%
     dplyr::filter(.data$n < n_steps) %>% # n_steps = N
     dplyr::select(
       .data$n,
-      .data$s,
+      .data$l,
       .data$x
-      # .data$l,
-      # .data$y
     ) %>%
     dplyr::group_by(
       .data$n,
-      .data$s,
+      .data$l,
       .data$x
-      # .data$l,
-      # .data$y
     ) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
     dplyr::arrange(
       .data$n,
-      .data$s,
+      .data$l,
       .data$x
-      # .data$l,
-      # .data$y
     ) %>%
     tidyr::drop_na()
 
@@ -880,35 +719,35 @@ create_tag_array <- function (tag_data,
         date_recovered_end = date_recovered_end,
         step_interval = step_interval
       ),
-      s = create_group(x = .data$size_released, list_x = list_sizes),
-      x = create_group(x = .data$region_released, list_x = list_regions),
-      l = create_step_liberty(
+      d = create_step_duration_max(
         date_released = .data$date_released,
         date_recovered = .data$date_recovered,
         date_released_start = date_released_start,
         date_recovered_end = date_recovered_end,
         step_interval = step_interval,
-        step_liberty_max = step_liberty_max
+        step_duration_max = step_duration_max
       ),
+      l = create_group(x = .data$size_released, list_x = list_sizes),
+      x = create_group(x = .data$region_released, list_x = list_regions),
       y = create_group(x = .data$region_recovered, list_x = list_regions)
     ) %>%
     tidyr::drop_na() %>%
     dplyr::filter(.data$n < n_steps) %>% # n_steps = N
-    dplyr::filter(.data$l > 1L) %>%
-    dplyr::filter(.data$l <= n_liberty) %>%
-    dplyr::filter(.data$n + .data$l - 2L < n_steps) %>% # One beyond released
+    dplyr::filter(.data$d > 1L) %>%
+    dplyr::filter(.data$d <= n_duration) %>%
+    dplyr::filter(.data$n + .data$d - 2L < n_steps) %>% # One beyond released
     dplyr::select(
       .data$n,
-      .data$s,
-      .data$x,
+      .data$d,
       .data$l,
+      .data$x,
       .data$y
     ) %>%
     dplyr::group_by(
       .data$n,
-      .data$s,
-      .data$x,
+      .data$d,
       .data$l,
+      .data$x,
       .data$y
     ) %>%
     dplyr::mutate(count = dplyr::n()) %>%
@@ -916,9 +755,9 @@ create_tag_array <- function (tag_data,
     dplyr::distinct(.keep_all = TRUE) %>%
     dplyr::arrange(
       .data$n,
-      .data$s,
-      .data$x,
+      .data$d,
       .data$l,
+      .data$x,
       .data$y
     ) %>%
     tidyr::drop_na()
@@ -927,7 +766,7 @@ create_tag_array <- function (tag_data,
 
   tag_array <- array(
     0L,
-    dim = c(n_steps - 1L, n_sizes, n_liberty, n_regions, n_regions)
+    dim = c(n_steps - 1L, n_duration, n_sizes, n_regions, n_regions)
   )
 
   # Populate released ----------------------------------------------------------
@@ -935,8 +774,8 @@ create_tag_array <- function (tag_data,
   for (i in seq_len(nrow(tags_released_tibble))) {
     tag_array[
       tags_released_tibble$n[i],
-      tags_released_tibble$s[i],
       1L,
+      tags_released_tibble$l[i],
       tags_released_tibble$x[i],
       tags_released_tibble$x[i]
     ] <- as.integer(tags_released_tibble$count[i])
@@ -947,7 +786,7 @@ create_tag_array <- function (tag_data,
   for (i in seq_len(nrow(tags_recovered_tibble))) {
     tag_array[
       tags_recovered_tibble$n[i],
-      tags_recovered_tibble$s[i],
+      tags_recovered_tibble$d[i],
       tags_recovered_tibble$l[i],
       tags_recovered_tibble$x[i],
       tags_recovered_tibble$y[i]
@@ -958,6 +797,46 @@ create_tag_array <- function (tag_data,
 
   return(tag_array)
 }
+
+
+# create_fishing_weight <- function (tag_array,
+#                                    year_start,
+#                                    year_end,
+#                                    step_interval,
+#                                    term_interval) {
+#
+#   # Check arguments ------------------------------------------------------------
+#
+#   checkmate::assert_array(
+#     tag_array,
+#     mode = "integer",
+#     any.missing = FALSE,
+#     d = 5L
+#   )
+#
+#   # Get dimensions -------------------------------------------------------------
+#
+#   N <- dim(tag_array)[1L] # Stand-in for [N - 1]
+#   D <- dim(tag_array)[2L]
+#   L <- dim(tag_array)[3L]
+#   X <- dim(tag_array)[4L]
+#
+#   # Compute constants ----------------------------------------------------------
+#
+#   terms_per_year <- count_intervals(term_interval, "year")
+#
+#   # Assemble term index --------------------------------------------------------
+#
+#   n_to_k <- index_n_to_k(year_start, year_end, step_interval, term_interval)
+#
+#   # Assemble fishing weight ----------------------------------------------------
+#
+#   fishing_weight <- array(0, dim = c(terms))
+#
+#   # Return value ---------------------------------------------------------------
+#
+#   return(fishing_weight)
+# }
 
 #' Read File From Path
 #'

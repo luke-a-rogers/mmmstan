@@ -17,9 +17,9 @@ data {
   array[N - 1, D, L, X, X] int<lower=0> tags;
   // Movement index (will be paired with a matrix version)
   array[X, X] int<lower=0, upper=1> movement_index;
-  // Movement rate priors
-  vector<lower=0, upper=1>[X] mu_movement_rate_diag;
-  vector<lower=0>[X] sd_movement_rate_diag;
+  // Movement step priors
+  vector<lower=0, upper=1>[X] mu_movement_step_diag;
+  vector<lower=0>[X] sd_movement_step_diag;
   // Fishing rate priors
   array[T] vector<lower=0>[X] mu_fishing_rate;
   real<lower=0> cv_fishing_rate;
@@ -101,8 +101,6 @@ transformed parameters {
   array[N, L] matrix<lower=0, upper=1>[X, X] transition_step;
   // Stepwise observation rate
   array[N, L] vector<lower=0, upper=1>[X] observation_step;
-  // Annual movement rate
-  array[L] matrix<lower=0, upper=1>[X, X] movement_rate;
   // Instantaneous annual rates
   array[T] vector<lower=0>[X] fishing_rate;
   vector<lower=0>[X] natural_mortality_rate = natural_mortality_step * K;
@@ -144,18 +142,16 @@ transformed parameters {
     reporting_step,
     K, L
   );
-  // Assemble movement rate [L][X, X]
-  movement_rate = assemble_movement_rate(movement_step, K);
   // Assemble fishing rate [T][X]
   fishing_rate = assemble_fishing_rate(fishing_step, K);
 }
 
 model {
-  // Movement rate priors
+  // Movement step priors
   for (l in 1:L) {
-    diagonal(movement_rate[l]) ~ normal(
-      mu_movement_rate_diag,
-      sd_movement_rate_diag
+    diagonal(movement_step[l]) ~ normal(
+      mu_movement_step_diag,
+      sd_movement_step_diag
     );
   }
   // Fishing rate prior
@@ -193,4 +189,11 @@ model {
     tolerance_expected,
     dispersion
   );
+}
+
+generated quantities {
+  // Annual movement rate
+  array[L] matrix<lower=0, upper=1>[X, X] movement_rate;
+  // Assemble movement rate [L][X, X]
+  movement_rate = assemble_movement_rate(movement_step, K);
 }
