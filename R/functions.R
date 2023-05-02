@@ -485,8 +485,8 @@ mmmstan <- function (tag_data,
     iter_sampling = iter_sampling,
     max_treedepth = max_treedepth,
     threads_per_chain = threads_per_chain,
-    refresh = refresh #,
-    #...
+    refresh = refresh,
+    ...
   )
 
   # Placate R-CMD-check --------------------------------------------------------
@@ -566,7 +566,7 @@ mmmstan <- function (tag_data,
   structure(list(
     data = data,
     fit = fit,
-    # draws = draws,
+    rstanfit = rstan::read_stan_csv(fit$output_files()),
     summary = summary),
     class = "mmmstan")
 }
