@@ -1,4 +1,4 @@
-array[] int simplex_dims (array[,] int mindex) {
+array[] int assemble_simplex_dims (array[,] int mindex) {
   // Get dimensions
   int X = dims(mindex)[1];
   int A = 6;
@@ -113,8 +113,8 @@ array[] matrix assemble_movement_step (
   // Declare values
   array[L] matrix[X, X] movement_step = rep_array(rep_matrix(0.0, X, X), L);
   array[L, A] int index = rep_array(0, L, A); // Simplex array row index
-  array int row_x_sum; // Movement index row sum
-  array int column; // Simplex index (column)
+  int row_x_sum; // Movement index row sum
+  int column; // Simplex index (column)
   // Populate movement step
   for (l in 1:L) {
     for (x in 1:X) {
@@ -261,6 +261,7 @@ array[] matrix assemble_movement_rate (
 ) {
   // Get dimensions
   int L = dims(movement_step)[1];
+  int X = dims(movement_step)[2];
   // Declare values
   array[L] matrix[X, X] movement_rate;
   // Populate movement rate
