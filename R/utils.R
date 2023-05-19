@@ -652,15 +652,10 @@ create_tag_array <- function (tag_data,
   # Assemble released tibble ---------------------------------------------------
 
   tags_released_tibble <- tag_data %>%
-    dplyr::rename(
-      date_released = .data[[colname_date_released]],
-      region_released = .data[[colname_region_released]],
-      size_released = .data[[colname_size_released]]
-    ) %>%
     dplyr::select(
-      date_released,
-      region_released,
-      size_released
+      date_released = tidyselect::matches(colname_date_released),
+      region_released = tidyselect::matches(colname_region_released),
+      size_released = tidyselect::matches(colname_size_released)
     ) %>%
     tidyr::drop_na() %>%
     dplyr::mutate(
@@ -697,19 +692,12 @@ create_tag_array <- function (tag_data,
   # Assemble recovered tibble --------------------------------------------------
 
   tags_recovered_tibble <- tag_data %>%
-    dplyr::rename(
-      date_released = .data[[colname_date_released]],
-      date_recovered = .data[[colname_date_recovered]],
-      region_released = .data[[colname_region_released]],
-      region_recovered = .data[[colname_region_recovered]],
-      size_released = .data[[colname_size_released]]
-    ) %>%
     dplyr::select(
-      date_released,
-      date_recovered,
-      region_released,
-      region_recovered,
-      size_released
+      date_released = tidyselect::matches(colname_date_released),
+      date_recovered = tidyselect::matches(colname_date_recovered),
+      region_released = tidyselect::matches(colname_region_released),
+      region_recovered = tidyselect::matches(colname_region_recovered),
+      size_released = tidyselect::matches(colname_size_released)
     ) %>%
     tidyr::drop_na() %>%
     dplyr::mutate(
