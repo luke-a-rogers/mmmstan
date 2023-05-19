@@ -22,7 +22,8 @@ Imports:
     rlang,
     checkmate,
     tidybayes,
-    rstan
+    rstan,
+    tidyselect
 Suggests: 
     knitr,
     rmarkdown
