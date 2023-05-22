@@ -653,9 +653,9 @@ create_tag_array <- function (tag_data,
 
   tags_released_tibble <- tag_data %>%
     dplyr::select(
-      date_released = tidyselect::matches(colname_date_released),
-      region_released = tidyselect::matches(colname_region_released),
-      size_released = tidyselect::matches(colname_size_released)
+      date_released = colname_date_released,
+      region_released = colname_region_released,
+      size_released = colname_size_released
     ) %>%
     tidyr::drop_na() %>%
     dplyr::mutate(
@@ -693,11 +693,11 @@ create_tag_array <- function (tag_data,
 
   tags_recovered_tibble <- tag_data %>%
     dplyr::select(
-      date_released = tidyselect::matches(colname_date_released),
-      date_recovered = tidyselect::matches(colname_date_recovered),
-      region_released = tidyselect::matches(colname_region_released),
-      region_recovered = tidyselect::matches(colname_region_recovered),
-      size_released = tidyselect::matches(colname_size_released)
+      date_released = colname_date_released,
+      date_recovered = colname_date_recovered,
+      region_released = colname_region_released,
+      region_recovered = colname_region_recovered,
+      size_released = colname_size_released
     ) %>%
     tidyr::drop_na() %>%
     dplyr::mutate(
