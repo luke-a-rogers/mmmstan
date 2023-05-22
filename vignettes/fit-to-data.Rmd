@@ -39,6 +39,19 @@ if (FALSE) {
         "released_omregion", 
         "source"
       )
+    ) %>%
+    dplyr::select(
+      tag_id,
+      date_released = released_date,
+      size_released = released_length,
+      region_released = released_region,
+      omregion_released = released_omregion,
+      date_recovered = recovered_date,
+      region_recovered = recovered_region,
+      omregion_recovered = recovered_omregion,
+      source,
+      days_liberty,
+      tag_distance
     )
   
   # Region arguments -----------------------------------------------------------
@@ -75,11 +88,11 @@ if (FALSE) {
   
   # Column name arguments ------------------------------------------------------
   
-  colname_date_released <- "released_date" # "date_released"
-  colname_date_recovered <- "recovered_date" # "date_recovered"
-  colname_region_released <- "released_region" # "region_released"
-  colname_region_recovered <- "recovered_region" # "region_recovered"
-  colname_size_released <- "released_length" # "size_released"
+  colname_date_released <- "date_released"
+  colname_date_recovered <- "date_recovered"
+  colname_region_released <- "region_released"
+  colname_region_recovered <- "region_recovered"
+  colname_size_released <- "size_released"
   
   # Arguments with defaults ----------------------------------------------------
   
