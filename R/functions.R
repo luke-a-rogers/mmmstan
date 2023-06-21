@@ -33,7 +33,7 @@
 #' @param mu_fishing_rate [numeric()]
 #' @param cv_fishing_rate [numeric()]
 #' @param mu_selectivity [numeric()]
-#' @param sd_selectivity [numeric()]
+#' @param cv_selectivity [numeric()]
 #' @param mu_fishing_weight [numeric()]
 #' @param sd_fishing_weight [numeric()]
 #' @param mu_natural_mortality_rate [numeric()]
@@ -90,7 +90,7 @@ mmmstan <- function (tag_data,
                      cv_fishing_rate = NULL,
                      # Selectivity priors
                      mu_selectivity = NULL,
-                     sd_selectivity = NULL,
+                     cv_selectivity = NULL,
                      # Fishing weight priors
                      mu_fishing_weight = NULL,
                      sd_fishing_weight = NULL,
@@ -370,6 +370,20 @@ mmmstan <- function (tag_data,
     if (is.null(cv_fishing_rate)) {
       cv_fishing_rate <- 0.1
     }
+    # Selectivity prior
+    if (length(list_sizes) == 1) {
+      mu_selectivity_short <- numeric(0) # [0]
+      cv_selectivity <- numeric(0) # [0]
+    } else {
+      if (is.null(mu_selectivity)) {
+        mu_selectivity_short <- rep(0.9, length(list_sizes) - 1)
+      } else {
+        mu_selectivity_short <- mu_selectivity[seq_len(length(list_sizes) - 1)]
+      }
+      if (is.null(cv_selectivity)) {
+        cv_selectivity <- 0.1
+      }
+    }
     # Natural mortality rate prior
     if (is.null(mu_natural_mortality_rate)) {
       mu_natural_mortality_rate <- rep(0.1, length(list_regions))
@@ -434,8 +448,8 @@ mmmstan <- function (tag_data,
       mu_fishing_rate = mu_fishing_rate, # [T, X]
       cv_fishing_rate = cv_fishing_rate, # [1]
       # Selectivity priors
-      #  mu_selectivity = , # [S - 1]
-      #  cv_selectivity = , # [1]
+      mu_selectivity_short = mu_selectivity_short, # NULL OR [L - 1]
+      cv_selectivity = cv_selectivity, # NULL OR [1]
       # Fishing weight priors
       #  mu_fishing_weight = , # [K, X]
       #  cv_fishing_weight = , # [1]
@@ -498,6 +512,7 @@ mmmstan <- function (tag_data,
   reporting_rate <- NULL
   initial_loss_rate <- NULL
   ongoing_loss_rate <- NULL
+  selectivity <- NULL
   dispersion <- NULL
   # Dimension names
   x <- NULL
@@ -537,6 +552,15 @@ mmmstan <- function (tag_data,
     tidybayes::spread_draws(ongoing_loss_rate) %>%
     tidybayes::summarise_draws() %>%
     dplyr::ungroup()
+  # Selectivity
+  if (length(list_sizes) > 1) {
+    selectivity_summary <- fit$draws() %>%
+      tidybayes::spread_draws(selectivity[l]) %>%
+      tidybayes::summarise_draws() %>%
+      dplyr::ungroup()
+  } else {
+    selectivity_summary <- NULL
+  }
   # Dispersion
   dispersion_summary <- fit$draws() %>%
     tidybayes::spread_draws(dispersion) %>%
@@ -557,6 +581,8 @@ mmmstan <- function (tag_data,
     # Tag loss
     initial_loss_rate = initial_loss_rate_summary,
     ongoing_loss_rate = ongoing_loss_rate_summary,
+    # Selectivity
+    selectivity = selectivity_summary,
     # Dispersion
     dispersion = dispersion_summary
   )

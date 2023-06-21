@@ -16,7 +16,7 @@ CmdStan >= 2.23.
 1. Install the R package `cmdstanr` (see <https://mc-stan.org/cmdstanr/index.html>).
 
 ``` r
-install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+remotes::install_github("stan-dev/cmdstanr")
 ```
 
 2. Install CmdStan (see <https://mc-stan.org/cmdstanr/articles/cmdstanr.html>).

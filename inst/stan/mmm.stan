@@ -24,8 +24,8 @@ data {
   array[T] vector<lower=0>[X] mu_fishing_rate;
   real<lower=0> cv_fishing_rate;
   // Selectivity priors
-  //  vector<lower=0, upper=1>[L - 1] mu_selectivity;
-  //  real<lower=0> cv_selectivity;
+  vector<lower=0, upper=1>[L - 1] mu_selectivity_short;
+  vector<lower=0>[L > 1 ? 1 : 0] cv_selectivity;
   // Fishing weight priors
   //  array[K] vector<lower=0, upper=1>[X] mu_fishing_weight;
   //  real<lower=0> cv_fishing_weight;
@@ -82,8 +82,8 @@ parameters {
   // Fractional (per tag) stepwise rates
   vector<lower=0, upper=1>[X] reporting_step;
   real<lower=0, upper=1> initial_loss_step;
-  //  // Selectivity (per fish)
-  //  vector<lower=0, upper=1>[L - 1] selectivity_short;
+  // Selectivity (per fish)
+  vector<lower=0, upper=1>[L - 1] selectivity_short;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -104,8 +104,8 @@ transformed parameters {
   // Fractional (per tag) rates
   vector<lower=0, upper=1>[X] reporting_rate = reporting_step;
   real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
-  //  // Selectivity
-  //  vector<lower=0, upper=1>[S] selectivity = append_row(selectivity_short, 1.0);
+  // Selectivity
+  vector<lower=0, upper=1>[L] selectivity = append_row(selectivity_short, 1.0);
   //  // Fishing weight
   //  array[K] vector<lower=0, upper=1>[X] fishing_weight;
   // Assemble stepwise movement rates [L] [X, X]
@@ -120,7 +120,7 @@ transformed parameters {
   survival_step = assemble_survival_step(
     fishing_step,
     //    fishing_weight,
-    //    selectivity,
+    selectivity,
     natural_mortality_step,
     ongoing_loss_step,
     K, L
@@ -134,7 +134,7 @@ transformed parameters {
   observation_step = assemble_observation_step(
     fishing_step,
     //    fishing_weight,
-    //    selectivity,
+    selectivity,
     reporting_step,
     K, L
   );
@@ -213,6 +213,13 @@ model {
   ongoing_loss_rate ~ normal(mu_ongoing_loss_rate, sd_ongoing_loss_rate);
   // Initial loss rate prior
   initial_loss_rate ~ normal(mu_initial_loss_rate, sd_initial_loss_rate);
+  // Selectivity
+  if (L > 1) {
+    selectivity_short ~ normal(
+      mu_selectivity_short,
+      mu_selectivity_short * cv_selectivity[1]
+    );
+  }
   // Dispersion prior
   dispersion ~ normal(mu_dispersion, sd_dispersion);
   // Sampling statement (var = mu + mu^2 / dispersion)

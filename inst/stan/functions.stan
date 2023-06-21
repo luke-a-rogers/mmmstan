@@ -152,7 +152,7 @@ array[] matrix assemble_movement_step (
 array[,,] vector assemble_survival_step (
   array[] vector fishing_step,
   // array[] vector fishing_weight,
-  // vector selectivity,
+  vector selectivity,
   vector natural_mortality_step,
   real ongoing_loss_step,
   int K,
@@ -168,7 +168,7 @@ array[,,] vector assemble_survival_step (
     for (k in 1:K) {
       for (l in 1:L) {
         survival_step[t, k, l] = exp(
-          -fishing_step[t] // .* fishing_weight[k] * selectivity[l]
+          -fishing_step[t] * selectivity[l] // .* fishing_weight[k] * selectivity[l]
           - natural_mortality_step
           - ongoing_loss_step
         );
@@ -211,7 +211,7 @@ array[,] matrix assemble_transition_step (
 array[,] vector assemble_observation_step (
   array[] vector fishing_step,
   // array[] vector fishing_weight,
-  // vector selectivity,
+  vector selectivity,
   vector reporting_step,
   int K,
   int L
@@ -228,7 +228,7 @@ array[,] vector assemble_observation_step (
     for (k in 1:K) {
       for (l in 1:L) {
         observation_step[n, l] = reporting_step
-        .* (1.0 - exp(-fishing_step[t])); // .* fishing_weight[k] * selectivity[l]
+        .* (1.0 - exp(-fishing_step[t] * selectivity[l])); // .* fishing_weight[k] * selectivity[l]
       }
       n += 1;
     }

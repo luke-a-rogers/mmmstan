@@ -16,11 +16,13 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(mmmstan)
+fit_models <- FALSE
+# fit_models <- TRUE
 ```
 
 # Load data
 ```{r load-data}
-if (FALSE) {
+if (fit_models) {
   # Define tag paths
   path_released <- "~/github/sablefish-data/data/tags_released.rda"
   path_recovered <- "~/github/sablefish-data/data/tags_recovered.rda"
@@ -120,6 +122,9 @@ if (FALSE) {
   # Instantaneous ongoing loss rate priors
   mu_ongoing_loss_rate <- 0.02
   sd_ongoing_loss_rate <- 0.001
+  # Selectivity
+  mu_selectivity <- NULL
+  cv_selectivity <- NULL
   # Dispersion priors
   mu_dispersion <- 1.0
   sd_dispersion <- 0.5
@@ -147,7 +152,7 @@ if (FALSE) {
 
 # Fit mean
 ```{r fit-mean}
-if (FALSE) {
+if (fit_models) {
   # Fit mean
   fit_mean <- mmmstan(
     tag_data = tag_data,
@@ -195,7 +200,7 @@ if (FALSE) {
 
 # Fit size
 ```{r fit-size}
-if (FALSE) {
+if (fit_models) {
   # Fit size
   fit_size <- mmmstan(
     tag_data = tag_data,
@@ -222,6 +227,7 @@ if (FALSE) {
   # View
   tibble::view(fit_size$summary$movement_rate)
   tibble::view(fit_size$summary$fishing_rate)
+  tibble::view(fit_size$summary$selectivity)
   # Plot size
   ggplot2::ggplot(
     data = fit_size$summary$movement_rate,

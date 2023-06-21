@@ -25,7 +25,7 @@ mmmstan(
   mu_fishing_rate = NULL,
   cv_fishing_rate = NULL,
   mu_selectivity = NULL,
-  sd_selectivity = NULL,
+  cv_selectivity = NULL,
   mu_fishing_weight = NULL,
   sd_fishing_weight = NULL,
   mu_natural_mortality_rate = NULL,
@@ -94,7 +94,7 @@ mmmstan(
 
 \item{mu_selectivity}{\code{\link[=numeric]{numeric()}}}
 
-\item{sd_selectivity}{\code{\link[=numeric]{numeric()}}}
+\item{cv_selectivity}{\code{\link[=numeric]{numeric()}}}
 
 \item{mu_fishing_weight}{\code{\link[=numeric]{numeric()}}}
 
