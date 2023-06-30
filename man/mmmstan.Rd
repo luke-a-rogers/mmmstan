@@ -88,11 +88,11 @@ mmmstan(
 
 \item{sd_movement_step_diag}{\link[=vector]{numeric()}}
 
-\item{mu_fishing_rate}{\code{\link[=numeric]{numeric()}}}
+\item{mu_fishing_rate}{\link[=array]{numeric()}}
 
 \item{cv_fishing_rate}{\code{\link[=numeric]{numeric()}}}
 
-\item{mu_selectivity}{\code{\link[=numeric]{numeric()}}}
+\item{mu_selectivity}{\link[=array]{numeric()}}
 
 \item{cv_selectivity}{\code{\link[=numeric]{numeric()}}}
 

@@ -220,6 +220,8 @@ if (fit_models) {
     movement_pattern = movement_pattern,
     movement_allow = movement_allow,
     movement_disallow = movement_disallow,
+    # Selectivity
+    # mu_selectivity = array(0.9, c(2, 3)),
     # Use reduce sum
     use_reduce_sum = use_reduce_sum,
     refresh = refresh

@@ -30,9 +30,9 @@
 #' @param movement_disallow [integer()][matrix()]
 #' @param mu_movement_step_diag [numeric()][vector()]
 #' @param sd_movement_step_diag [numeric()][vector()]
-#' @param mu_fishing_rate [numeric()]
+#' @param mu_fishing_rate [numeric()][array()]
 #' @param cv_fishing_rate [numeric()]
-#' @param mu_selectivity [numeric()]
+#' @param mu_selectivity [numeric()][array()]
 #' @param cv_selectivity [numeric()]
 #' @param mu_fishing_weight [numeric()]
 #' @param sd_fishing_weight [numeric()]
@@ -372,13 +372,17 @@ mmmstan <- function (tag_data,
     }
     # Selectivity prior
     if (length(list_sizes) == 1) {
-      mu_selectivity_short <- numeric(0) # [0]
+      mu_selectivity_short <- array(1, dim = c(0, length(list_regions))) # [0, X]
       cv_selectivity <- numeric(0) # [0]
     } else {
       if (is.null(mu_selectivity)) {
-        mu_selectivity_short <- rep(0.9, length(list_sizes) - 1)
+        mu_selectivity_short <- array(
+          0.9,
+          dim = c(length(list_sizes) - 1, length(list_regions))
+        )
       } else {
-        mu_selectivity_short <- mu_selectivity[seq_len(length(list_sizes) - 1)]
+        mu_selectivity_short <-
+          mu_selectivity[seq_len(length(list_sizes) - 1),, drop = FALSE]
       }
       if (is.null(cv_selectivity)) {
         cv_selectivity <- 0.1
@@ -448,7 +452,7 @@ mmmstan <- function (tag_data,
       mu_fishing_rate = mu_fishing_rate, # [T, X]
       cv_fishing_rate = cv_fishing_rate, # [1]
       # Selectivity priors
-      mu_selectivity_short = mu_selectivity_short, # NULL OR [L - 1]
+      mu_selectivity_short = mu_selectivity_short, # [0, X] OR [L - 1, X]
       cv_selectivity = cv_selectivity, # NULL OR [1]
       # Fishing weight priors
       #  mu_fishing_weight = , # [K, X]
@@ -555,7 +559,7 @@ mmmstan <- function (tag_data,
   # Selectivity
   if (length(list_sizes) > 1) {
     selectivity_summary <- fit$draws() %>%
-      tidybayes::spread_draws(selectivity[l]) %>%
+      tidybayes::spread_draws(selectivity[l, x]) %>%
       tidybayes::summarise_draws() %>%
       dplyr::ungroup()
   } else {

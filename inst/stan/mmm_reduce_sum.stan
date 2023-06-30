@@ -24,7 +24,7 @@ data {
   array[T] vector<lower=0>[X] mu_fishing_rate;
   real<lower=0> cv_fishing_rate;
   // Selectivity priors
-  vector<lower=0, upper=1>[L - 1] mu_selectivity_short;
+  array[L - 1] vector<lower=0, upper=1>[X] mu_selectivity_short;
   vector<lower=0>[L > 1 ? 1 : 0] cv_selectivity;
   // Fishing weight priors
   //  array[K] vector<lower=0, upper=1>[X] mu_fishing_weight;
@@ -87,7 +87,7 @@ parameters {
   vector<lower=0, upper=1>[X] reporting_step;
   real<lower=0, upper=1> initial_loss_step;
   // Selectivity (per fish)
-  vector<lower=0, upper=1>[L - 1] selectivity_short;
+  array[L - 1] vector<lower=0, upper=1>[X] selectivity_short;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
@@ -109,7 +109,14 @@ transformed parameters {
   vector<lower=0, upper=1>[X] reporting_rate = reporting_step;
   real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
   // Selectivity
-  vector<lower=0, upper=1>[L] selectivity = append_row(selectivity_short, 1.0);
+  array[L] vector<lower=0, upper=1>[X] selectivity;
+  for (l in 1:L) {
+    if (l == L) {
+      selectivity[l] = rep_vector(1.0, X);
+    } else {
+      selectivity[l] = selectivity_short[l];
+    }
+  }
   //  // Fishing weight
   //  array[K] vector<lower=0, upper=1>[X] fishing_weight;
   // Assemble stepwise movement rates [L] [X, X]
@@ -173,11 +180,13 @@ model {
   // Initial loss rate prior
   initial_loss_rate ~ normal(mu_initial_loss_rate, sd_initial_loss_rate);
   // Selectivity
-  if (L > 1) {
-    selectivity_short ~ normal(
-      mu_selectivity_short,
-      mu_selectivity_short * cv_selectivity[1]
-    );
+  for (l in 1:L) {
+    if (l < L) {
+      selectivity_short[l] ~ normal(
+        mu_selectivity_short[l],
+        mu_selectivity_short[l] * cv_selectivity[1]
+      );
+    }
   }
   // Dispersion prior
   dispersion ~ normal(mu_dispersion, sd_dispersion);
