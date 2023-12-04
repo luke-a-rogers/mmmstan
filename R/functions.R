@@ -20,6 +20,7 @@
 #' @param year_end [integer()] year of final tag recovered
 #' @param step_interval [character()] one of \code{"month", "quarter", "year"}
 #' @param step_duration_max [integer()]
+#' @param days_duration_min [integer()] minimum number of days before recovery
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
@@ -73,6 +74,7 @@ mmmstan <- function (tag_data,
                      year_end,
                      step_interval = "quarter",
                      step_duration_max = NULL,
+                     days_duration_min = 90,
                      colname_date_released = "date_released",
                      colname_date_recovered = "date_recovered",
                      colname_region_released = "region_released",
@@ -172,6 +174,13 @@ mmmstan <- function (tag_data,
     any.missing = FALSE,
     len = 1,
     null.ok = TRUE
+  )
+  checkmate::assert_integerish(
+    days_duration_min,
+    lower = 1,
+    any.missing = FALSE,
+    len = 1,
+    null.ok = FALSE
   )
   checkmate::assert_character(
     colname_date_released,
@@ -413,6 +422,7 @@ mmmstan <- function (tag_data,
       year_recovered_end = year_end,
       step_duration_max = step_duration_max,
       step_interval = step_interval,
+      days_duration_min = days_duration_min,
       colname_date_released = colname_date_released,
       colname_date_recovered = colname_date_recovered,
       colname_region_released = colname_region_released,

@@ -12,6 +12,7 @@ mmmstan(
   year_end,
   step_interval = "quarter",
   step_duration_max = NULL,
+  days_duration_min = 90,
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
@@ -67,6 +68,8 @@ mmmstan(
 \item{step_interval}{\code{\link[=character]{character()}} one of \code{"month", "quarter", "year"}}
 
 \item{step_duration_max}{\code{\link[=integer]{integer()}}}
+
+\item{days_duration_min}{\code{\link[=integer]{integer()}} minimum number of days before recovery}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
 

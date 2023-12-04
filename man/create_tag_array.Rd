@@ -12,6 +12,7 @@ create_tag_array(
   year_recovered_end,
   step_interval = "month",
   step_duration_max = NULL,
+  days_duration_min = 30,
   colname_date_released = "date_released",
   colname_date_recovered = "date_recovered",
   colname_region_released = "region_released",
@@ -35,6 +36,8 @@ or \code{"month"}}
 
 \item{step_duration_max}{\code{\link[=integer]{integer()}} optional constraint on the maximum
 steps duration at large}
+
+\item{days_duration_min}{\code{\link[=integer]{integer()}} minimum number of days before recovery}
 
 \item{colname_date_released}{\code{\link[=character]{character()}}}
 

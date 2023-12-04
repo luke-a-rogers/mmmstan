@@ -549,6 +549,7 @@ create_step_released <- function (date_released,
 #'   or \code{"month"}
 #' @param step_duration_max [integer()] optional constraint on the maximum
 #'   steps duration at large
+#' @param days_duration_min [integer()] minimum number of days before recovery
 #' @param colname_date_released [character()]
 #' @param colname_date_recovered [character()]
 #' @param colname_region_released [character()]
@@ -567,6 +568,7 @@ create_tag_array <- function (tag_data,
                               year_recovered_end,
                               step_interval = "month",
                               step_duration_max = NULL,
+                              days_duration_min = 30,
                               colname_date_released = "date_released",
                               colname_date_recovered = "date_recovered",
                               colname_region_released = "region_released",
@@ -628,6 +630,7 @@ create_tag_array <- function (tag_data,
   region_released <- NULL
   region_recovered <- NULL
   size_released <- NULL
+  days_liberty <- NULL
   count <- NULL
 
   # Compute dates --------------------------------------------------------------
@@ -700,6 +703,12 @@ create_tag_array <- function (tag_data,
       size_released = colname_size_released
     ) %>%
     tidyr::drop_na() %>%
+    dplyr::mutate(
+      days_liberty = as.numeric(
+        lubridate::as_date(date_recovered) - lubridate::as_date(date_released)
+      )
+    ) %>%
+    dplyr::filter(days_liberty >= days_duration_min) %>%
     dplyr::mutate(
       n = create_step_released(
         date_released = .data$date_released,

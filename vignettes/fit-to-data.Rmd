@@ -76,6 +76,10 @@ if (fit_models) {
   # step_duration_max <- NULL
   step_duration_max <- 12
   
+  # Days argument --------------------------------------------------------------
+  
+  days_duration_min <- 90
+  
   # Size arguments -------------------------------------------------------------
   
   # For fit mean
@@ -163,6 +167,7 @@ if (fit_models) {
     year_end = year_end,
     step_interval = step_interval,
     step_duration_max = step_duration_max,
+    days_duration_min = days_duration_min,
     colname_date_released = colname_date_released, # "date_released",
     colname_date_recovered = colname_date_recovered, # "date_recovered",
     colname_region_released = colname_region_released, # "region_released",
