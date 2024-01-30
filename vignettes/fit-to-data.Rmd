@@ -30,42 +30,30 @@ if (fit_models) {
   tags_released <- read_from_path(path = path_released)
   tags_recovered <- read_from_path(path = path_recovered)
   # Tags
-  tag_data <- tags_released %>%
-    dplyr::left_join(
-      tags_recovered,
-      by = c(
-        "tag_id", 
-        "released_date", 
-        "released_length", 
-        "released_region", 
-        "released_omregion", 
-        "source"
-      )
-    ) %>%
-    dplyr::select(
-      tag_id,
-      date_released = released_date,
-      size_released = released_length,
-      region_released = released_region,
-      omregion_released = released_omregion,
-      date_recovered = recovered_date,
-      region_recovered = recovered_region,
-      omregion_recovered = recovered_omregion,
-      source,
-      days_liberty,
-      tag_distance
+  tag_data <- dplyr::left_join(
+    x = tags_released,
+    y = tags_recovered,
+    by = c(
+      "tag_id", 
+      "date_released", 
+      "region_released_3", 
+      "region_released_6", 
+      "region_released_8", 
+      "size_released", 
+      "source"
     )
+  )
   
   # Region arguments -----------------------------------------------------------
   
   # # Eight regions
-  # list_regions <- list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8)
+  # list_regions_8 <- list(ai = 1, bs = 2, wg = 3, cg = 4, eg = 5, se = 6, bc = 7, cc = 8)
   # movement_pattern <- 2
   # movement_allow <- matrix(c(5, 7, 7, 5), nrow = 2, byrow = TRUE)
   # movement_disallow <- NULL
   
   # Three regions
-  list_regions <- list(ak = 1:6, bc = 7, cc = 8)
+  list_regions_3 <- list(ak = 1, bc = 2, cc = 3)
   movement_pattern <- 2
   movement_allow <- NULL
   movement_disallow <- NULL
@@ -96,8 +84,8 @@ if (fit_models) {
   
   colname_date_released <- "date_released"
   colname_date_recovered <- "date_recovered"
-  colname_region_released <- "region_released"
-  colname_region_recovered <- "region_recovered"
+  colname_region_released <- "region_released_3"
+  colname_region_recovered <- "region_recovered_3"
   colname_size_released <- "size_released"
   
   # Arguments with defaults ----------------------------------------------------
@@ -161,7 +149,7 @@ if (fit_models) {
   fit_mean <- mmmstan(
     tag_data = tag_data,
     # Tag arguments
-    list_regions = list_regions,
+    list_regions = list_regions_3,
     list_sizes = list_sizes,
     year_start = year_start,
     year_end = year_end,
@@ -210,7 +198,7 @@ if (fit_models) {
   fit_size <- mmmstan(
     tag_data = tag_data,
     # Tag arguments
-    list_regions = list_regions,
+    list_regions = list_regions_3,
     list_sizes = list_sizes_small_large,
     year_start = year_start,
     year_end = year_end,
