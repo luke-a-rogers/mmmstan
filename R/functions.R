@@ -606,7 +606,7 @@ mmmstan <- function (tag_data,
   structure(list(
     data = data,
     fit = fit,
-    rstanfit = rstan::read_stan_csv(fit$output_files()),
+    # rstanfit = rstan::read_stan_csv(fit$output_files()),
     summary = summary),
     class = "mmmstan")
 }
