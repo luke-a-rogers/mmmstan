@@ -381,7 +381,7 @@ mmmstan <- function (tag_data,
     }
     # Selectivity prior
     if (length(list_sizes) == 1) {
-      mu_selectivity_short <- array(1, dim = c(0, length(list_regions))) # [0, X]
+      mu_selectivity_short <- array(1, dim = c(0, length(list_regions))) # [0, S]
       cv_selectivity <- numeric(0) # [0]
     } else {
       if (is.null(mu_selectivity)) {
@@ -443,36 +443,36 @@ mmmstan <- function (tag_data,
 
     data <- list(
       # Model index limits
-      N = count_model_steps(year_start, year_end, step_interval),
+      T = count_model_steps(year_start, year_end, step_interval),
       D = step_duration_max,
       L = length(list_sizes),
-      X = length(list_regions),
-      T = year_end - year_start + 1L,
+      S = length(list_regions),
+      Years = year_end - year_start + 1L,
       K = count_intervals(step_interval, "year"),
       # Index arrays
-      n_to_t = index_n_to_t(year_start, year_end, step_interval),
+      t_to_year = index_t_to_year(year_start, year_end, step_interval),
       # Tag data
-      tags = tag_array, # [N - 1, D, L, X, X]
+      tags = tag_array, # [T - 1, D, L, S, S]
       # Movement index
-      movement_index = movement_index, # [X, X]
+      movement_index = movement_index, # [S, S]
       # Movement step priors
-      mu_movement_step_diag = mu_movement_step_diag, # [X]
-      sd_movement_step_diag = sd_movement_step_diag, # [X]
+      mu_movement_step_diag = mu_movement_step_diag, # [S]
+      sd_movement_step_diag = sd_movement_step_diag, # [S]
       # Fishing rate priors
-      mu_fishing_rate = mu_fishing_rate, # [T, X]
+      mu_fishing_rate = mu_fishing_rate, # [Years, S]
       cv_fishing_rate = cv_fishing_rate, # [1]
       # Selectivity priors
-      mu_selectivity_short = mu_selectivity_short, # [0, X] OR [L - 1, X]
+      mu_selectivity_short = mu_selectivity_short, # [0, S] OR [L - 1, S]
       cv_selectivity = cv_selectivity, # NULL OR [1]
       # Fishing weight priors
-      #  mu_fishing_weight = , # [K, X]
+      #  mu_fishing_weight = , # [K, S]
       #  cv_fishing_weight = , # [1]
       # Natural mortality rate priors
-      mu_natural_mortality_rate = mu_natural_mortality_rate, # [X]
-      sd_natural_mortality_rate = sd_natural_mortality_rate, # [X]
+      mu_natural_mortality_rate = mu_natural_mortality_rate, # [S]
+      sd_natural_mortality_rate = sd_natural_mortality_rate, # [S]
       # Fractional (per tag) reporting rate priors
-      mu_reporting_rate = mu_reporting_rate, # [X]
-      sd_reporting_rate = sd_reporting_rate, # [X]
+      mu_reporting_rate = mu_reporting_rate, # [S]
+      sd_reporting_rate = sd_reporting_rate, # [S]
       # Fractional (per tag) initial loss rate priors
       mu_initial_loss_rate = mu_initial_loss_rate,
       sd_initial_loss_rate = sd_initial_loss_rate,
@@ -529,9 +529,9 @@ mmmstan <- function (tag_data,
   selectivity <- NULL
   dispersion <- NULL
   # Dimension names
-  x <- NULL
-  y <- NULL
-  t <- NULL
+  s0 <- NULL
+  s <- NULL
+  year <- NULL
   k <- NULL
   l <- NULL
 
@@ -539,22 +539,22 @@ mmmstan <- function (tag_data,
 
   # Movement rate
   movement_rate_summary <- fit$draws() %>%
-    tidybayes::spread_draws(movement_rate[l,x,y]) %>%
+    tidybayes::spread_draws(movement_rate[l,s0,s]) %>%
     tidybayes::summarise_draws() %>%
     dplyr::ungroup()
   # Fishing rate
   fishing_rate_summary <- fit$draws() %>%
-    tidybayes::spread_draws(fishing_rate[t,x]) %>%
+    tidybayes::spread_draws(fishing_rate[year,s0]) %>%
     tidybayes::summarise_draws() %>%
     dplyr::ungroup()
   # Natural mortality rate
   natural_mortality_rate_summary <- fit$draws() %>%
-    tidybayes::spread_draws(natural_mortality_rate[x]) %>%
+    tidybayes::spread_draws(natural_mortality_rate[s0]) %>%
     tidybayes::summarise_draws() %>%
     dplyr::ungroup()
   # Reporting rate
   reporting_rate_summary <- fit$draws() %>%
-    tidybayes::spread_draws(reporting_rate[x]) %>%
+    tidybayes::spread_draws(reporting_rate[s0]) %>%
     tidybayes::summarise_draws() %>%
     dplyr::ungroup()
   # Initial loss rate
@@ -569,7 +569,7 @@ mmmstan <- function (tag_data,
   # Selectivity
   if (length(list_sizes) > 1) {
     selectivity_summary <- fit$draws() %>%
-      tidybayes::spread_draws(selectivity[l, x]) %>%
+      tidybayes::spread_draws(selectivity[l, s0]) %>%
       tidybayes::summarise_draws() %>%
       dplyr::ungroup()
   } else {
@@ -606,7 +606,6 @@ mmmstan <- function (tag_data,
   structure(list(
     data = data,
     fit = fit,
-    # rstanfit = rstan::read_stan_csv(fit$output_files()),
     summary = summary),
     class = "mmmstan")
 }

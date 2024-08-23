@@ -172,8 +172,6 @@ if (fit_models) {
   # View
   tibble::view(fit_mean$summary$movement_rate)
   tibble::view(fit_mean$summary$fishing_rate)
-  # Shiny
-  shinystan::launch_shinystan(fit_mean$rstanfit)
   # Plot
   ggplot2::ggplot(
     data = fit_mean$summary$movement_rate,
@@ -184,8 +182,8 @@ if (fit_models) {
   ) +
     ggplot2::geom_col() +
     ggplot2::facet_grid(
-      rows = ggplot2::vars(.data$x),
-      cols = ggplot2::vars(.data$y)
+      rows = ggplot2::vars(.data$s0),
+      cols = ggplot2::vars(.data$s)
     ) +
     ggsidekick::theme_sleek()
 }
@@ -233,8 +231,8 @@ if (fit_models) {
   ) +
     ggplot2::geom_col() +
     ggplot2::facet_grid(
-      rows = ggplot2::vars(.data$x),
-      cols = ggplot2::vars(.data$y)
+      rows = ggplot2::vars(.data$s0),
+      cols = ggplot2::vars(.data$s)
     ) +
     ggsidekick::theme_sleek()
 }

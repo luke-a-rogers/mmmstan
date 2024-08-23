@@ -4,37 +4,37 @@ functions {
 
 data {
   // Index limits
-  int<lower=2> N; // Number of model steps (months/quarters/years) in the study
+  int<lower=2> T; // Number of model steps (months/quarters/years) in the study
   int<lower=2> D; // Maximum duration at large in model steps
   int<lower=1> L; // Number of size or sex classes
-  int<lower=2> X; // Number of geographic regions
-  int<lower=1> T; // Number of years in the study
+  int<lower=2> S; // Number of geographic regions
+  int<lower=1> Years; // Number of years in the study
   // Constants
   int<lower=1> K; // Number of steps (months/quarters/years) per year
   // Movement index arrays
-  array[N] int<lower=1, upper=T> n_to_t; // Model step to year index
+  // array[T] int<lower=1, upper=Years> n_to_t; // Model step to year index
   // Tag data
-  array[N - 1, D, L, X, X] int<lower=0> tags;
+  array[T - 1, D, L, S, S] int<lower=0> tags;
   // Movement index (will be paired with a matrix version)
-  array[X, X] int<lower=0, upper=1> movement_index;
+  array[S, S] int<lower=0, upper=1> movement_index;
   // Movement step priors
-  vector<lower=0, upper=1>[X] mu_movement_step_diag;
-  vector<lower=0>[X] sd_movement_step_diag;
+  vector<lower=0, upper=1>[S] mu_movement_step_diag;
+  vector<lower=0>[S] sd_movement_step_diag;
   // Fishing rate priors
-  array[T] vector<lower=0>[X] mu_fishing_rate;
+  array[Years] vector<lower=0>[S] mu_fishing_rate;
   real<lower=0> cv_fishing_rate;
   // Selectivity priors
-  array[L - 1] vector<lower=0, upper=1>[X] mu_selectivity_short;
+  array[L - 1] vector<lower=0, upper=1>[S] mu_selectivity_short;
   vector<lower=0>[L > 1 ? 1 : 0] cv_selectivity;
   // Fishing weight priors
-  //  array[K] vector<lower=0, upper=1>[X] mu_fishing_weight;
+  //  array[K] vector<lower=0, upper=1>[S] mu_fishing_weight;
   //  real<lower=0> cv_fishing_weight;
   // Natural mortality rate priors
-  vector<lower=0>[X] mu_natural_mortality_rate;
-  vector<lower=0>[X] sd_natural_mortality_rate;
+  vector<lower=0>[S] mu_natural_mortality_rate;
+  vector<lower=0>[S] sd_natural_mortality_rate;
   // Fractional (per tag) reporting rate priors
-  vector<lower=0, upper=1>[X] mu_reporting_rate;
-  vector<lower=0>[X] sd_reporting_rate;
+  vector<lower=0, upper=1>[S] mu_reporting_rate;
+  vector<lower=0>[S] sd_reporting_rate;
   // Fractional (per tag) initial loss rate priors
   real<lower=0, upper=1> mu_initial_loss_rate;
   real<lower=0> sd_initial_loss_rate;
@@ -51,22 +51,22 @@ data {
 
 transformed data {
   // Maximum number of observations (upper bound actually)
-  int<lower=0> C = N * D * L * X * X;
+  int<lower=0> C = T * D * L * S * S;
   // Matrix version of movement index
-  matrix[X, X] movement_matrix = to_matrix(movement_index);
+  matrix[S, S] movement_matrix = to_matrix(movement_index);
   // Simplex dimensions
   array[6] int simplex_dims = assemble_simplex_dims(movement_index);
   // Declare tags released
-  array[N - 1, L] vector[X] tags_released = assemble_tags_released(tags);
-  // Declare tags transpose (permute x and y)
-  array[N - 1, D, L, X, X] int tags_transpose = assemble_tags_transpose(tags);
+  array[T - 1, L] vector[S] tags_released = assemble_tags_released(tags);
+  // Declare tags transpose (permute s0 and s)
+  array[T - 1, D, L, S, S] int tags_transpose = assemble_tags_transpose(tags);
   // Declare movement possible values
-  array[D] matrix[X, X] movement_possible = assemble_movement_possible(
+  array[D] matrix[S, S] movement_possible = assemble_movement_possible(
     movement_matrix,
     D
   );
   // Declare partial sum index
-  array[N - 1] int partial_sum_index = rep_array(1, N - 1);
+  array[T - 1] int partial_sum_index = rep_array(1, T - 1);
   // Declare partial sum grainsize
   int grainsize = 1;
 }
@@ -80,54 +80,54 @@ parameters {
   array[L, simplex_dims[5]] simplex[5] m5;
   array[L, simplex_dims[6]] simplex[6] m6;
   // Instantaneous stepwise rates
-  array[T] vector<lower=0>[X] fishing_step;
-  vector<lower=0>[X] natural_mortality_step;
+  array[Years] vector<lower=0>[S] fishing_step;
+  vector<lower=0>[S] natural_mortality_step;
   real<lower=0> ongoing_loss_step;
   // Fractional (per tag) stepwise rates
-  vector<lower=0, upper=1>[X] reporting_step;
+  vector<lower=0, upper=1>[S] reporting_step;
   real<lower=0, upper=1> initial_loss_step;
   // Selectivity (per fish)
-  array[L - 1] vector<lower=0, upper=1>[X] selectivity_short;
+  array[L - 1] vector<lower=0, upper=1>[S] selectivity_short;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
 }
 
 transformed parameters {
   // Stepwise movement rate
-  array[L] matrix<lower=0, upper=1>[X, X] movement_step;
+  array[L] matrix<lower=0, upper=1>[S, S] movement_step;
   // Stepwise survival rate
-  array[T, K, L] vector<lower=0, upper=1>[X] survival_step;
+  array[Years, K, L] vector<lower=0, upper=1>[S] survival_step;
   // Stepwise transition rate
-  array[N, L] matrix<lower=0, upper=1>[X, X] transition_step;
+  array[T, L] matrix<lower=0, upper=1>[S, S] transition_step;
   // Stepwise observation rate
-  array[N, L] vector<lower=0, upper=1>[X] observation_step;
+  array[T, L] vector<lower=0, upper=1>[S] observation_step;
   // Instantaneous annual rates
-  array[T] vector<lower=0>[X] fishing_rate;
-  vector<lower=0>[X] natural_mortality_rate = natural_mortality_step * K;
+  array[Years] vector<lower=0>[S] fishing_rate;
+  vector<lower=0>[S] natural_mortality_rate = natural_mortality_step * K;
   real<lower=0> ongoing_loss_rate = ongoing_loss_step * K;
   // Fractional (per tag) rates
-  vector<lower=0, upper=1>[X] reporting_rate = reporting_step;
+  vector<lower=0, upper=1>[S] reporting_rate = reporting_step;
   real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
   // Selectivity
-  array[L] vector<lower=0, upper=1>[X] selectivity;
+  array[L] vector<lower=0, upper=1>[S] selectivity;
   for (l in 1:L) {
     if (l == L) {
-      selectivity[l] = rep_vector(1.0, X);
+      selectivity[l] = rep_vector(1.0, S);
     } else {
       selectivity[l] = selectivity_short[l];
     }
   }
   //  // Fishing weight
-  //  array[K] vector<lower=0, upper=1>[X] fishing_weight;
-  // Assemble stepwise movement rates [L] [X, X]
+  //  array[K] vector<lower=0, upper=1>[S] fishing_weight;
+  // Assemble stepwise movement rates [L] [S, S]
   movement_step = assemble_movement_step(
     m1, m2, m3, m4, m5, m6,
     movement_index,
     L
   );
-  //  // Assemble fishing weight [K][X]
+  //  // Assemble fishing weight [K][S]
   //  fishing_weight = assemble_fishing_weight(fishing_weight_transpose);
-  // Assemble stepwise survival rate [T, K, L][X]
+  // Assemble stepwise survival rate [Years, K, L][S]
   survival_step = assemble_survival_step(
     fishing_step,
     //    fishing_weight,
@@ -136,12 +136,12 @@ transformed parameters {
     ongoing_loss_step,
     K, L
   );
-  // Assemble stepwise transition rate [N, L][X, X]
+  // Assemble stepwise transition rate [T, L][S, S]
   transition_step = assemble_transition_step(
     movement_step,
     survival_step
   );
-  // Assemble stepwize observation rate [N, L][X]
+  // Assemble stepwize observation rate [T, L][S]
   observation_step = assemble_observation_step(
     fishing_step,
     //    fishing_weight,
@@ -149,7 +149,7 @@ transformed parameters {
     reporting_step,
     K, L
   );
-  // Assemble fishing rate [T][X]
+  // Assemble fishing rate [Years][S]
   fishing_rate = assemble_fishing_rate(fishing_step, K);
 }
 
@@ -162,10 +162,10 @@ model {
     );
   }
   // Fishing rate prior
-  for (t in 1:T) {
-    fishing_rate[t] ~ normal(
-      mu_fishing_rate[t],
-      mu_fishing_rate[t] * cv_fishing_rate + tolerance_fishing
+  for (year in 1:Years) {
+    fishing_rate[year] ~ normal(
+      mu_fishing_rate[year],
+      mu_fishing_rate[year] * cv_fishing_rate + tolerance_fishing
     );
   }
   // Natural mortality rate prior
@@ -195,7 +195,7 @@ model {
     partial_sum_lpmf, // Partial sum function
     partial_sum_index, // Each element corresponds to a summand
     grainsize, // Set to one to leave partitioning up to scheduler
-    N, D, L, X, // Arguments shared by every term...
+    T, D, L, S, // Arguments shared by every term...
     tags_transpose,
     tags_released,
     transition_step,
@@ -209,7 +209,7 @@ model {
 
 generated quantities {
   // Annual movement rate
-  array[L] matrix<lower=0, upper=1>[X, X] movement_rate;
-  // Assemble movement rate [L][X, X]
+  array[L] matrix<lower=0, upper=1>[S, S] movement_rate;
+  // Assemble movement rate [L][S, S]
   movement_rate = assemble_movement_rate(movement_step, K);
 }

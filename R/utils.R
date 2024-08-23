@@ -76,7 +76,7 @@ count_intervals <- function (a, b) {
   return(value)
 }
 
-#' Index N to T
+#' Index T to Years
 #'
 #' @param year_start [integer()] year of first tag release
 #' @param year_end [integer()] year of final tag recovery
@@ -88,11 +88,11 @@ count_intervals <- function (a, b) {
 #'
 #' @examples
 #'
-#' index_n_to_t(2011, 2018, "month")
-#' index_n_to_t(2011, 2018, "quarter")
-#' index_n_to_t(2011, 2018, "year")
+#' index_t_to_year(2011, 2018, "month")
+#' index_t_to_year(2011, 2018, "quarter")
+#' index_t_to_year(2011, 2018, "year")
 #'
-index_n_to_t <- function (year_start, year_end, step_interval) {
+index_t_to_year <- function (year_start, year_end, step_interval) {
 
   # Check arguments ------------------------------------------------------------
 
@@ -124,7 +124,7 @@ index_n_to_t <- function (year_start, year_end, step_interval) {
   return(index)
 }
 
-#' Index N to K
+#' Index T to K
 #'
 #' @param year_start [integer()] year of first tag release
 #' @param year_end [integer()] year of final tag recovery
@@ -138,14 +138,14 @@ index_n_to_t <- function (year_start, year_end, step_interval) {
 #'
 #' @examples
 #'
-#' index_n_to_k(2011, 2018, "month", "month")
-#' index_n_to_k(2011, 2018, "month", "quarter")
-#' index_n_to_k(2011, 2018, "month", "year")
-#' index_n_to_k(2011, 2018, "quarter", "quarter")
-#' index_n_to_k(2011, 2018, "quarter", "year")
-#' index_n_to_k(2011, 2018, "year", "year")
+#' index_t_to_k(2011, 2018, "month", "month")
+#' index_t_to_k(2011, 2018, "month", "quarter")
+#' index_t_to_k(2011, 2018, "month", "year")
+#' index_t_to_k(2011, 2018, "quarter", "quarter")
+#' index_t_to_k(2011, 2018, "quarter", "year")
+#' index_t_to_k(2011, 2018, "year", "year")
 #'
-index_n_to_k <- function (year_start, year_end, step_interval, term_interval) {
+index_t_to_k <- function (year_start, year_end, step_interval, term_interval) {
 
   # Check arguments ------------------------------------------------------------
 
@@ -662,33 +662,33 @@ create_tag_array <- function (tag_data,
     ) %>%
     tidyr::drop_na() %>%
     dplyr::mutate(
-      n = create_step_released(
+      t = create_step_released(
         date_released = .data$date_released,
         date_released_start = date_released_start,
         date_recovered_end = date_recovered_end,
         step_interval = step_interval
       ),
       l = create_group(x = .data$size_released, list_x = list_sizes),
-      x = create_group(x = .data$region_released, list_x = list_regions)
+      s0 = create_group(x = .data$region_released, list_x = list_regions)
     ) %>%
-    dplyr::filter(.data$n < n_steps) %>% # n_steps = N
+    dplyr::filter(.data$t < n_steps) %>% # n_steps = T
     dplyr::select(
-      .data$n,
+      .data$t,
       .data$l,
-      .data$x
+      .data$s0
     ) %>%
     dplyr::group_by(
-      .data$n,
+      .data$t,
       .data$l,
-      .data$x
+      .data$s0
     ) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
     dplyr::arrange(
-      .data$n,
+      .data$t,
       .data$l,
-      .data$x
+      .data$s0
     ) %>%
     tidyr::drop_na()
 
@@ -710,7 +710,7 @@ create_tag_array <- function (tag_data,
     ) %>%
     dplyr::filter(days_liberty >= days_duration_min) %>%
     dplyr::mutate(
-      n = create_step_released(
+      t = create_step_released(
         date_released = .data$date_released,
         date_released_start = date_released_start,
         date_recovered_end = date_recovered_end,
@@ -725,37 +725,37 @@ create_tag_array <- function (tag_data,
         step_duration_max = step_duration_max
       ),
       l = create_group(x = .data$size_released, list_x = list_sizes),
-      x = create_group(x = .data$region_released, list_x = list_regions),
-      y = create_group(x = .data$region_recovered, list_x = list_regions)
+      s0 = create_group(x = .data$region_released, list_x = list_regions),
+      s = create_group(x = .data$region_recovered, list_x = list_regions)
     ) %>%
     tidyr::drop_na() %>%
-    dplyr::filter(.data$n < n_steps) %>% # n_steps = N
+    dplyr::filter(.data$t < n_steps) %>% # n_steps = T
     dplyr::filter(.data$d > 1L) %>%
     dplyr::filter(.data$d <= n_duration) %>%
-    dplyr::filter(.data$n + .data$d - 2L < n_steps) %>% # One beyond released
+    dplyr::filter(.data$t + .data$d - 2L < n_steps) %>% # One beyond released
     dplyr::select(
-      .data$n,
+      .data$t,
       .data$d,
       .data$l,
-      .data$x,
-      .data$y
+      .data$s0,
+      .data$s
     ) %>%
     dplyr::group_by(
-      .data$n,
+      .data$t,
       .data$d,
       .data$l,
-      .data$x,
-      .data$y
+      .data$s0,
+      .data$s
     ) %>%
     dplyr::mutate(count = dplyr::n()) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(.keep_all = TRUE) %>%
     dplyr::arrange(
-      .data$n,
+      .data$t,
       .data$d,
       .data$l,
-      .data$x,
-      .data$y
+      .data$s0,
+      .data$s
     ) %>%
     tidyr::drop_na()
 
@@ -770,11 +770,11 @@ create_tag_array <- function (tag_data,
 
   for (i in seq_len(nrow(tags_released_tibble))) {
     tag_array[
-      tags_released_tibble$n[i],
+      tags_released_tibble$t[i],
       1L,
       tags_released_tibble$l[i],
-      tags_released_tibble$x[i],
-      tags_released_tibble$x[i]
+      tags_released_tibble$s0[i],
+      tags_released_tibble$s0[i]
     ] <- as.integer(tags_released_tibble$count[i])
   }
 
@@ -782,11 +782,11 @@ create_tag_array <- function (tag_data,
 
   for (i in seq_len(nrow(tags_recovered_tibble))) {
     tag_array[
-      tags_recovered_tibble$n[i],
+      tags_recovered_tibble$t[i],
       tags_recovered_tibble$d[i],
       tags_recovered_tibble$l[i],
-      tags_recovered_tibble$x[i],
-      tags_recovered_tibble$y[i]
+      tags_recovered_tibble$s0[i],
+      tags_recovered_tibble$s[i]
     ] <- as.integer(tags_recovered_tibble$count[i])
   }
 
@@ -813,10 +813,10 @@ create_tag_array <- function (tag_data,
 #
 #   # Get dimensions -------------------------------------------------------------
 #
-#   N <- dim(tag_array)[1L] # Stand-in for [N - 1]
+#   T <- dim(tag_array)[1L] # Stand-in for [T - 1]
 #   D <- dim(tag_array)[2L]
 #   L <- dim(tag_array)[3L]
-#   X <- dim(tag_array)[4L]
+#   S <- dim(tag_array)[4L]
 #
 #   # Compute constants ----------------------------------------------------------
 #
@@ -824,7 +824,7 @@ create_tag_array <- function (tag_data,
 #
 #   # Assemble term index --------------------------------------------------------
 #
-#   n_to_k <- index_n_to_k(year_start, year_end, step_interval, term_interval)
+#   t_to_k <- index_t_to_k(year_start, year_end, step_interval, term_interval)
 #
 #   # Assemble fishing weight ----------------------------------------------------
 #
