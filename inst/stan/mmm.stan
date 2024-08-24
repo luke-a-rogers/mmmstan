@@ -106,17 +106,28 @@ parameters {
 transformed parameters {
   // Stepwise movement rate
   array[L] matrix<lower=0, upper=1>[S, S] movement_step;
+  // Selectivity per fish
+  array[L] vector<lower=0, upper=1>[S] selectivity;
+  // Stepwise selected weighted fishing rate
+  array[T, L] vector<lower=0>[S] selected_weighted_fishing_step;
+  // Stepwise natural mortality plus loss rate
+  vector<lower=0>[S] natural_mortality_plus_loss_step;
+  // Stepwise survive then move rate
+  array[T, L] matrix<lower=0, upper=1>[S, S] survive_then_move_step;
+  // Stepwise get caught and reported rate
+  array[T, L] vector<lower=0, upper=1>[S] get_caught_and_reported_step;
+
+  // INFO: Updated above 2024-08-23
   // Stepwise survival rate
-  array[T, L] vector<lower=0, upper=1>[S] survival_step;
+  // array[T, L] vector<lower=0, upper=1>[S] survival_step;
 
   // INFO: Updated above 2024-08-23
   // Stepwise transition rate
   // array[T, L] matrix<lower=0, upper=1>[S, S] transition_step;
 
-  // Stepwise observation rate
-  array[T, L] vector<lower=0, upper=1>[S] observation_step;
-  // Selectivity
-  array[L] vector<lower=0, upper=1>[S] selectivity;
+  // // Stepwise observation rate
+  // array[T, L] vector<lower=0, upper=1>[S] observation_step;
+
   //  // Fishing weight
   //  array[K] vector<lower=0, upper=1>[S] fishing_weight;
 
@@ -138,7 +149,7 @@ transformed parameters {
   //   }
   // }
 
-  // Assemble stepwise movement rates [L] [S, S]
+  // Assemble stepwise movement rates [L][S, S]
   movement_step = assemble_movement_step(
     m1, m2, m3, m4, m5, m6,
     movement_index,
@@ -150,15 +161,53 @@ transformed parameters {
   // Assemble selectivity [L][S]
   selectivity = assemble_selectivity(selectivity_short, L, S);
 
-  // Assemble stepwise survival rate [T, L][S]
-  survival_step = assemble_survival_step(
+  // Assemble selected weighted fishing step [T, L][S]
+  selected_weighted_fishing_step = assemble_selected_weighted_fishing_step(
     fishing_rate,
     // fishing_weight,
     selectivity,
-    natural_mortality_rate,
-    ongoing_loss_rate,
     T, K
   );
+
+  // Assemble natural mortality plus loss step [S]
+  natural_mortality_plus_loss_step = (1/(1.0 * K))
+  * (natural_mortality_rate + ongoing_loss_rate);
+
+  // Assemble survive then move step [T, L][S, S]
+  survive_then_move_step = assemble_survive_then_move_step(
+    movement_step,
+    selected_weighted_fishing_step,
+    natural_mortality_plus_loss_step
+  );
+
+  // Assemble get caught and reported step [T, L][S]
+  get_caught_and_reported_step = assemble_get_caught_and_reported_step(
+    selected_weighted_fishing_step,
+    reporting_rate
+  );
+
+  // INFO: Updated above 2024-08-23
+  // // Assemble stepwise survive then move [T, L][S, S]
+  // survive_then_move_step = assemble_survive_then_move_step(
+  //   movement_step,
+  //   fishing_rate,
+  //   // fishing_weight,
+  //   selectivity,
+  //   natural_mortality_rate,
+  //   ongoing_loss_rate,
+  //   T, K
+  // );
+
+  // INFO: Updated above 2024-08-23
+  // // Assemble stepwise survival rate [T, L][S]
+  // survival_step = assemble_survival_step(
+  //   fishing_rate,
+  //   // fishing_weight,
+  //   selectivity,
+  //   natural_mortality_rate,
+  //   ongoing_loss_rate,
+  //   T, K
+  // );
 
   // INFO: Updated above 2024-08-23
   // // Assemble stepwise survival rate [Years, K, L][S]
@@ -176,14 +225,15 @@ transformed parameters {
   //   survival_step
   // );
 
-  // Assemble stepwize observation rate [T, L][S]
-  observation_step = assemble_observation_step(
-    fishing_rate,
-    // fishing_weight,
-    selectivity,
-    reporting_rate,
-    T, K
-  );
+  // INFO: Updated above 2024-08-23
+  // // Assemble stepwize observation rate [T, L][S]
+  // observation_step = assemble_observation_step(
+  //   fishing_rate,
+  //   // fishing_weight,
+  //   selectivity,
+  //   reporting_rate,
+  //   T, K
+  // );
 
   // INFO: Updated above 2024-08-23
   // // Assemble fishing rate [Years][S]
@@ -212,7 +262,8 @@ model {
       for (l in 1:L) { // Released size
         // Propagate abundance
         abundance[t, d, l] = abundance[t, d - 1, l]
-        * diag_pre_multiply(survival_step[t + d - 2, l], movement_step[l]);
+        // * diag_pre_multiply(survival_step[t + d - 2, l], movement_step[l]);
+        * survive_then_move_step[t + d - 2, l];
 
         // INFO: Updated above 2024-08-03
         // abundance[t, d, l] = abundance[t, d - 1, l]
@@ -221,8 +272,11 @@ model {
         // Compute predicted
         predicted[t, d, l] = diag_post_multiply(
           abundance[t, d, l],
-          observation_step[t + d - 1, l] // Current step
+          // observation_step[t + d - 1, l] // Current step
+          get_caught_and_reported_step[t + d - 1, l]
         );
+
+
         // Compute vectors
         for (s in 1:S) { // Current region
           for (s0 in 1:S) { // Released region
