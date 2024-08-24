@@ -1,3 +1,22 @@
+array[] vector assemble_selectivity (
+  array[] vector selectivity_short,
+  int L,
+  int S
+  ) {
+  // Declare values
+  array[L] vector[S] selectivity;
+  // Populate values
+  for (l in 1:L) {
+    if (l == L) {
+      selectivity[l] = rep_vector(1.0, S);
+    } else {
+      selectivity[l] = selectivity_short[l];
+    }
+  }
+  // Return value
+  return selectivity;
+}
+
 array[] int assemble_simplex_dims (array[,] int mindex) {
   // Get dimensions
   int S = dims(mindex)[1];
@@ -19,7 +38,7 @@ array[] int assemble_simplex_dims (array[,] int mindex) {
   return simplex_dimensions;
 }
 
-array[,] vector assemble_tags_released(array[,,,,] int tags) {
+array[,] vector assemble_tags_released (array[,,,,] int tags) {
   // Get dimensions
   int T = dims(tags)[1]; // Here T = model T - 1
   int L = dims(tags)[3];
@@ -149,93 +168,163 @@ array[] matrix assemble_movement_step (
   return movement_step;
 }
 
-array[,,] vector assemble_survival_step (
-  array[] vector fishing_step,
+array[,] vector assemble_survival_step (
+  array[] vector fishing_rate,
   // array[] vector fishing_weight,
   array[] vector selectivity,
-  vector natural_mortality_step,
-  real ongoing_loss_step,
-  int K,
-  int L
+  vector natural_mortality_rate,
+  real ongoing_loss_rate,
+  int T,
+  int K
 ) {
   // Get dimensions
-  int Years = dims(fishing_step)[1];
-  int S = dims(fishing_step)[2];
-  // Initialize values
-  array[Years, K, L] vector[S] survival_step;
+  int Years = dims(fishing_rate)[1];
+  int L = dims(selectivity)[1];
+  int S = dims(selectivity)[2];
+  // Initiate values
+  array[T, L] vector[S] survival_step;
+  real years_per_step = 1 / (1.0 * K);
+  int t = 1;
   // Populate survival step
   for (year in 1:Years) {
     for (k in 1:K) {
       for (l in 1:L) {
-        survival_step[year, k, l] = exp(
-          -fishing_step[year] .* selectivity[l] // .* fishing_weight[k] .* selectivity[l]
-          - natural_mortality_step
-          - ongoing_loss_step
+        survival_step[t, l] = exp(
+          // -selectivity[l] .* fishing_weight[k] .* fishing_rate[year]
+          -selectivity[l] .* fishing_rate[year] * years_per_step
+          - years_per_step * (natural_mortality_rate + ongoing_loss_rate)
         );
       }
+      // Increment index
+      t += 1;
     }
   }
-  // Return survival step
+  // Return value
   return survival_step;
 }
 
-array[,] matrix assemble_transition_step (
-  array[] matrix movement_step,
-  array[,,] vector survival_step
-) {
-  // Get dimensions
-  int Years = dims(survival_step)[1];
-  int K = dims(survival_step)[2];
-  int L = dims(survival_step)[3];
-  int S = dims(survival_step)[4];
-  int T = Years * K;
-  // Declare values
-  array[T, L] matrix[S, S] transition_step;
-  int t = 1;
-  // Populate transition step
-  for (year in 1:Years) {
-    for (k in 1:K) {
-      for (l in 1:L) {
-        transition_step[t, l] = diag_pre_multiply( // A_n = A_{t-1}S_{t-1}\Gamma
-          survival_step[year, k, l],
-          movement_step[l]
-        );
-      }
-      t += 1;
-    }
-  }
-  // Return transition_step
-  return transition_step;
-}
+// INFO: Updated above 2024-08-23
+// array[,,] vector assemble_survival_step (
+//   array[] vector fishing_step,
+//   // array[] vector fishing_weight,
+//   array[] vector selectivity,
+//   vector natural_mortality_step,
+//   real ongoing_loss_step,
+//   int K,
+//   int L
+// ) {
+//   // Get dimensions
+//   int Years = dims(fishing_step)[1];
+//   int S = dims(fishing_step)[2];
+//   // Initialize values
+//   array[Years, K, L] vector[S] survival_step;
+//   // Populate survival step
+//   for (year in 1:Years) {
+//     for (k in 1:K) {
+//       for (l in 1:L) {
+//         survival_step[year, k, l] = exp(
+//           -fishing_step[year] .* selectivity[l] // .* fishing_weight[k] .* selectivity[l]
+//           - natural_mortality_step
+//           - ongoing_loss_step
+//         );
+//       }
+//     }
+//   }
+//   // Return survival step
+//   return survival_step;
+// }
+
+// INFO: Updated above 2024-08-23
+// array[,] matrix assemble_transition_step (
+//   array[] matrix movement_step,
+//   array[,,] vector survival_step
+// ) {
+//   // Get dimensions
+//   int Years = dims(survival_step)[1];
+//   int K = dims(survival_step)[2];
+//   int L = dims(survival_step)[3];
+//   int S = dims(survival_step)[4];
+//   int T = Years * K;
+//   // Declare values
+//   array[T, L] matrix[S, S] transition_step;
+//   int t = 1;
+//   // Populate transition step
+//   for (year in 1:Years) {
+//     for (k in 1:K) {
+//       for (l in 1:L) {
+//         transition_step[t, l] = diag_pre_multiply( // A_n = A_{t-1}S_{t-1}\Gamma
+//           survival_step[year, k, l],
+//           movement_step[l]
+//         );
+//       }
+//       t += 1;
+//     }
+//   }
+//   // Return transition_step
+//   return transition_step;
+// }
 
 array[,] vector assemble_observation_step (
-  array[] vector fishing_step,
+  array[] vector fishing_rate,
   // array[] vector fishing_weight,
   array[] vector selectivity,
-  vector reporting_step,
-  int K,
-  int L
+  vector reporting_rate,
+  int T,
+  int K
 ) {
   // Get dimensions
-  int Years = dims(fishing_step)[1];
-  int S = dims(fishing_step)[2];
-  int T = Years * K;
-  // Declare values
+  int Years = dims(fishing_rate)[1];
+  int L = dims(selectivity)[1];
+  int S = dims(selectivity)[2];
+  // Initiate values
   array[T, L] vector[S] observation_step;
+  real years_per_step = 1 / (1.0 * K);
   int t = 1;
-  // Populate observation step
+  // Populate survival step
   for (year in 1:Years) {
     for (k in 1:K) {
       for (l in 1:L) {
-        observation_step[t, l] = reporting_step
-        .* (1.0 - exp(-fishing_step[year] .* selectivity[l])); // .* fishing_weight[k] * .selectivity[l]
+        observation_step[t, l] = reporting_rate
+        // .* (1.0 - exp(-selectivity[l] .* fishing_weight[k] .* fishing_rate[year]))
+        .* (1.0 - exp(-selectivity[l] .* fishing_rate[year] * years_per_step));
       }
+      // Increment index
       t += 1;
     }
   }
-  // Return observation step
+  // Return value
   return observation_step;
 }
+
+// INFO: Updated above 2024-08-23
+// array[,] vector assemble_observation_step (
+//   array[] vector fishing_step,
+//   // array[] vector fishing_weight,
+//   array[] vector selectivity,
+//   vector reporting_step,
+//   int K,
+//   int L
+// ) {
+//   // Get dimensions
+//   int Years = dims(fishing_step)[1];
+//   int S = dims(fishing_step)[2];
+//   int T = Years * K;
+//   // Declare values
+//   array[T, L] vector[S] observation_step;
+//   int t = 1;
+//   // Populate observation step
+//   for (year in 1:Years) {
+//     for (k in 1:K) {
+//       for (l in 1:L) {
+//         observation_step[t, l] = reporting_step
+//         .* (1.0 - exp(-fishing_step[year] .* selectivity[l])); // .* fishing_weight[k] * .selectivity[l]
+//       }
+//       t += 1;
+//     }
+//   }
+//   // Return observation step
+//   return observation_step;
+// }
 
 array[] vector assemble_fishing_weight (
   array[] vector fishing_weight_transpose

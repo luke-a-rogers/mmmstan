@@ -75,46 +75,69 @@ parameters {
   array[L, simplex_dims[4]] simplex[4] m4;
   array[L, simplex_dims[5]] simplex[5] m5;
   array[L, simplex_dims[6]] simplex[6] m6;
-  // Instantaneous stepwise rates
-  array[Years] vector<lower=0>[S] fishing_step;
-  vector<lower=0>[S] natural_mortality_step;
-  real<lower=0> ongoing_loss_step;
-  // Fractional (per tag) stepwise rates
-  vector<lower=0, upper=1>[S] reporting_step;
-  real<lower=0, upper=1> initial_loss_step;
+  // Instantaneous yearly rates
+  array[Years] vector<lower=0>[S] fishing_rate;
+  vector<lower=0>[S] natural_mortality_rate;
+  real<lower=0> ongoing_loss_rate;
+  // Fractional (per tag) rates
+  vector<lower=0, upper=1>[S] reporting_rate;
+  real<lower=0, upper=1> initial_loss_rate;
   // Selectivity (per fish)
   array[L - 1] vector<lower=0, upper=1>[S] selectivity_short;
   // Negative binomial dispersion parameter
   real<lower=0> dispersion;
+
+  // INFO: Updated above 2024-08-23
+  // Instantaneous stepwise rates
+  // array[Years] vector<lower=0>[S] fishing_step;
+  // vector<lower=0>[S] natural_mortality_step;
+  // real<lower=0> ongoing_loss_step;
+
+  // Fractional (per tag) stepwise rates
+  // vector<lower=0, upper=1>[S] reporting_step;
+  // real<lower=0, upper=1> initial_loss_step;
+
+  // Selectivity (per fish)
+  // array[L - 1] vector<lower=0, upper=1>[S] selectivity_short;
+  // Negative binomial dispersion parameter
+  // real<lower=0> dispersion;
 }
 
 transformed parameters {
   // Stepwise movement rate
   array[L] matrix<lower=0, upper=1>[S, S] movement_step;
   // Stepwise survival rate
-  array[Years, K, L] vector<lower=0, upper=1>[S] survival_step;
+  array[T, L] vector<lower=0, upper=1>[S] survival_step;
+
+  // INFO: Updated above 2024-08-23
   // Stepwise transition rate
-  array[T, L] matrix<lower=0, upper=1>[S, S] transition_step;
+  // array[T, L] matrix<lower=0, upper=1>[S, S] transition_step;
+
   // Stepwise observation rate
   array[T, L] vector<lower=0, upper=1>[S] observation_step;
-  // Instantaneous annual rates
-  array[Years] vector<lower=0>[S] fishing_rate;
-  vector<lower=0>[S] natural_mortality_rate = natural_mortality_step * K;
-  real<lower=0> ongoing_loss_rate = ongoing_loss_step * K;
-  // Fractional (per tag) rates
-  vector<lower=0, upper=1>[S] reporting_rate = reporting_step;
-  real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
   // Selectivity
   array[L] vector<lower=0, upper=1>[S] selectivity;
-  for (l in 1:L) {
-    if (l == L) {
-      selectivity[l] = rep_vector(1.0, S);
-    } else {
-      selectivity[l] = selectivity_short[l];
-    }
-  }
   //  // Fishing weight
   //  array[K] vector<lower=0, upper=1>[S] fishing_weight;
+
+  // INFO: Updated above 2024-08-23
+  // Instantaneous annual rates
+  // array[Years] vector<lower=0>[S] fishing_rate;
+  // vector<lower=0>[S] natural_mortality_rate = natural_mortality_step * K;
+  // real<lower=0> ongoing_loss_rate = ongoing_loss_step * K;
+  // Fractional (per tag) rates
+  // vector<lower=0, upper=1>[S] reporting_rate = reporting_step;
+  // real<lower=0, upper=1> initial_loss_rate = initial_loss_step;
+  // Selectivity
+  // array[L] vector<lower=0, upper=1>[S] selectivity;
+  // for (l in 1:L) {
+  //   if (l == L) {
+  //     selectivity[l] = rep_vector(1.0, S);
+  //   } else {
+  //     selectivity[l] = selectivity_short[l];
+  //   }
+  // }
+
   // Assemble stepwise movement rates [L] [S, S]
   movement_step = assemble_movement_step(
     m1, m2, m3, m4, m5, m6,
@@ -123,30 +146,48 @@ transformed parameters {
   );
   //  // Assemble fishing weight [K][S]
   //  fishing_weight = assemble_fishing_weight(fishing_weight_transpose);
-  // Assemble stepwise survival rate [Years, K, L][S]
+
+  // Assemble selectivity [L][S]
+  selectivity = assemble_selectivity(selectivity_short, L, S);
+
+  // Assemble stepwise survival rate [T, L][S]
   survival_step = assemble_survival_step(
-    fishing_step,
-    //    fishing_weight,
+    fishing_rate,
+    // fishing_weight,
     selectivity,
-    natural_mortality_step,
-    ongoing_loss_step,
-    K, L
+    natural_mortality_rate,
+    ongoing_loss_rate,
+    T, K
   );
-  // Assemble stepwise transition rate [T, L][S, S]
-  transition_step = assemble_transition_step(
-    movement_step,
-    survival_step
-  );
+
+  // INFO: Updated above 2024-08-23
+  // // Assemble stepwise survival rate [Years, K, L][S]
+  // survival_step = assemble_survival_step(
+  //   fishing_step,
+  //   //    fishing_weight,
+  //   selectivity,
+  //   natural_mortality_step,
+  //   ongoing_loss_step,
+  //   K, L
+  // );
+  // // Assemble stepwise transition rate [T, L][S, S]
+  // transition_step = assemble_transition_step(
+  //   movement_step,
+  //   survival_step
+  // );
+
   // Assemble stepwize observation rate [T, L][S]
   observation_step = assemble_observation_step(
-    fishing_step,
-    //    fishing_weight,
+    fishing_rate,
+    // fishing_weight,
     selectivity,
-    reporting_step,
-    K, L
+    reporting_rate,
+    T, K
   );
-  // Assemble fishing rate [Years][S]
-  fishing_rate = assemble_fishing_rate(fishing_step, K);
+
+  // INFO: Updated above 2024-08-23
+  // // Assemble fishing rate [Years][S]
+  // fishing_rate = assemble_fishing_rate(fishing_step, K);
 }
 
 model {
@@ -161,7 +202,7 @@ model {
   for (t in 1:(T - 1)) { // Model step
     for (l in 1:L) { // Released size
       abundance[t, 1, l] = diag_matrix(
-        tags_released[t, l] * (1 - initial_loss_step)
+        tags_released[t, l] * (1 - initial_loss_rate)
       );
     }
   }
@@ -171,7 +212,12 @@ model {
       for (l in 1:L) { // Released size
         // Propagate abundance
         abundance[t, d, l] = abundance[t, d - 1, l]
-        * transition_step[t + d - 2, l]; // Previous step
+        * diag_pre_multiply(survival_step[t + d - 2, l], movement_step[l]);
+
+        // INFO: Updated above 2024-08-03
+        // abundance[t, d, l] = abundance[t, d - 1, l]
+        // * transition_step[t + d - 2, l]; // Previous step
+
         // Compute predicted
         predicted[t, d, l] = diag_post_multiply(
           abundance[t, d, l],
