@@ -1,3 +1,24 @@
+array[,] vector assemble_get_caught_and_reported_step(
+  array[,] vector selected_weighted_fishing_step,
+  vector reporting_rate
+) {
+  // Get dimensions
+  int T = dims(selected_weighted_fishing_step)[1];
+  int L = dims(selected_weighted_fishing_step)[2];
+  int S = dims(selected_weighted_fishing_step)[3];
+  // Declare values
+  array[T, L] vector[S] get_caught_and_reported_step;
+  // Populate
+  for (t in 1:T) {
+    for (l in 1:L) {
+      get_caught_and_reported_step[t, l] = reporting_rate
+      .* (1.0 - exp(-selected_weighted_fishing_step[t, l]));
+    }
+  }
+  // Return value
+  return get_caught_and_reported_step;
+}
+
 array[] vector assemble_selectivity (
   array[] vector selectivity_short,
   int L,
@@ -15,6 +36,38 @@ array[] vector assemble_selectivity (
   }
   // Return value
   return selectivity;
+}
+
+array[,] vector assemble_selected_weighted_fishing_step (
+  array[] vector fishing_rate,
+  // array[] vector fishing_weight,
+  array[] vector selectivity,
+  int T,
+  int K
+) {
+  // Get dimensions
+  int Years = dims(fishing_rate)[1];
+  int L = dims(selectivity)[1];
+  int S = dims(selectivity)[2];
+  // Initiate values
+  array[T, L] vector[S] selected_weighted_fishing_step;
+  real years_per_step = 1 / (1.0 * K);
+  int t = 1;
+  // Populate value
+  for (year in 1:Years) {
+    for (k in 1:K) {
+      for (l in 1:L) {
+        selected_weighted_fishing_step[t, l] = selectivity[l]
+        * years_per_step
+        //.* fishing_weight[k]
+        .* fishing_rate[year];
+      }
+      // Increment index
+      t += 1;
+    }
+  }
+  // Return value
+  return selected_weighted_fishing_step;
 }
 
 array[] int assemble_simplex_dims (array[,] int mindex) {
@@ -36,6 +89,35 @@ array[] int assemble_simplex_dims (array[,] int mindex) {
   }
   // Return value
   return simplex_dimensions;
+}
+
+array[,] matrix assemble_survive_then_move_step (
+  array[] matrix movement_step,
+  array[,] vector selected_weighted_fishing_step,
+  vector natural_mortality_plus_loss_step
+){
+  // Get dimensions
+  int T = dims(selected_weighted_fishing_step)[1];
+  int L = dims(selected_weighted_fishing_step)[2];
+  int S = dims(selected_weighted_fishing_step)[3];
+  // Declare values
+  array[T, L] matrix[S, S] survive_then_move_step;
+  // Populate
+  for (t in 1:T) {
+    for (l in 1:L) {
+      survive_then_move_step[t, l] = diag_pre_multiply(
+        // Survival step
+        exp(
+          -selected_weighted_fishing_step[t, l]
+          - natural_mortality_plus_loss_step
+        ),
+        // Movement step
+        movement_step[l]
+      );
+    }
+  }
+  // Return value
+  return survive_then_move_step;
 }
 
 array[,] vector assemble_tags_released (array[,,,,] int tags) {
@@ -168,40 +250,84 @@ array[] matrix assemble_movement_step (
   return movement_step;
 }
 
-array[,] vector assemble_survival_step (
-  array[] vector fishing_rate,
-  // array[] vector fishing_weight,
-  array[] vector selectivity,
-  vector natural_mortality_rate,
-  real ongoing_loss_rate,
-  int T,
-  int K
-) {
-  // Get dimensions
-  int Years = dims(fishing_rate)[1];
-  int L = dims(selectivity)[1];
-  int S = dims(selectivity)[2];
-  // Initiate values
-  array[T, L] vector[S] survival_step;
-  real years_per_step = 1 / (1.0 * K);
-  int t = 1;
-  // Populate survival step
-  for (year in 1:Years) {
-    for (k in 1:K) {
-      for (l in 1:L) {
-        survival_step[t, l] = exp(
-          // -selectivity[l] .* fishing_weight[k] .* fishing_rate[year]
-          -selectivity[l] .* fishing_rate[year] * years_per_step
-          - years_per_step * (natural_mortality_rate + ongoing_loss_rate)
-        );
-      }
-      // Increment index
-      t += 1;
-    }
-  }
-  // Return value
-  return survival_step;
-}
+// INFO: Updated above 2024-08-23
+// array[,] matrix assemble_survive_then_move_step (
+//   array[] matrix movement_step,
+//   array[] vector fishing_rate,
+//   // array[] vector fishing_weight,
+//   array[] vector selectivity,
+//   vector natural_mortality_rate,
+//   real ongoing_loss_rate,
+//   int T,
+//   int K
+// ) {
+//   // Get dimensions
+//   int Years = dims(fishing_rate)[1];
+//   int L = dims(selectivity)[1];
+//   int S = dims(selectivity)[2];
+//   // Initiate values
+//   array[T, L] matrix[S, S] survive_then_move_step;
+//   array[T, L] vector[S] survival_step;
+//   real years_per_step = 1 / (1.0 * K);
+//   int t = 1;
+//   // Populate survive then move step
+//   for (year in 1:Years) {
+//     for (k in 1:K) {
+//       for (l in 1:L) {
+//         survive_then_move_step[t, l] = diag_pre_multiply(
+//           // Survival step
+//           exp(
+//             // -selectivity[l] .* fishing_weight[k] .* fishing_rate[year]
+//             -selectivity[l] .* fishing_rate[year] * years_per_step
+//             - years_per_step * (natural_mortality_rate + ongoing_loss_rate)
+//           ),
+//           // Movement step
+//           movement_step[l]
+//         );
+//       }
+//       // Increment index
+//       t += 1;
+//     }
+//   }
+//   // Return value
+//   return survive_then_move_step;
+// }
+
+// INFO: Updated above 2024-08-23
+// array[,] vector assemble_survival_step (
+//   array[] vector fishing_rate,
+//   // array[] vector fishing_weight,
+//   array[] vector selectivity,
+//   vector natural_mortality_rate,
+//   real ongoing_loss_rate,
+//   int T,
+//   int K
+// ) {
+//   // Get dimensions
+//   int Years = dims(fishing_rate)[1];
+//   int L = dims(selectivity)[1];
+//   int S = dims(selectivity)[2];
+//   // Initiate values
+//   array[T, L] vector[S] survival_step;
+//   real years_per_step = 1 / (1.0 * K);
+//   int t = 1;
+//   // Populate survival step
+//   for (year in 1:Years) {
+//     for (k in 1:K) {
+//       for (l in 1:L) {
+//         survival_step[t, l] = exp(
+//           // -selectivity[l] .* fishing_weight[k] .* fishing_rate[year]
+//           -selectivity[l] .* fishing_rate[year] * years_per_step
+//           - years_per_step * (natural_mortality_rate + ongoing_loss_rate)
+//         );
+//       }
+//       // Increment index
+//       t += 1;
+//     }
+//   }
+//   // Return value
+//   return survival_step;
+// }
 
 // INFO: Updated above 2024-08-23
 // array[,,] vector assemble_survival_step (
@@ -264,37 +390,38 @@ array[,] vector assemble_survival_step (
 //   return transition_step;
 // }
 
-array[,] vector assemble_observation_step (
-  array[] vector fishing_rate,
-  // array[] vector fishing_weight,
-  array[] vector selectivity,
-  vector reporting_rate,
-  int T,
-  int K
-) {
-  // Get dimensions
-  int Years = dims(fishing_rate)[1];
-  int L = dims(selectivity)[1];
-  int S = dims(selectivity)[2];
-  // Initiate values
-  array[T, L] vector[S] observation_step;
-  real years_per_step = 1 / (1.0 * K);
-  int t = 1;
-  // Populate survival step
-  for (year in 1:Years) {
-    for (k in 1:K) {
-      for (l in 1:L) {
-        observation_step[t, l] = reporting_rate
-        // .* (1.0 - exp(-selectivity[l] .* fishing_weight[k] .* fishing_rate[year]))
-        .* (1.0 - exp(-selectivity[l] .* fishing_rate[year] * years_per_step));
-      }
-      // Increment index
-      t += 1;
-    }
-  }
-  // Return value
-  return observation_step;
-}
+// INFO: Updated above 2024-08-23
+// array[,] vector assemble_observation_step (
+//   array[] vector fishing_rate,
+//   // array[] vector fishing_weight,
+//   array[] vector selectivity,
+//   vector reporting_rate,
+//   int T,
+//   int K
+// ) {
+//   // Get dimensions
+//   int Years = dims(fishing_rate)[1];
+//   int L = dims(selectivity)[1];
+//   int S = dims(selectivity)[2];
+//   // Initiate values
+//   array[T, L] vector[S] observation_step;
+//   real years_per_step = 1 / (1.0 * K);
+//   int t = 1;
+//   // Populate survival step
+//   for (year in 1:Years) {
+//     for (k in 1:K) {
+//       for (l in 1:L) {
+//         observation_step[t, l] = reporting_rate
+//         // .* (1.0 - exp(-selectivity[l] .* fishing_weight[k] .* fishing_rate[year]))
+//         .* (1.0 - exp(-selectivity[l] .* fishing_rate[year] * years_per_step));
+//       }
+//       // Increment index
+//       t += 1;
+//     }
+//   }
+//   // Return value
+//   return observation_step;
+// }
 
 // INFO: Updated above 2024-08-23
 // array[,] vector assemble_observation_step (
@@ -361,22 +488,23 @@ array[] matrix assemble_movement_rate (
   return movement_rate;
 }
 
-array[] vector assemble_fishing_rate (
-  array[] vector fishing_step,
-  int K
-) {
-  // Get dimensions
-  int Years = dims(fishing_step)[1];
-  int S = dims(fishing_step)[2];
-  // Declare values
-  array[Years] vector[S] fishing_rate;
-  // Populate fishing rate
-  for (year in 1:Years) {
-    fishing_rate[year] = fishing_step[year] * K;
-  }
-  // Return fishing rate
-  return fishing_rate;
-}
+// INFO: Updated above 2024-08-23
+// array[] vector assemble_fishing_rate (
+//   array[] vector fishing_step,
+//   int K
+// ) {
+//   // Get dimensions
+//   int Years = dims(fishing_step)[1];
+//   int S = dims(fishing_step)[2];
+//   // Declare values
+//   array[Years] vector[S] fishing_rate;
+//   // Populate fishing rate
+//   for (year in 1:Years) {
+//     fishing_rate[year] = fishing_step[year] * K;
+//   }
+//   // Return fishing rate
+//   return fishing_rate;
+// }
 
 array[] int index_t_to_r (int start, int end) {
   // Declare values
